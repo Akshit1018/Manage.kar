@@ -1,0 +1,319 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import { Card } from "@/components/ui/card"
+import { X, Trash2, Target, Bell } from "lucide-react"
+
+interface Habit {
+  id: number
+  name: string
+  description?: string
+  category: "health" | "productivity" | "learning" | "lifestyle" | "fitness" | "mindfulness"
+  frequency: "daily" | "weekly" | "custom"
+  customDays?: string[]
+  goal?: number
+  unit?: string
+  streak: number
+  completed: boolean
+  completedToday: boolean
+  reminders: boolean
+  reminderTime?: string
+  createdAt: string
+  history: { date: string; completed: boolean; value?: number }[]
+}
+
+interface HabitModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onSave: (
+    habit: Omit<Habit, "id" | "streak" | "completed" | "completedToday" | "createdAt" | "history"> | Habit,
+  ) => void
+  onDelete?: (habitId: number) => void
+  habit?: Habit
+  mode: "create" | "edit"
+}
+
+export function HabitModal({ isOpen, onClose, onSave, onDelete, habit, mode }: HabitModalProps) {
+  const [formData, setFormData] = useState<
+    Omit<Habit, "id" | "streak" | "completed" | "completedToday" | "createdAt" | "history">
+  >({
+    name: "",
+    description: "",
+    category: "health",
+    frequency: "daily",
+    customDays: [],
+    goal: 1,
+    unit: "times",
+    reminders: false,
+    reminderTime: "09:00",
+  })
+
+  const categoryOptions = [
+    { value: "health", label: "Health", icon: "🏥" },
+    { value: "fitness", label: "Fitness", icon: "💪" },
+    { value: "mindfulness", label: "Mindfulness", icon: "🧘" },
+    { value: "productivity", label: "Productivity", icon: "⚡" },
+    { value: "learning", label: "Learning", icon: "📚" },
+    { value: "lifestyle", label: "Lifestyle", icon: "🌟" },
+  ]
+
+  const weekDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+  useEffect(() => {
+    if (habit && mode === "edit") {
+      setFormData({
+        name: habit.name,
+        description: habit.description || "",
+        category: habit.category,
+        frequency: habit.frequency,
+        customDays: habit.customDays || [],
+        goal: habit.goal || 1,
+        unit: habit.unit || "times",
+        reminders: habit.reminders,
+        reminderTime: habit.reminderTime || "09:00",
+      })
+    } else {
+      setFormData({
+        name: "",
+        description: "",
+        category: "health",
+        frequency: "daily",
+        customDays: [],
+        goal: 1,
+        unit: "times",
+        reminders: false,
+        reminderTime: "09:00",
+      })
+    }
+  }, [habit, mode, isOpen])
+
+  const handleSave = () => {
+    if (!formData.name.trim()) return
+
+    if (mode === "edit" && habit) {
+      onSave({ ...habit, ...formData })
+    } else {
+      onSave(formData)
+    }
+    onClose()
+  }
+
+  const handleDelete = () => {
+    if (habit && onDelete) {
+      onDelete(habit.id)
+      onClose()
+    }
+  }
+
+  const toggleCustomDay = (day: string) => {
+    const currentDays = formData.customDays || []
+    if (currentDays.includes(day)) {
+      setFormData({
+        ...formData,
+        customDays: currentDays.filter((d) => d !== day),
+      })
+    } else {
+      setFormData({
+        ...formData,
+        customDays: [...currentDays, day],
+      })
+    }
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <Card className="bg-card/95 backdrop-blur-xl border border-border/50 shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl">
+        <div className="p-6">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-500/20 rounded-xl">
+                <Target className="h-5 w-5 text-blue-500" />
+              </div>
+              <h2 className="text-xl font-semibold font-sans">
+                {mode === "create" ? "Create New Habit" : "Edit Habit"}
+              </h2>
+            </div>
+            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {/* Form */}
+          <div className="space-y-6">
+            {/* Name */}
+            <div className="space-y-2">
+              <Label htmlFor="habit-name" className="text-sm font-medium">
+                Habit Name
+              </Label>
+              <Input
+                id="habit-name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g., Morning Exercise, Read 30 minutes..."
+                className="glass rounded-xl"
+              />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="habit-description" className="text-sm font-medium">
+                Description (Optional)
+              </Label>
+              <Textarea
+                id="habit-description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Add details about your habit..."
+                className="glass rounded-xl min-h-[80px]"
+              />
+            </div>
+
+            {/* Category */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Category</Label>
+              <Select
+                value={formData.category}
+                onValueChange={(value: any) => setFormData({ ...formData, category: value })}
+              >
+                <SelectTrigger className="glass rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {categoryOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      <div className="flex items-center gap-2">
+                        <span>{option.icon}</span>
+                        {option.label}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Frequency */}
+            <div className="space-y-4">
+              <Label className="text-sm font-medium">Frequency</Label>
+              <Select
+                value={formData.frequency}
+                onValueChange={(value: "daily" | "weekly" | "custom") => setFormData({ ...formData, frequency: value })}
+              >
+                <SelectTrigger className="glass rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="custom">Custom Days</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Custom Days Selection */}
+              {formData.frequency === "custom" && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Select Days</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {weekDays.map((day) => (
+                      <Button
+                        key={day}
+                        type="button"
+                        variant={formData.customDays?.includes(day) ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => toggleCustomDay(day)}
+                        className="rounded-xl glass bg-transparent"
+                      >
+                        {day.slice(0, 3)}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Goal & Unit */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Goal</Label>
+                <Input
+                  type="number"
+                  value={formData.goal}
+                  onChange={(e) => setFormData({ ...formData, goal: Number.parseInt(e.target.value) || 1 })}
+                  min="1"
+                  className="glass rounded-xl"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Unit</Label>
+                <Select value={formData.unit} onValueChange={(value) => setFormData({ ...formData, unit: value })}>
+                  <SelectTrigger className="glass rounded-xl">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="times">times</SelectItem>
+                    <SelectItem value="minutes">minutes</SelectItem>
+                    <SelectItem value="hours">hours</SelectItem>
+                    <SelectItem value="pages">pages</SelectItem>
+                    <SelectItem value="glasses">glasses</SelectItem>
+                    <SelectItem value="steps">steps</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Reminders */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Bell className="h-4 w-4 text-muted-foreground" />
+                  <Label className="text-sm font-medium">Reminders</Label>
+                </div>
+                <Switch
+                  checked={formData.reminders}
+                  onCheckedChange={(checked) => setFormData({ ...formData, reminders: checked })}
+                />
+              </div>
+
+              {formData.reminders && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Reminder Time</Label>
+                  <Input
+                    type="time"
+                    value={formData.reminderTime}
+                    onChange={(e) => setFormData({ ...formData, reminderTime: e.target.value })}
+                    className="glass rounded-xl"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-3 mt-8">
+            {mode === "edit" && onDelete && (
+              <Button variant="destructive" onClick={handleDelete} className="rounded-xl">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+            )}
+            <div className="flex-1" />
+            <Button variant="outline" onClick={onClose} className="rounded-xl glass bg-transparent">
+              Cancel
+            </Button>
+            <Button onClick={handleSave} className="rounded-xl">
+              {mode === "create" ? "Create Habit" : "Save Changes"}
+            </Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  )
+}
