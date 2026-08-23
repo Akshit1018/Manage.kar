@@ -9,15 +9,15 @@ Base: post-remediation + forensic pack. No backend. No IndexedDB rewrite. No fak
 | G003 | `this week` = +3 days; unknown → today | VERIFIED | TESTED |
 | G004 | `persist` does not notify; quota unguarded | VERIFIED | TESTED |
 | G005 | Dirty slogan dates stay on disk | VERIFIED | TESTED |
-| G006 | Mobile hides Share / tools | VERIFIED | IMPLEMENTED |
-| G007 | Home is counts, not today | VERIFIED | IMPLEMENTED |
-| G008 | Counts “week” + static advice | VERIFIED | IMPLEMENTED |
-| G009 | WhatsApp plaintext vs enc1 copy | VERIFIED | IMPLEMENTED |
+| G006 | Mobile hides Share / tools | VERIFIED | TESTED (390px: Export + Goals/Share/Counts visible) |
+| G007 | Home is counts, not today | VERIFIED | TESTED (Today heading; Mon habit absent on Sunday) |
+| G008 | Counts “week” + static advice | VERIFIED | TESTED (All items; no 9–11 AM block) |
+| G009 | WhatsApp plaintext vs enc1 copy | VERIFIED | TESTED (WhatsApp (plain text) + export default) |
 | G010 | Share page “anyone with URL” after unlock | VERIFIED | IMPLEMENTED |
 | G011 | SW cache-first stale `/` | VERIFIED | IMPLEMENTED |
 | G012 | FAB RAM focus + blob voice | VERIFIED | IMPLEMENTED |
 | G013 | Goals cannot delete/complete | VERIFIED | IMPLEMENTED |
-| G014 | Search/view not in URL | VERIFIED | TESTED |
+| G014 | Search/view not in URL | VERIFIED | TESTED (`?view=habits`) |
 | G015 | Stale README / SECURITY_MODEL / PRODUCT_GRAPH | VERIFIED | IMPLEMENTED |
 | G016 | Checklist hidden on cards | VERIFIED | IMPLEMENTED |
 | — | IndexedDB this week | REJECTED | — |
