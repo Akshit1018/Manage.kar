@@ -31,3 +31,19 @@ Local-first task apps were actively landing:
 
 **ADOPT:** versioned local document, migrate later.  
 **REJECT:** CRDT + outbox in this slice.
+
+## Red-team market pass (2026-08-23, later the same day)
+
+`parallel-cli` still missing. Firecrawl CLI 1.23.1 **unauthenticated**; `login --browser` hung.
+
+Used built-in web search + page fetch:
+
+- [Best Local-First To-Do Apps in 2026](https://super-productivity.com/blog/best-local-first-todo-apps-2026/)
+- [Super Productivity compare](https://super-productivity.com/compare/)
+- [TickTick](https://www.ticktick.com/?language=en_Us), [What’s New](https://help.ticktick.com/articles/7082552170989486080), [AI Voice Add](https://help.ticktick.com/articles/7444677039392555008)
+- [StackCompare Todoist/TickTick/Things 2026](https://stackcompare.net/todoist-vs-ticktick-vs-things-3-2026-personal-task-manager-pricing-compared/)
+- GitHub: [Cairn](https://github.com/Artaeon/cairn), [Baajit](https://github.com/kaafihai/baajit), [DayCraft](https://github.com/1saptarshi/DayCraft), [Level Up](https://github.com/yokutech/level-up), [TaskFlow](https://github.com/MS33834/taskflow)
+
+**ADOPT for the audit:** TickTick as the all-in-one SaaS foil; Super Productivity as the honest local-first foil.  
+**REJECT:** Copying TickTick AI/MCP before reminders exist.  
+**Full writeup:** `docs/COMPETITOR_GAPS.md`.
