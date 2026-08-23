@@ -4,7 +4,7 @@
 **Inspected revision:** `cursor/product-foundation-e2f4` @ `6432bf8` plus this audit branch  
 **Date:** 2026-08-23  
 **Method:** Code inspection + live browser torture at `http://127.0.0.1:3000` + current-web competitor research  
-**This is an inspection. Nothing was fixed.**
+**Inspection scores below are frozen.** Remediations landed on `cursor/fix-red-team-findings-e2f4` (PR #3). Re-score after merge; do not rewrite the original numbers.
 
 Scores are against a shippable 2026 personal productivity product, not against “a nicer v0 demo.”
 
@@ -47,3 +47,16 @@ Previous internal scorecard in `docs/QUALITY_SCORECARD.md` scored the persist sl
 ## What we did not test
 
 See `docs/UNVERIFIED_ASSUMPTIONS.md`.
+
+## Post-remediation browser checks (2026-08-23)
+
+- Cold load: no permission wall; title is local-first; Add task is the primary CTA.
+- Empty title: inline “Add a title before saving.”
+- Created “Persist after remediations” with ISO due date; survived refresh.
+- Injected `TAB1-ONLY-SHOULD-SURVIVE` then toggled the other task: `lost: false`.
+- Settings Backup: “No cloud backup yet.” No Connect button.
+- Goals: empty, no React/Marathon seed.
+- Share default action: Export Tasks; copy says links do not expire.
+- Mobile 390: bottom nav Home / Tasks / Notes / Habits.
+- Icons `/icon-192.png` and `/apple-touch-icon.png` return 200.
+- `pnpm test` 28/28; `tsc --noEmit` clean.

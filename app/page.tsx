@@ -485,25 +485,25 @@ export default function Dashboard() {
         {currentView === "overview" && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <button type="button" className="text-left" onClick={() => setCurrentView("tasks")}>
+              <button type="button" className="text-left" onClick={() => setCurrentView("tasks")} aria-label={`${pendingTasksCount} pending tasks`}>
                 <Card className="modern-card p-4">
                   <p className="text-2xl font-bold">{pendingTasksCount}</p>
                   <p className="text-xs text-muted-readable">Pending</p>
                 </Card>
               </button>
-              <button type="button" className="text-left" onClick={() => setCurrentView("tasks")}>
+              <button type="button" className="text-left" onClick={() => setCurrentView("tasks")} aria-label={`${completedTasksCount} completed tasks`}>
                 <Card className="modern-card p-4">
                   <p className="text-2xl font-bold">{completedTasksCount}</p>
                   <p className="text-xs text-muted-readable">Done</p>
                 </Card>
               </button>
-              <button type="button" className="text-left" onClick={() => setCurrentView("habits")}>
+              <button type="button" className="text-left" onClick={() => setCurrentView("habits")} aria-label={`${habits.filter((habit) => habit.completedToday).length} of ${habits.length} habits done today`}>
                 <Card className="modern-card p-4">
                   <p className="text-2xl font-bold">{habits.filter((habit) => habit.completedToday).length}/{habits.length}</p>
                   <p className="text-xs text-muted-readable">Habits today</p>
                 </Card>
               </button>
-              <button type="button" className="text-left" onClick={() => setCurrentView("notes")}>
+              <button type="button" className="text-left" onClick={() => setCurrentView("notes")} aria-label={`${notes.length} notes`}>
                 <Card className="modern-card p-4">
                   <p className="text-2xl font-bold">{notes.length}</p>
                   <p className="text-xs text-muted-readable">Notes</p>

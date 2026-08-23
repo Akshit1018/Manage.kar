@@ -2,6 +2,7 @@
 
 **Audit date:** 2026-08-23  
 **Branch inspected:** `cursor/product-foundation-e2f4` @ `6432bf8`  
+**Remediation branch:** `cursor/fix-red-team-findings-e2f4`  
 **Status key:** OPEN | RESOLVED | PARTIALLY RESOLVED | FALSE POSITIVE | NOT REPRODUCIBLE  
 **Do not delete rows. Mark status when something is later fixed.**
 
@@ -23,7 +24,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-001
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Google Connect/Sync UI removed. Settings Backup says there is no cloud adapter and points at Export. Regression: no `manageKarGoogleIntegration` write path remains.
 - **AREA:** Security / Trust / Integrations
 - **TITLE:** “Connect Google Sheets” fakes OAuth and can claim a successful backup
 - **WHAT IS WRONG:** `connectToGoogle` waits 2s, fails 20% of the time at random, otherwise sets `connected: true` and writes spreadsheet ID `1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms` (Google’s public sample sheet). `syncToGoogle` reads **legacy empty keys** (`manageKarTasks`, not `managekar.workspace.v1`), logs to console, then `alert("Successfully synced to Google Sheets! Your data is now backed up.")`.
@@ -41,7 +43,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-002
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** `mutateWorkspace` always loads storage before patching. Hook listens to `storage`. Browser: injected `TAB1-ONLY-SHOULD-SURVIVE` then toggled the other task → `lost: false`. Test: “patches storage instead of replacing it with a stale tab snapshot.”
 - **AREA:** Database / Frontend / Reliability
 - **TITLE:** Second tab + any save silently deletes the other tab’s work
 - **WHAT IS WRONG:** `persist(partial)` does `saveWorkspace({ ...currentFromStorage, ...partial })` but callers pass **React `tasks`/`notes`/`habits`**, which overwrite storage. `useWorkspace` does not listen to `window.storage`. Two tabs diverge; the next toggle wins and drops the other tab’s rows.
@@ -59,7 +62,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-003
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Corrupt JSON is copied to `managekar.workspace.v1.corrupt.<ts>` and is not overwritten by `mutateWorkspace` until `resetCorruptWorkspace`. Test: “quarantines corrupt workspace JSON and refuses to overwrite it.”
 - **AREA:** Database
 - **TITLE:** Corrupt workspace JSON becomes an empty workspace; the next save can wipe the key
 - **WHAT IS WRONG:** `loadWorkspace` returns `createEmptyWorkspace()` on parse failure. UI then looks empty. The next `persist` writes that empty document over the corrupt (or recoverable) value.
@@ -80,7 +84,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-004
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** `parseBackup` requires `schemaVersion === 1` or `appName === "Manage.kar"`. Test: `parseBackup("{}").ok === false`.
 - **AREA:** Database / Settings
 - **TITLE:** Almost any JSON object is a “valid backup”
 - **WHAT IS WRONG:** `normalizeWorkspace` accepts any record. `parseBackup("{}")` and `{"hello":"world"}` succeed as empty workspaces. Import then **replaces** all data after `confirm`.
@@ -97,7 +102,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-005
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Invalid rows are counted, stored under `managekar.workspace.v1.dropped`, and shown in a dashboard banner. Valid rows stay. Test: “keeps valid rows and reports dropped invalid ones.”
 - **AREA:** Database
 - **TITLE:** Invalid task/note/habit rows are dropped with no log
 - **WHAT IS WRONG:** `asTaskArray` / `asNoteArray` / `asHabitArray` `flatMap` away failed Zod parses.
@@ -111,7 +117,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-006
 
-- **STATUS:** OPEN
+- **STATUS:** PARTIALLY RESOLVED
+- **RESOLUTION:** Default share method is JSON export. Link copy says anyone with the URL can read the tasks and the link does not expire. No encryption or expiry implemented (would need a server or a secret).
 - **AREA:** Security / API
 - **TITLE:** Share “links” are public, unauthenticated, non-expiring Base64 of the payload
 - **WHAT IS WRONG:** Token is `utf8ToBase64Url(JSON.stringify(payload))` in `/shared/[data]`. Anyone with history, Slack, referrer, or a proxy log can read titles, descriptions, checklist, name.
@@ -129,7 +136,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-007
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Import confirms, hashes the payload, skips repeats, toasts, then `router.push("/")`. Test: `import-tasks.test.ts`.
 - **AREA:** UX / Logic
 - **TITLE:** Import Tasks has no confirm, allows duplicates, and failed to navigate home
 - **WHAT IS WRONG:** `handleImportTasks` appends copies with new ids and `router.push("/")`. Browser: click Import → workspace gained a **duplicate** emoji task; URL **stayed** on `/shared/...`; no toast.
@@ -144,7 +152,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-008
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Goals persist in the workspace. First open is empty, no 2024 demo seed. Browser: “No goals yet.”
 - **AREA:** Product / UX / Logic
 - **TITLE:** Goals are a 2024 demo that vanishes when the modal unmounts
 - **WHAT IS WRONG:** `GoalManager` `useState` seeds “Learn React Development” (65%, due 2024-06-30) and “Run a Marathon.” Not in `Workspace`. Close = gone. Contradicts D003 “first run is empty, not fake seed data.”
@@ -159,7 +168,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-009
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Time entries persist as ISO strings in the workspace. Running timers survive remount.
 - **AREA:** Logic
 - **TITLE:** Time tracker state dies with the modal
 - **WHAT IS WRONG:** `TimeTracker` holds entries in `useState`. Close loses running timers.
@@ -172,7 +182,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-010
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Active focus persists (`startedAt` + remaining). Pause/Stop are visible. Five-tap lock removed. FAB no longer starts a second focus timer.
 - **AREA:** UX / Logic
 - **TITLE:** Focus sessions are ephemeral and lock behind a 5-tap gesture
 - **WHAT IS WRONG:** Sessions live in component state. After start, UI locks until five taps (`handleTap`). Timeout reads stale `tapCount`. Completing a session is lost on close. Second timer exists in `FloatingToggle`.
@@ -185,7 +196,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-011
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Completing a recurring task spawns the next due date. `useLocalReminders` fires device notifications for due reminded tasks/habits when permission is granted. Test: `lib/reminders/due.test.ts`.
 - **AREA:** Product logic
 - **TITLE:** Recurring + Reminders are stored switches that never fire
 - **WHAT IS WRONG:** Task modal and habit modal persist `recurring` / `reminders`. No scheduler, no `Notification` for due tasks. First-run copy still says notifications are “For task reminders and confirmations.”
@@ -200,7 +212,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-012
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Completions keyed by local date; streak derived from history. Test: `lib/habits/streak.test.ts`.
 - **AREA:** Logic / Database
 - **TITLE:** Habit “today” and streak are not date-safe
 - **WHAT IS WRONG:** `completedToday` is a boolean with no midnight reset. Toggle does `streak + 1` / `streak - 1` without checking yesterday. History is rewritten for today but streak is not derived from history.
@@ -213,7 +226,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-013
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Collaboration/Preview dashboard removed from the home grid and deleted.
 - **AREA:** Product / UX / Trust
 - **TITLE:** “Preview” is a fake ERP with 156 shares and dead primary actions
 - **WHAT IS WRONG:** `CollaborationDashboard` hardcodes stats and people (Sarah Johnson, Emma Davis, Mike Chen). Footer **Export Report / Invite Member / Share Tasks** has **no `onClick`**. Overlay is a `fixed inset-0` div: **Escape does not close** (Playwright click on Settings was intercepted). Label was renamed “Preview” but the surface still looks live.
@@ -226,7 +240,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-014
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Dead language/auto-backup/sound/geo controls removed. Theme, font size, animations, date format, clipboard, and local notification subtypes apply. Week-start is stored and shown; habit weekday chips still list Monday first.
 - **AREA:** UX / Logic
 - **TITLE:** Settings persist values that change nothing
 - **WHAT IS WRONG:** Stored and unused: `fontSize`, `animations`, `accentColor`, `autoBackup` + frequency, `language` (English/Español/Français/Deutsch), `weekStartsOn`, `dateFormat`, `timezone` (in schema, **not even in the General UI**), notification subtypes, sound/volume, `dataCollection` / crash / analytics / location leftovers.
@@ -240,7 +255,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-015
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** First-visit permission wall removed. Mic is requested only when the user starts a voice note. Browser cold load: dashboard usable, no Grant Permissions modal.
 - **AREA:** UX / Privacy
 - **TITLE:** First visit blocks the app behind mic + notification permission
 - **WHAT IS WRONG:** Custom modal (not a dialog) asks for microphone and notifications before a task exists. Grant calls `getUserMedia({ audio: true })` immediately. Copy still sells “task reminders.” Skip writes `manage-kar-permissions`. FAB can prompt again (`floating-toggle.tsx` `requestPermissions`).
@@ -253,7 +269,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-016
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Title/manifest/settings say local-first. Package name `manage-kar`. Backup `appVersion` is `0.2.0`. Fake Google verification removed.
 - **AREA:** Product contradiction
 - **TITLE:** Marketing and chrome still describe a “Smart” collaborative 1.0 OS
 - **WHAT IS WRONG:** `document.title` / OG: “Smart Task & Life Management.” Manifest: “team collaboration features.” Settings footer: “Version 1.0.0” / “Built for productivity enthusiasts.” Backup serializer says `appVersion: "2.0.0"`. `package.json` name: `my-v0-project`. `metadata.verification.google` is `"google-site-verification-code"`. `generator: v0.app`.
@@ -266,7 +283,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-017
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** `next.config.mjs` no longer ignores TS/ESLint. `tsc --noEmit` is clean.
 - **AREA:** Reliability / PWA
 - **TITLE:** Production builds ignore TypeScript and ESLint errors
 - **WHAT IS WRONG:** `next.config.mjs` sets `typescript.ignoreBuildErrors` and `eslint.ignoreDuringBuilds`.
@@ -279,7 +297,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-018
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Primary CTA is Add task. Preview gone. Tools sit on a secondary desktop row.
 - **AREA:** UX / Frontend
 - **TITLE:** Home grid presents eight equal actions; the real job is buried
 - **WHAT IS WRONG:** Analytics, Time, Goals, Habits, Focus, Share, Preview, Workspace all same visual weight. Primary work (add a task) is a FAB or a third-row empty-state button. Search sits above empty views. First-time user must think.
@@ -292,7 +311,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-019
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Profile, settings, FAB, complete/edit, and overview cards have accessible names. Snapshot: `button "Open settings"`, `button "Complete Persist after remediations"`.
 - **AREA:** Accessibility / Frontend
 - **TITLE:** Icon buttons have no accessible name; overview cards are not buttons
 - **WHAT IS WRONG:** Profile, Settings, FAB, complete-toggle, edit, preview-close are `<Button>` with icons only and **no `aria-label`**. Overview stat cards are `<Card onClick>`.
@@ -305,7 +325,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-020
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Mobile 390 has a bottom nav (Home / Tasks / Notes / Habits). FAB is desktop-only. Add task stays in the header.
 - **AREA:** UX / Mobile
 - **TITLE:** Mobile 390px: chrome wins, FAB eats the last task, no bottom nav
 - **WHAT IS WRONG:** Eight tiles wrap into a noisy grid. `pb-32` + fixed FAB overlaps content. Search + three nav pills + eight tiles before the list.
@@ -320,7 +341,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-021
 
-- **STATUS:** OPEN
+- **STATUS:** PARTIALLY RESOLVED
+- **RESOLUTION:** Dashboard rewritten (~700 lines), Google/collab surfaces removed, domain types shared. FAB is still a large leftover file.
 - **AREA:** Architecture / Frontend
 - **TITLE:** Giant untestable surfaces
 - **WHAT IS WRONG:** `app/page.tsx` 1117 lines; `floating-toggle.tsx` 1053; `collaboration-dashboard.tsx` 713; `google-integration.tsx` 651; `settings-modal.tsx` 526; `task-modal.tsx` 520. Duplicate `Task` interfaces instead of `lib/domain/types`.
@@ -333,7 +355,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-022
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Clipboard monitor default `enabled = false`. Clipboard text is not logged.
 - **AREA:** Security / Privacy
 - **TITLE:** Clipboard monitor polls every 2s and logs clipboard text
 - **WHAT IS WRONG:** Default on the component is `enabled = true` (page passes settings, default off — footgun). When on: `setInterval(checkClipboard, 2000)`, `console.log` of first 50 chars.
@@ -346,7 +369,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-023
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Delete confirms. Undo toast lasts 8 seconds via sonner.
 - **AREA:** Logic / Frontend
 - **TITLE:** Delete task/note/habit has no confirm; no undo
 - **WHAT IS WRONG:** `handleDelete` calls `onDelete` immediately.
@@ -359,7 +383,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-024
 
-- **STATUS:** OPEN
+- **STATUS:** PARTIALLY RESOLVED
+- **RESOLUTION:** Honest first-run empty state + Add task. No separate marketing site.
 - **AREA:** Product / Growth
 - **TITLE:** There is no landing, no activation story, no reason to return
 - **WHAT IS WRONG:** `/` is the dashboard. No why-this, no sample (except fake goals), no retention loop (reminders don’t fire), no share-to-signup, no SEO page. Title still claims “Smart.”
@@ -377,7 +402,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-025
 
-- **STATUS:** OPEN
+- **STATUS:** PARTIALLY RESOLVED
+- **RESOLUTION:** `/icon.png`, `/icon-192.png`, `/apple-touch-icon.png`, `/favicon.ico` return 200. No service worker.
 - **AREA:** PWA
 - **TITLE:** Manifest and layout advertise installable PWA assets that 404
 - **EVIDENCE:** `curl` 404: `/icon-192.png`, `/icon-512.png`, `/apple-touch-icon.png`, `/favicon.ico`, `/screenshot-mobile.png`, `/screenshot-desktop.png`. Console: apple-touch-icon + deprecated `apple-mobile-web-app-capable`. `/icon.png` 200. No service worker.
@@ -388,7 +414,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-026
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Due dates are `YYYY-MM-DD`. Display uses settings date format. Test: `lib/dates/due-date.test.ts`.
 - **AREA:** Logic
 - **TITLE:** `dueDate` is a slogan (“Today”), not a date
 - **EVIDENCE:** Default `"Today"` in `task-modal.tsx` 51; stored as string; never compared to `Date`. Overdue cannot exist.
@@ -398,7 +425,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-027
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Fake `TEAM_MEMBERS` roster removed from the task modal.
 - **AREA:** Product
 - **TITLE:** @mention is a static fake roster
 - **EVIDENCE:** `TEAM_MEMBERS` John/Sarah/Mike/Emily/David in `task-modal.tsx` 38–44. Description label: “Use @ to mention team members.” Typing `@john` did **not** populate `mentions`/`assignedTo` unless the dropdown is used.
@@ -408,7 +436,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-028
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Empty title/name shows an inline error. Browser: “Add a title before saving.”
 - **AREA:** UX
 - **TITLE:** Empty required fields fail silently
 - **EVIDENCE:** Create Task with empty title: modal stayed, no error (`handleSave` `if (!formData.title.trim()) return`). Same pattern on goals (`createGoal`).
@@ -418,7 +447,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-029
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Surface renamed to Counts. Types are `Task[]` / `Habit[]`.
 - **AREA:** AI / Analytics
 - **TITLE:** Analytics is a ratio wearing a Brain icon
 - **EVIDENCE:** `components/analytics-dashboard.tsx` 19–55. Score = 50% task complete + 50% habits done today. Copy is more honest than the title “Analytics & Insights.”
@@ -428,7 +458,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-030
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Profile no longer writes `manageKarUserProfile`.
 - **AREA:** Architecture
 - **TITLE:** Profile still dual-writes `manageKarUserProfile`
 - **EVIDENCE:** `components/profile-modal.tsx` 47. Violates `docs/ARCHITECTURE.md` “UI may not write manageKar* as a second source of truth” (that doc named tasks/notes; profile still does it).
@@ -437,7 +468,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-031
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** `WORKSPACE_CHANGED_EVENT` lives only in `lib/store/workspace.ts`.
 - **AREA:** Architecture
 - **TITLE:** `WORKSPACE_CHANGED_EVENT` is defined twice
 - **EVIDENCE:** `lib/domain/types.ts` 112; `lib/store/workspace.ts` 5. Same string, two modules.
@@ -446,7 +478,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-032
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** WhatsApp/email use `window.open` once. No `location.href` or delayed fallbacks.
 - **AREA:** API / Share
 - **TITLE:** WhatsApp share can navigate the app away and double-open fallbacks
 - **EVIDENCE:** `components/share-modal.tsx` 120–171: `window.location.href` + 500ms + 2000ms fallbacks.
@@ -455,7 +488,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-033
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Focus interval depends on `isRunning`, remaining is derived from `startedAt`.
 - **AREA:** Performance
 - **TITLE:** Focus `useEffect` depends on `timeRemaining`, resetting the interval every second
 - **EVIDENCE:** `components/focus-modal.tsx` 45–68.
@@ -464,7 +498,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-034
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Titles/names are trimmed on save.
 - **AREA:** Frontend
 - **TITLE:** Titles keep trailing whitespace; no max length
 - **EVIDENCE:** Stored `"...whitespace   "` after create.
@@ -473,7 +508,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-035
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Search covers tasks, notes, and habits. Habits have their own view.
 - **AREA:** UX
 - **TITLE:** Search does not search habits or goals; unused on Overview
 - **EVIDENCE:** `app/page.tsx` 383–393, 929–937.
@@ -500,7 +536,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-038
 
-- **STATUS:** OPEN
+- **STATUS:** PARTIALLY RESOLVED
+- **RESOLUTION:** Goals/time/focus now use `nextNumericId` against storage. Numeric IDs remain.
 - **AREA:** Database
 - **TITLE:** Numeric IDs + `Date.now()` IDs collide across modules
 - **EVIDENCE:** Workspace uses `nextNumericId`; goals/time/focus use `Date.now()`. Two-tab create can reuse id 2 (we created id 2 then imported another id 2-shaped row as id 3 — lucky). Race on `nextNumericId(tasks)` from stale lists.
@@ -509,7 +546,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-039
 
-- **STATUS:** OPEN
+- **STATUS:** PARTIALLY RESOLVED
+- **RESOLUTION:** Avatar URLs must be `https`. `javascript:` and `data:` are rejected. Still collected via prompt.
 - **AREA:** Security
 - **TITLE:** Avatar is a `prompt("Enter avatar URL")`
 - **EVIDENCE:** `components/profile-modal.tsx` 58–63. Tracking pixels / `javascript:` depending on `AvatarImage`.
@@ -518,7 +556,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-040
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Settings no longer queries geolocation permission.
 - **AREA:** UX
 - **TITLE:** Settings queries geolocation permission for a product that does not use location
 - **EVIDENCE:** `components/settings-modal.tsx` 54–57.
@@ -527,7 +566,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-041
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Notes use `formatTimestamp` with the workspace date format.
 - **AREA:** UX
 - **TITLE:** Notes show raw ISO timestamps
 - **EVIDENCE:** `app/page.tsx` 712 `{note.createdAt}`.
@@ -536,7 +576,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-042
 
-- **STATUS:** OPEN
+- **STATUS:** PARTIALLY RESOLVED
+- **RESOLUTION:** Voice notes store recording seconds when the FAB records audio. Speech-to-text notes no longer invent a voice blob.
 - **AREA:** Logic
 - **TITLE:** Voice notes store `duration: 0` and empty `audioUrl` for speech-to-text
 - **EVIDENCE:** `app/page.tsx` 323–359.
