@@ -4,8 +4,7 @@ import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { BarChart3, TrendingUp, Clock, Target, Brain, Award, Zap } from "lucide-react"
+import { BarChart3, Clock, Target, Brain, Award, Zap } from "lucide-react"
 
 interface AnalyticsDashboardProps {
   isOpen: boolean
@@ -15,11 +14,9 @@ interface AnalyticsDashboardProps {
 }
 
 export function AnalyticsDashboard({ isOpen, onClose, tasks = [], habits = [] }: AnalyticsDashboardProps) {
-  const [timeRange, setTimeRange] = useState<"week" | "month" | "quarter">("week")
   const [insights, setInsights] = useState<any[]>([])
 
   useEffect(() => {
-    // Generate AI-powered insights
     const generateInsights = () => {
       const completedTasks = tasks.filter((t) => t.completed).length
       const totalTasks = tasks.length
@@ -31,42 +28,26 @@ export function AnalyticsDashboard({ isOpen, onClose, tasks = [], habits = [] }:
 
       return [
         {
-          type: "productivity",
-          title: "Peak Productivity Hours",
-          description: "You're most productive between 9-11 AM",
-          recommendation: "Schedule important tasks during this window",
-          impact: "high",
-          icon: TrendingUp,
-        },
-        {
           type: "habits",
-          title: "Habit Streak Analysis",
-          description: `${habitConsistency.toFixed(0)}% habit completion rate this week`,
-          recommendation: "Focus on 2-3 core habits for better consistency",
+          title: "Habits today",
+          description: `${activeHabits} of ${totalHabits} habits marked done today (${habitConsistency.toFixed(0)}%).`,
+          recommendation: totalHabits === 0 ? "Add one habit you can keep." : "Keep the list short enough to finish.",
           impact: "medium",
           icon: Target,
         },
         {
           type: "tasks",
-          title: "Task Completion Pattern",
-          description: `${completionRate.toFixed(0)}% task completion rate`,
-          recommendation: "Break large tasks into smaller, manageable chunks",
+          title: "Task completion",
+          description: `${completedTasks} of ${totalTasks} tasks complete (${completionRate.toFixed(0)}%).`,
+          recommendation: totalTasks === 0 ? "Add a task to start measuring." : "Finish or delete stale tasks.",
           impact: "high",
           icon: BarChart3,
-        },
-        {
-          type: "focus",
-          title: "Focus Session Optimization",
-          description: "Average focus session: 25 minutes",
-          recommendation: "Try 45-minute deep work blocks for complex tasks",
-          impact: "medium",
-          icon: Brain,
         },
       ]
     }
 
     setInsights(generateInsights())
-  }, [tasks, habits, timeRange])
+  }, [tasks, habits])
 
   const productivityScore = Math.round(
     (tasks.filter((t) => t.completed).length / Math.max(tasks.length, 1)) * 50 +
@@ -86,19 +67,11 @@ export function AnalyticsDashboard({ isOpen, onClose, tasks = [], habits = [] }:
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Time Range Selector */}
+          <p className="text-sm text-muted-foreground">
+            Counts come from this device&apos;s workspace. Recommendations are heuristics, not a model.
+          </p>
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold font-sans">Performance Overview</h3>
-            <Select value={timeRange} onValueChange={(value: "week" | "month" | "quarter") => setTimeRange(value)}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="week">This Week</SelectItem>
-                <SelectItem value="month">This Month</SelectItem>
-                <SelectItem value="quarter">This Quarter</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
 
           {/* Key Metrics */}
@@ -133,8 +106,8 @@ export function AnalyticsDashboard({ isOpen, onClose, tasks = [], habits = [] }:
                   <Clock className="h-5 w-5 text-blue-500" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold font-sans">4.2h</p>
-                  <p className="text-sm text-muted-foreground">Focus Time</p>
+                  <p className="text-2xl font-bold font-sans">{tasks.filter((t) => !t.completed).length}</p>
+                  <p className="text-sm text-muted-foreground">Open Tasks</p>
                 </div>
               </div>
             </Card>
@@ -156,7 +129,7 @@ export function AnalyticsDashboard({ isOpen, onClose, tasks = [], habits = [] }:
           <div>
             <h3 className="text-lg font-semibold font-sans mb-4 flex items-center gap-2">
               <Brain className="h-5 w-5" />
-              AI-Powered Insights
+              Workspace notes
             </h3>
             <div className="space-y-3">
               {insights.map((insight, index) => {

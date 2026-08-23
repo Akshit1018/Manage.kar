@@ -496,7 +496,10 @@ export function CollaborationDashboard({ isOpen, onClose }: CollaborationDashboa
               <div className="p-2 bg-purple-500/20 rounded-xl">
                 <BarChart3 className="h-5 w-5 text-purple-500" />
               </div>
-              <h2 className="text-xl font-semibold font-sans">ERP Monitoring Dashboard</h2>
+              <div>
+                <h2 className="text-xl font-semibold font-sans">Team preview</h2>
+                <p className="text-sm text-muted-foreground">Demo layout only. No live members or sync.</p>
+              </div>
             </div>
             <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
               <X className="h-5 w-5" />

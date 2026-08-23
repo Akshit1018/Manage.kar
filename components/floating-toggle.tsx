@@ -58,7 +58,7 @@ interface FloatingToggleProps {
   onEditNote?: (note: Note) => void
   onVoiceNote?: (audioBlob: Blob, transcription: string) => void
   onSpeechToText?: (text: string) => void
-  systemOverlay?: boolean
+  onCreateTaskFromVoice?: (text: string) => void
 }
 
 export function FloatingToggle({
@@ -71,7 +71,7 @@ export function FloatingToggle({
   onEditNote,
   onVoiceNote,
   onSpeechToText,
-  systemOverlay = false,
+  onCreateTaskFromVoice,
 }: FloatingToggleProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<"tasks" | "notes">("tasks")
@@ -85,7 +85,7 @@ export function FloatingToggle({
 
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
-  const [position, setPosition] = useState({ x: window.innerWidth - 100, y: window.innerHeight - 100 })
+  const [position, setPosition] = useState({ x: 0, y: 0 })
   const [hasMoved, setHasMoved] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
   const [showPermissionPrompt, setShowPermissionPrompt] = useState(false)
@@ -170,24 +170,6 @@ export function FloatingToggle({
               const fullText = (finalTranscript + interimTranscript).trim()
               if (fullText) {
                 console.log("[v0] Auto-saving voice note:", fullText)
-
-                const newNote = {
-                  id: Date.now(),
-                  title: fullText.length > 30 ? fullText.substring(0, 30) + "..." : fullText,
-                  content: fullText,
-                  createdAt: new Date().toLocaleTimeString(),
-                  voiceNote: {
-                    audioUrl: "",
-                    transcription: fullText,
-                    duration: recordingTime,
-                  },
-                }
-
-                // Save to localStorage
-                const existingNotes = JSON.parse(localStorage.getItem("manageKarNotes") || "[]")
-                existingNotes.unshift(newNote)
-                localStorage.setItem("manageKarNotes", JSON.stringify(existingNotes))
-
                 onSpeechToText?.(fullText)
                 stopRecording()
 
@@ -222,6 +204,8 @@ export function FloatingToggle({
   }, [onSpeechToText, recordingTime])
 
   useEffect(() => {
+    setPosition({ x: window.innerWidth - 100, y: window.innerHeight - 100 })
+
     const isStandalone = window.matchMedia("(display-mode: standalone)").matches
     const isInWebAppiOS = (window.navigator as any).standalone === true
     const isInWebAppChrome = window.matchMedia("(display-mode: standalone)").matches
@@ -309,25 +293,7 @@ export function FloatingToggle({
         const audioBlob = new Blob(audioChunksRef.current, {
           type: mediaRecorder.mimeType || "audio/wav",
         })
-        const audioUrl = URL.createObjectURL(audioBlob)
         const transcription = speechText || "Voice note recorded at " + new Date().toLocaleTimeString()
-
-        const newNote = {
-          id: Date.now(),
-          title: transcription.length > 30 ? transcription.substring(0, 30) + "..." : transcription,
-          content: transcription,
-          createdAt: new Date().toLocaleTimeString(),
-          voiceNote: {
-            audioUrl: audioUrl,
-            transcription: transcription,
-            duration: recordingTime,
-          },
-        }
-
-        // Save to localStorage
-        const existingNotes = JSON.parse(localStorage.getItem("manageKarNotes") || "[]")
-        existingNotes.unshift(newNote)
-        localStorage.setItem("manageKarNotes", JSON.stringify(existingNotes))
 
         if (permissionsGranted.notifications) {
           new Notification("Voice Note Saved", {
@@ -354,7 +320,7 @@ export function FloatingToggle({
       }, 1000)
     } catch (error) {
       console.error("[v0] Error starting recording:", error)
-      if (error.name === "NotAllowedError") {
+      if (error instanceof DOMException && error.name === "NotAllowedError") {
         setShowPermissionPrompt(true)
       } else {
         alert("Unable to access microphone. Please check your browser permissions and try again.")
@@ -413,22 +379,6 @@ export function FloatingToggle({
   }
 
   const saveAsNote = (content: string) => {
-    const newNote = {
-      id: Date.now(),
-      title: content.length > 30 ? content.substring(0, 30) + "..." : content,
-      content: content,
-      createdAt: new Date().toLocaleTimeString(),
-      voiceNote: {
-        audioUrl: "",
-        transcription: content,
-        duration: recordingTime,
-      },
-    }
-
-    const existingNotes = JSON.parse(localStorage.getItem("manageKarNotes") || "[]")
-    existingNotes.unshift(newNote)
-    localStorage.setItem("manageKarNotes", JSON.stringify(existingNotes))
-
     if (permissionsGranted.notifications) {
       new Notification("Voice Note Saved", {
         body: `"${content.substring(0, 50)}${content.length > 50 ? "..." : ""}"`,
@@ -441,20 +391,7 @@ export function FloatingToggle({
   }
 
   const saveAsTask = (content: string) => {
-    const newTask = {
-      id: Date.now(),
-      title: content.length > 50 ? content.substring(0, 50) + "..." : content,
-      completed: false,
-      priority: "medium" as const,
-      dueDate: "Today",
-      description: content,
-      recurring: "none" as const,
-      reminders: true,
-    }
-
-    const existingTasks = JSON.parse(localStorage.getItem("manageKarTasks") || "[]")
-    existingTasks.unshift(newTask)
-    localStorage.setItem("manageKarTasks", JSON.stringify(existingTasks))
+    onCreateTaskFromVoice?.(content)
 
     if (permissionsGranted.notifications) {
       new Notification("Voice Task Created", {

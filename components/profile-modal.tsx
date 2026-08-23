@@ -11,54 +11,42 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { User, Edit, Camera, Mail, Phone, MapPin, Calendar, Trophy, TrendingUp } from "lucide-react"
 
-interface UserProfile {
-  name: string
-  email: string
-  phone: string
-  location: string
-  bio: string
-  avatar: string
-  joinDate: string
-  tasksCompleted: number
-  habitsTracked: number
-  focusMinutes: number
-}
+import type { UserProfile } from "@/lib/domain/types"
+import { browserStorage, defaultProfile, loadWorkspace, notifyWorkspaceChanged, replaceWorkspace } from "@/lib/store/workspace"
 
 interface ProfileModalProps {
   isOpen: boolean
   onClose: () => void
+  stats?: {
+    tasksCompleted: number
+    habitsTracked: number
+  }
+  onProfileChange?: (profile: UserProfile) => void
 }
 
-export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
-  const [profile, setProfile] = useState<UserProfile>({
-    name: "User",
-    email: "user@example.com",
-    phone: "+1 (555) 123-4567",
-    location: "San Francisco, CA",
-    bio: "Productivity enthusiast focused on building better habits and achieving goals through consistent daily actions with Manage.kar.",
-    avatar: "",
-    joinDate: "January 2024",
-    tasksCompleted: 127,
-    habitsTracked: 15,
-    focusMinutes: 2340,
-  })
+export function ProfileModal({ isOpen, onClose, stats, onProfileChange }: ProfileModalProps) {
+  const [profile, setProfile] = useState<UserProfile>(defaultProfile)
 
   const [isEditing, setIsEditing] = useState(false)
   const [editedProfile, setEditedProfile] = useState(profile)
 
   useEffect(() => {
-    // Load profile from localStorage
-    const savedProfile = localStorage.getItem("manageKarUserProfile")
-    if (savedProfile) {
-      const parsedProfile = JSON.parse(savedProfile)
-      setProfile(parsedProfile)
-      setEditedProfile(parsedProfile)
+    if (!isOpen) {
+      return
     }
-  }, [])
+    const savedProfile = loadWorkspace(browserStorage()).profile
+    setProfile(savedProfile)
+    setEditedProfile(savedProfile)
+  }, [isOpen])
 
   const handleSave = () => {
     setProfile(editedProfile)
+    const storage = browserStorage()
+    const workspace = loadWorkspace(storage)
+    replaceWorkspace(storage, { ...workspace, profile: editedProfile })
     localStorage.setItem("manageKarUserProfile", JSON.stringify(editedProfile))
+    onProfileChange?.(editedProfile)
+    notifyWorkspaceChanged()
     setIsEditing(false)
   }
 
@@ -76,12 +64,9 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   }
 
   const achievements = [
-    { name: "Early Bird", description: "Complete 10 morning tasks", earned: true },
-    { name: "Streak Master", description: "Maintain a 30-day habit streak", earned: true },
-    { name: "Focus Champion", description: "Complete 100 focus sessions", earned: false },
-    { name: "Team Player", description: "Share tasks with 5 people", earned: true },
-    { name: "Goal Crusher", description: "Complete 500 tasks", earned: false },
-    { name: "Manage.kar Pro", description: "Use all app features for 30 days", earned: true },
+    { name: "Local-first", description: "Your workspace persists on this device", earned: true },
+    { name: "Closer", description: "Complete a task", earned: (stats?.tasksCompleted ?? 0) > 0 },
+    { name: "Habit starter", description: "Add a habit", earned: (stats?.habitsTracked ?? 0) > 0 },
   ]
 
   if (!isOpen) return null
@@ -207,18 +192,18 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
               </h4>
               <div className="grid grid-cols-3 gap-3 sm:gap-4">
                 <div className="text-center">
-                  <div className="responsive-text-lg font-bold font-sans text-primary">{profile.tasksCompleted}</div>
-                  <div className="responsive-text-xs text-muted-readable font-serif">Tasks</div>
+                  <div className="responsive-text-lg font-bold font-sans text-primary">
+                    {stats?.tasksCompleted ?? 0}
+                  </div>
+                  <div className="responsive-text-xs text-muted-readable font-serif">Done</div>
                 </div>
                 <div className="text-center">
-                  <div className="responsive-text-lg font-bold font-sans text-blue-500">{profile.habitsTracked}</div>
+                  <div className="responsive-text-lg font-bold font-sans text-blue-500">{stats?.habitsTracked ?? 0}</div>
                   <div className="responsive-text-xs text-muted-readable font-serif">Habits</div>
                 </div>
                 <div className="text-center">
-                  <div className="responsive-text-lg font-bold font-sans text-green-500">
-                    {Math.round(profile.focusMinutes / 60)}h
-                  </div>
-                  <div className="responsive-text-xs text-muted-readable font-serif">Focus</div>
+                  <div className="responsive-text-lg font-bold font-sans text-green-500">Local</div>
+                  <div className="responsive-text-xs text-muted-readable font-serif">Workspace</div>
                 </div>
               </div>
             </Card>

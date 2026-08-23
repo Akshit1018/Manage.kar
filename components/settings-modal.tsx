@@ -8,45 +8,20 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
-import { Badge } from "@/components/ui/badge"
 import { Settings, Bell, Shield, Database, Palette, Globe, Download, Upload, Trash2, Link2 } from "lucide-react"
 import { GoogleIntegration } from "./google-integration"
-
-interface AppSettings {
-  notifications: {
-    enabled: boolean
-    taskReminders: boolean
-    habitReminders: boolean
-    focusBreaks: boolean
-    dailySummary: boolean
-    soundEnabled: boolean
-    volume: number
-  }
-  appearance: {
-    theme: "light" | "dark" | "system"
-    accentColor: string
-    fontSize: "small" | "medium" | "large"
-    animations: boolean
-  }
-  privacy: {
-    dataCollection: boolean
-    crashReports: boolean
-    analytics: boolean
-    locationAccess: boolean
-  }
-  data: {
-    autoBackup: boolean
-    backupFrequency: "daily" | "weekly" | "monthly"
-    storageUsed: number
-    maxStorage: number
-  }
-  general: {
-    language: string
-    timezone: string
-    weekStartsOn: "sunday" | "monday"
-    dateFormat: "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD"
-  }
-}
+import type { AppSettings } from "@/lib/domain/types"
+import { applyThemePreference } from "@/lib/theme/apply-theme"
+import {
+  browserStorage,
+  clearWorkspace,
+  defaultSettings,
+  loadWorkspace,
+  notifyWorkspaceChanged,
+  parseBackup,
+  replaceWorkspace,
+  serializeBackup,
+} from "@/lib/store/workspace"
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -54,41 +29,7 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  const [settings, setSettings] = useState<AppSettings>({
-    notifications: {
-      enabled: true,
-      taskReminders: true,
-      habitReminders: true,
-      focusBreaks: true,
-      dailySummary: false,
-      soundEnabled: true,
-      volume: 70,
-    },
-    appearance: {
-      theme: "system",
-      accentColor: "blue",
-      fontSize: "medium",
-      animations: true,
-    },
-    privacy: {
-      dataCollection: false,
-      crashReports: true,
-      analytics: false,
-      locationAccess: false,
-    },
-    data: {
-      autoBackup: true,
-      backupFrequency: "weekly",
-      storageUsed: 2.4,
-      maxStorage: 100,
-    },
-    general: {
-      language: "English",
-      timezone: "America/Los_Angeles",
-      weekStartsOn: "monday",
-      dateFormat: "MM/DD/YYYY",
-    },
-  })
+  const [settings, setSettings] = useState<AppSettings>(defaultSettings)
 
   const [permissionStatus, setPermissionStatus] = useState({
     notifications: "default" as NotificationPermission,
@@ -98,12 +39,14 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [activeSection, setActiveSection] = useState<string>("notifications")
 
   useEffect(() => {
-    const savedSettings = localStorage.getItem("manageKarAppSettings")
-    if (savedSettings) {
-      setSettings(JSON.parse(savedSettings))
+    if (!isOpen) {
+      return
     }
 
-    // Check permissions
+    const workspace = loadWorkspace(browserStorage())
+    setSettings(workspace.settings)
+    applyThemePreference(workspace.settings.appearance.theme)
+
     if ("Notification" in window) {
       setPermissionStatus((prev) => ({ ...prev, notifications: Notification.permission }))
     }
@@ -113,9 +56,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         setPermissionStatus((prev) => ({ ...prev, location: result.state }))
       })
     }
-  }, [])
+  }, [isOpen])
 
-  const updateSettings = (section: keyof AppSettings, key: string, value: any) => {
+  const updateSettings = (section: keyof AppSettings, key: string, value: unknown) => {
     const newSettings = {
       ...settings,
       [section]: {
@@ -124,7 +67,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       },
     }
     setSettings(newSettings)
-    localStorage.setItem("manageKarAppSettings", JSON.stringify(newSettings))
+    const storage = browserStorage()
+    const workspace = loadWorkspace(storage)
+    replaceWorkspace(storage, { ...workspace, settings: newSettings })
+    if (section === "appearance" && key === "theme") {
+      applyThemePreference(newSettings.appearance.theme)
+    }
+    notifyWorkspaceChanged()
   }
 
   const requestNotificationPermission = async () => {
@@ -138,18 +87,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   }
 
   const exportData = () => {
-    const data = {
-      settings,
-      tasks: JSON.parse(localStorage.getItem("manageKarTasks") || "[]"),
-      notes: JSON.parse(localStorage.getItem("manageKarNotes") || "[]"),
-      habits: JSON.parse(localStorage.getItem("manageKarHabits") || "[]"),
-      profile: JSON.parse(localStorage.getItem("manageKarUserProfile") || "{}"),
-      exportDate: new Date().toISOString(),
-      appVersion: "1.0.0",
-      appName: "Manage.kar",
-    }
-
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+    const workspace = loadWorkspace(browserStorage())
+    const blob = new Blob([serializeBackup({ ...workspace, settings })], { type: "application/json" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
@@ -164,42 +103,38 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const input = document.createElement("input")
     input.type = "file"
     input.accept = ".json"
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0]
-      if (file) {
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          try {
-            const data = JSON.parse(e.target?.result as string)
-            if (confirm("This will replace all your current Manage.kar data. Are you sure?")) {
-              localStorage.setItem("manageKarAppSettings", JSON.stringify(data.settings || settings))
-              localStorage.setItem("manageKarTasks", JSON.stringify(data.tasks || []))
-              localStorage.setItem("manageKarNotes", JSON.stringify(data.notes || []))
-              localStorage.setItem("manageKarHabits", JSON.stringify(data.habits || []))
-              localStorage.setItem("manageKarUserProfile", JSON.stringify(data.profile || {}))
-              alert("Manage.kar data imported successfully! Please refresh the page.")
-            }
-          } catch (error) {
-            alert("Invalid Manage.kar backup file format.")
-          }
-        }
-        reader.readAsText(file)
+    input.onchange = (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0]
+      if (!file) {
+        return
       }
+      const reader = new FileReader()
+      reader.onload = () => {
+        const parsed = parseBackup(String(reader.result ?? ""))
+        if (!parsed.ok) {
+          alert(parsed.error)
+          return
+        }
+        if (confirm("This will replace all your current Manage.kar data. Are you sure?")) {
+          const storage = browserStorage()
+          replaceWorkspace(storage, parsed.workspace)
+          setSettings(parsed.workspace.settings)
+          applyThemePreference(parsed.workspace.settings.appearance.theme)
+          notifyWorkspaceChanged()
+        }
+      }
+      reader.readAsText(file)
     }
     input.click()
   }
 
   const clearAllData = () => {
     if (confirm("This will permanently delete all your Manage.kar data. This action cannot be undone. Are you sure?")) {
-      if (
-        confirm("Are you absolutely sure? This will delete all tasks, notes, habits, and settings from Manage.kar.")
-      ) {
-        localStorage.removeItem("manageKarAppSettings")
-        localStorage.removeItem("manageKarTasks")
-        localStorage.removeItem("manageKarNotes")
-        localStorage.removeItem("manageKarHabits")
-        localStorage.removeItem("manageKarUserProfile")
-        alert("All Manage.kar data has been cleared. Please refresh the page.")
+      if (confirm("Are you absolutely sure? This will delete all tasks, notes, habits, and settings from Manage.kar.")) {
+        const empty = clearWorkspace(browserStorage())
+        setSettings(empty.settings)
+        applyThemePreference(empty.settings.appearance.theme)
+        notifyWorkspaceChanged()
       }
     }
   }
@@ -398,11 +333,15 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               )}
 
               {activeSection === "integrations" && (
-                <div>
-                  <h3 className="responsive-text-lg font-semibold font-sans mb-4 flex items-center gap-2 text-readable">
+                <div className="space-y-3">
+                  <h3 className="responsive-text-lg font-semibold font-sans mb-2 flex items-center gap-2 text-readable">
                     <Link2 className="h-5 w-5" />
-                    Google Workspace Integration
+                    Integrations
                   </h3>
+                  <p className="responsive-text-sm text-muted-readable">
+                    Google Workspace is not connected. Nothing leaves this device. The form below is a preview of a
+                    future optional backup adapter.
+                  </p>
                   <GoogleIntegration />
                 </div>
               )}
@@ -414,36 +353,19 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     Privacy & Security
                   </h4>
                   <div className="space-y-3 sm:space-y-4">
+                    <p className="responsive-text-sm text-muted-readable">
+                      Manage.kar is local-first. Tasks, notes, and habits stay in this browser unless you export them.
+                    </p>
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
-                        <Label className="responsive-text-sm text-readable">Anonymous Usage Data</Label>
-                        <p className="responsive-text-xs text-muted-readable mt-1">Help improve the app</p>
+                        <Label className="responsive-text-sm text-readable">Clipboard suggestions</Label>
+                        <p className="responsive-text-xs text-muted-readable mt-1">
+                          Off by default. When on, the app may read clipboard text to offer a task or note.
+                        </p>
                       </div>
                       <Switch
-                        checked={settings.privacy.dataCollection}
-                        onCheckedChange={(checked) => updateSettings("privacy", "dataCollection", checked)}
-                      />
-                    </div>
-
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <Label className="responsive-text-sm text-readable">Crash Reports</Label>
-                        <p className="responsive-text-xs text-muted-readable mt-1">Send crash data to developers</p>
-                      </div>
-                      <Switch
-                        checked={settings.privacy.crashReports}
-                        onCheckedChange={(checked) => updateSettings("privacy", "crashReports", checked)}
-                      />
-                    </div>
-
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <Label className="responsive-text-sm text-readable">Analytics</Label>
-                        <p className="responsive-text-xs text-muted-readable mt-1">Track app usage patterns</p>
-                      </div>
-                      <Switch
-                        checked={settings.privacy.analytics}
-                        onCheckedChange={(checked) => updateSettings("privacy", "analytics", checked)}
+                        checked={settings.privacy.clipboardMonitor}
+                        onCheckedChange={(checked) => updateSettings("privacy", "clipboardMonitor", checked)}
                       />
                     </div>
                   </div>
@@ -486,20 +408,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       </div>
                     )}
 
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between gap-4">
-                        <Label className="responsive-text-sm text-readable">Storage Used</Label>
-                        <Badge variant="outline" className="responsive-text-xs">
-                          {settings.data.storageUsed}MB / {settings.data.maxStorage}MB
-                        </Badge>
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-2">
-                        <div
-                          className="bg-primary h-2 rounded-full transition-all"
-                          style={{ width: `${(settings.data.storageUsed / settings.data.maxStorage) * 100}%` }}
-                        />
-                      </div>
-                    </div>
+                    <p className="responsive-text-xs text-muted-readable">
+                      Export downloads the same workspace the dashboard uses. Import replaces it after confirmation.
+                    </p>
 
                     <div className="flex flex-col sm:flex-row gap-2">
                       <Button

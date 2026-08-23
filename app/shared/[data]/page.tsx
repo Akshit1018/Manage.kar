@@ -6,49 +6,42 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle2, Circle, Calendar, ArrowLeft, Download, Users } from "lucide-react"
-
-interface Task {
-  id: number
-  title: string
-  completed: boolean
-  priority: "high" | "medium" | "low"
-  dueDate: string
-  description?: string
-  checklist?: { id: number; text: string; completed: boolean }[]
-}
-
-interface SharedData {
-  userName: string
-  tasks: Task[]
-  sharedAt: string
-  customMessage?: string
-}
+import { decodeSharePayload, type SharePayload } from "@/lib/share/codec"
+import { browserStorage, loadWorkspace, nextNumericId, notifyWorkspaceChanged, replaceWorkspace } from "@/lib/store/workspace"
 
 export default function SharedTasksPage() {
   const params = useParams()
   const router = useRouter()
-  const [sharedData, setSharedData] = useState<SharedData | null>(null)
+  const [sharedData, setSharedData] = useState<SharePayload | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    try {
-      const encodedData = params.data as string
-      const decodedData = JSON.parse(atob(encodedData))
-      setSharedData(decodedData)
-    } catch (err) {
-      setError("Invalid or corrupted share link")
-    } finally {
-      setLoading(false)
+    const encodedData = decodeURIComponent(String(params.data ?? ""))
+    const decoded = decodeSharePayload(encodedData)
+    if (!decoded.ok) {
+      setError(decoded.error)
+    } else {
+      setSharedData(decoded.payload)
     }
+    setLoading(false)
   }, [params.data])
 
   const handleImportTasks = () => {
-    if (sharedData) {
-      // In a real app, this would save to user's account
-      localStorage.setItem("importedTasks", JSON.stringify(sharedData.tasks))
-      router.push("/?imported=true")
+    if (!sharedData) {
+      return
     }
+    const storage = browserStorage()
+    const workspace = loadWorkspace(storage)
+    let nextId = nextNumericId(workspace.tasks)
+    const imported = sharedData.tasks.map((task) => {
+      const copy = { ...task, id: nextId }
+      nextId += 1
+      return copy
+    })
+    replaceWorkspace(storage, { ...workspace, tasks: [...workspace.tasks, ...imported] })
+    notifyWorkspaceChanged()
+    router.push("/")
   }
 
   if (loading) {

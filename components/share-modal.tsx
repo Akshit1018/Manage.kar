@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { X, Share2, MessageCircle, Link, Copy, Check, Mail, Download } from "lucide-react"
+import { encodeSharePayload } from "@/lib/share/codec"
 
 interface Task {
   id: number
@@ -84,15 +85,15 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
       customMessage,
     }
 
-    try {
-      const encodedData = btoa(JSON.stringify(shareData))
-      const link = `${window.location.origin}/shared/${encodedData}`
-      setGeneratedLink(link)
-      return link
-    } catch (error) {
-      console.error("Error generating shareable link:", error)
+    const encoded = encodeSharePayload(shareData)
+    if (!encoded.ok) {
+      console.error("Error generating shareable link:", encoded.error)
+      setGeneratedLink("")
       return ""
     }
+    const link = `${window.location.origin}/shared/${encoded.token}`
+    setGeneratedLink(link)
+    return link
   }
 
   const exportTasksAsJSON = () => {

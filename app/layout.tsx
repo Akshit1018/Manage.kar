@@ -19,8 +19,8 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: "Manage.kar - Smart Task & Life Management",
   description:
-    "Modern task management, habit tracking, and productivity app with team collaboration features. Built with iOS 18 inspired design.",
-  keywords: ["task management", "productivity", "habits", "collaboration", "notes", "focus"],
+    "Local-first task, note, and habit workspace. Your data stays in this browser unless you export it.",
+  keywords: ["task management", "productivity", "habits", "notes", "focus", "local-first"],
   authors: [{ name: "Manage.kar Team" }],
   creator: "Manage.kar",
   publisher: "Manage.kar",
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://manage-kar.vercel.app"),
   openGraph: {
     title: "Manage.kar - Smart Task & Life Management",
-    description: "Modern task management, habit tracking, and productivity app with team collaboration features.",
+    description: "Local-first task, note, and habit workspace that persists on this device.",
     url: "https://manage-kar.vercel.app",
     siteName: "Manage.kar",
     locale: "en_US",
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Manage.kar - Smart Task & Life Management",
-    description: "Modern task management, habit tracking, and productivity app with team collaboration features.",
+    description: "Local-first task, note, and habit workspace that persists on this device.",
     creator: "@managekar",
   },
   robots: {

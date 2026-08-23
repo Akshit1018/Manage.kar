@@ -40,200 +40,25 @@ import { AnalyticsDashboard } from "@/components/analytics-dashboard"
 import { TimeTracker } from "@/components/time-tracker"
 import { GoalManager } from "@/components/goal-manager"
 import { ClipboardMonitor } from "@/components/clipboard-monitor"
-
-interface Task {
-  id: number
-  title: string
-  completed: boolean
-  priority: "high" | "medium" | "low"
-  dueDate: string
-  description?: string
-  recurring?: "none" | "daily" | "weekly" | "monthly"
-  reminders?: boolean
-  checklist?: { id: number; text: string; completed: boolean }[]
-}
-
-interface Note {
-  id: number
-  title: string
-  content: string
-  createdAt: string
-  voiceNote?: {
-    audioUrl: string
-    transcription: string
-    duration: number
-  }
-}
-
-interface Habit {
-  id: number
-  name: string
-  description?: string
-  category: "health" | "productivity" | "learning" | "lifestyle" | "fitness" | "mindfulness"
-  frequency: "daily" | "weekly" | "custom"
-  customDays?: string[]
-  goal?: number
-  unit?: string
-  streak: number
-  completed: boolean
-  completedToday: boolean
-  reminders: boolean
-  reminderTime?: string
-  createdAt: string
-  history: { date: string; completed: boolean; value?: number }[]
-}
+import { EmptyState } from "@/components/empty-state"
+import type { Habit, Note, Task } from "@/lib/domain/types"
+import { useWorkspace } from "@/lib/store/use-workspace"
+import { nextNumericId } from "@/lib/store/workspace"
 
 type ViewMode = "overview" | "tasks" | "notes" | "monitor"
 
 export default function Dashboard() {
+  const { workspace, persist } = useWorkspace()
+  const tasks = workspace.tasks
+  const notes = workspace.notes
+  const habits = workspace.habits
+  const userName = workspace.profile.name
+
   const [currentView, setCurrentView] = useState<ViewMode>("overview")
   const [searchQuery, setSearchQuery] = useState("")
-  const [userName, setUserName] = useState("User")
-  const [isDarkMode, setIsDarkMode] = useState(false)
 
   const [selectedTasks, setSelectedTasks] = useState<number[]>([])
   const [isSelectionMode, setIsSelectionMode] = useState(false)
-
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: 1,
-      title: "Complete project proposal",
-      completed: false,
-      priority: "high",
-      dueDate: "Today",
-      description: "Finalize the Q1 project proposal with budget estimates",
-      recurring: "none",
-      reminders: true,
-      checklist: [
-        { id: 1, text: "Research market trends", completed: true },
-        { id: 2, text: "Create budget breakdown", completed: false },
-        { id: 3, text: "Review with team", completed: false },
-      ],
-    },
-    {
-      id: 2,
-      title: "Review team feedback",
-      completed: true,
-      priority: "medium",
-      dueDate: "Yesterday",
-      description: "Go through all feedback from the design review meeting",
-    },
-    {
-      id: 3,
-      title: "Plan weekend trip",
-      completed: false,
-      priority: "low",
-      dueDate: "This week",
-      recurring: "none",
-      reminders: false,
-    },
-    {
-      id: 4,
-      title: "Update portfolio website",
-      completed: false,
-      priority: "medium",
-      dueDate: "Tomorrow",
-      recurring: "weekly",
-      reminders: true,
-    },
-    {
-      id: 5,
-      title: "Call dentist for appointment",
-      completed: true,
-      priority: "high",
-      dueDate: "Today",
-    },
-  ])
-
-  const [notes, setNotes] = useState<Note[]>([
-    {
-      id: 1,
-      title: "Meeting Notes",
-      content:
-        "Discussed project timeline and deliverables. Need to follow up with design team about mockups. Key decisions: - Use React for frontend - Deploy on Vercel - Weekly sprint reviews",
-      createdAt: "2 hours ago",
-    },
-    {
-      id: 2,
-      title: "Recipe Ideas",
-      content:
-        "Try making pasta carbonara this weekend. Also want to experiment with homemade bread. Ingredients to buy: eggs, pancetta, parmesan, flour, yeast.",
-      createdAt: "1 day ago",
-    },
-    {
-      id: 3,
-      title: "Book Recommendations",
-      content:
-        "Atomic Habits, The Power of Now, Deep Work - all highly recommended by colleagues. Should start with Atomic Habits as it's most relevant to productivity goals.",
-      createdAt: "3 days ago",
-    },
-  ])
-
-  const [habits, setHabits] = useState<Habit[]>([
-    {
-      id: 1,
-      name: "Morning Exercise",
-      description: "30 minutes of cardio or strength training",
-      category: "fitness",
-      frequency: "daily",
-      goal: 30,
-      unit: "minutes",
-      streak: 7,
-      completed: true,
-      completedToday: true,
-      reminders: true,
-      reminderTime: "07:00",
-      createdAt: "2024-01-01",
-      history: [],
-    },
-    {
-      id: 2,
-      name: "Read 30 minutes",
-      description: "Read books for personal development",
-      category: "learning",
-      frequency: "daily",
-      goal: 30,
-      unit: "minutes",
-      streak: 12,
-      completed: false,
-      completedToday: false,
-      reminders: true,
-      reminderTime: "20:00",
-      createdAt: "2024-01-01",
-      history: [],
-    },
-    {
-      id: 3,
-      name: "Meditation",
-      description: "Mindfulness and breathing exercises",
-      category: "mindfulness",
-      frequency: "daily",
-      goal: 10,
-      unit: "minutes",
-      streak: 3,
-      completed: true,
-      completedToday: true,
-      reminders: false,
-      createdAt: "2024-01-01",
-      history: [],
-    },
-    {
-      id: 4,
-      name: "Drink Water",
-      description: "Stay hydrated throughout the day",
-      category: "health",
-      frequency: "daily",
-      goal: 8,
-      unit: "glasses",
-      streak: 5,
-      completed: false,
-      completedToday: false,
-      reminders: true,
-      reminderTime: "09:00",
-      createdAt: "2024-01-01",
-      history: [],
-    },
-  ])
 
   // Modal states
   const [taskModal, setTaskModal] = useState<{
@@ -277,50 +102,16 @@ export default function Dashboard() {
   const [showPermissionsModal, setShowPermissionsModal] = useState(false)
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("manageKarTheme")
-    const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-
-    const shouldUseDark = savedTheme === "dark" || (!savedTheme && systemPrefersDark)
-    setIsDarkMode(shouldUseDark)
-
-    if (shouldUseDark) {
-      document.documentElement.classList.add("dark")
-    } else {
-      document.documentElement.classList.remove("dark")
+    const hasPermissions = localStorage.getItem("manage-kar-permissions")
+    if (!hasPermissions) {
+      setShowPermissionsModal(true)
     }
-
-    const savedProfile = localStorage.getItem("manageKarUserProfile")
-    if (savedProfile) {
-      const profile = JSON.parse(savedProfile)
-      setUserName(profile.name || "User")
-    }
-
-    const urlParams = new URLSearchParams(window.location.search)
-    if (urlParams.get("imported") === "true") {
-      const importedTasks = localStorage.getItem("importedTasks")
-      if (importedTasks) {
-        const parsedTasks = JSON.parse(importedTasks)
-        const newTasks = parsedTasks.map((task: any) => ({
-          ...task,
-          id: Math.max(...tasks.map((t) => t.id), 0) + Math.random() * 1000,
-        }))
-        setTasks([...tasks, ...newTasks])
-        localStorage.removeItem("importedTasks")
-        window.history.replaceState({}, "", window.location.pathname)
-      }
-    }
-
-    const checkPermissions = async () => {
-      const hasPermissions = localStorage.getItem("manage-kar-permissions")
-      if (!hasPermissions) {
-        setShowPermissionsModal(true)
-      }
-    }
-    checkPermissions()
   }, [])
 
   const handleTaskToggle = (taskId: number) => {
-    setTasks(tasks.map((task) => (task.id === taskId ? { ...task, completed: !task.completed } : task)))
+    persist({
+      tasks: tasks.map((task) => (task.id === taskId ? { ...task, completed: !task.completed } : task)),
+    })
   }
 
   const handleTaskSelect = (taskId: number) => {
@@ -345,7 +136,6 @@ export default function Dashboard() {
   }
 
   const handleBulkShare = () => {
-    const tasksToShare = tasks.filter((task) => selectedTasks.includes(task.id))
     setShareModal(true)
   }
 
@@ -359,18 +149,22 @@ export default function Dashboard() {
 
   const handleSaveTask = (taskData: Omit<Task, "id"> | Task) => {
     if ("id" in taskData) {
-      setTasks(tasks.map((task) => (task.id === taskData.id ? taskData : task)))
+      persist({ tasks: tasks.map((task) => (task.id === taskData.id ? taskData : task)) })
     } else {
-      const newTask: Task = {
-        ...taskData,
-        id: Math.max(...tasks.map((t) => t.id), 0) + 1,
-      }
-      setTasks([...tasks, newTask])
+      persist({
+        tasks: [
+          ...tasks,
+          {
+            ...taskData,
+            id: nextNumericId(tasks),
+          },
+        ],
+      })
     }
   }
 
   const handleDeleteTask = (taskId: number) => {
-    setTasks(tasks.filter((task) => task.id !== taskId))
+    persist({ tasks: tasks.filter((task) => task.id !== taskId) })
   }
 
   const handleAddNote = () => {
@@ -383,19 +177,23 @@ export default function Dashboard() {
 
   const handleSaveNote = (noteData: Omit<Note, "id" | "createdAt"> | Note) => {
     if ("id" in noteData) {
-      setNotes(notes.map((note) => (note.id === noteData.id ? noteData : note)))
+      persist({ notes: notes.map((note) => (note.id === noteData.id ? noteData : note)) })
     } else {
-      const newNote: Note = {
-        ...noteData,
-        id: Math.max(...notes.map((n) => n.id), 0) + 1,
-        createdAt: "Just now",
-      }
-      setNotes([...notes, newNote])
+      persist({
+        notes: [
+          ...notes,
+          {
+            ...noteData,
+            id: nextNumericId(notes),
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      })
     }
   }
 
   const handleDeleteNote = (noteId: number) => {
-    setNotes(notes.filter((note) => note.id !== noteId))
+    persist({ notes: notes.filter((note) => note.id !== noteId) })
   }
 
   const handleOpenShare = () => {
@@ -407,20 +205,24 @@ export default function Dashboard() {
   }
 
   const handleHabitToggle = (habitId: number) => {
-    setHabits(
-      habits.map((habit) => {
-        if (habit.id === habitId) {
-          const newCompletedToday = !habit.completedToday
-          return {
-            ...habit,
-            completedToday: newCompletedToday,
-            completed: newCompletedToday,
-            streak: newCompletedToday ? habit.streak + 1 : Math.max(0, habit.streak - 1),
-          }
+    const today = new Date().toISOString().slice(0, 10)
+    persist({
+      habits: habits.map((habit) => {
+        if (habit.id !== habitId) {
+          return habit
         }
-        return habit
+        const newCompletedToday = !habit.completedToday
+        const history = habit.history.filter((entry) => entry.date !== today)
+        history.push({ date: today, completed: newCompletedToday })
+        return {
+          ...habit,
+          completedToday: newCompletedToday,
+          completed: newCompletedToday,
+          streak: newCompletedToday ? habit.streak + 1 : Math.max(0, habit.streak - 1),
+          history,
+        }
       }),
-    )
+    })
   }
 
   const handleAddHabit = () => {
@@ -435,23 +237,27 @@ export default function Dashboard() {
     habitData: Omit<Habit, "id" | "streak" | "completed" | "completedToday" | "createdAt" | "history"> | Habit,
   ) => {
     if ("id" in habitData) {
-      setHabits(habits.map((habit) => (habit.id === habitData.id ? habitData : habit)))
+      persist({ habits: habits.map((habit) => (habit.id === habitData.id ? habitData : habit)) })
     } else {
-      const newHabit: Habit = {
-        ...habitData,
-        id: Math.max(...habits.map((h) => h.id), 0) + 1,
-        streak: 0,
-        completed: false,
-        completedToday: false,
-        createdAt: new Date().toISOString(),
-        history: [],
-      }
-      setHabits([...habits, newHabit])
+      persist({
+        habits: [
+          ...habits,
+          {
+            ...habitData,
+            id: nextNumericId(habits),
+            streak: 0,
+            completed: false,
+            completedToday: false,
+            createdAt: new Date().toISOString(),
+            history: [],
+          },
+        ],
+      })
     }
   }
 
   const handleDeleteHabit = (habitId: number) => {
-    setHabits(habits.filter((habit) => habit.id !== habitId))
+    persist({ habits: habits.filter((habit) => habit.id !== habitId) })
   }
 
   const handleOpenHabitDashboard = () => {
@@ -483,58 +289,92 @@ export default function Dashboard() {
   }
 
   const handleClipboardTask = (content: string) => {
-    const newTask: Task = {
-      id: Math.max(...tasks.map((t) => t.id), 0) + 1,
-      title: content.length > 50 ? content.substring(0, 50) + "..." : content,
-      completed: false,
-      priority: "medium",
-      dueDate: "Today",
-      description: content.length > 50 ? content : undefined,
-      recurring: "none",
-      reminders: false,
-    }
-    setTasks([...tasks, newTask])
+    persist({
+      tasks: [
+        ...tasks,
+        {
+          id: nextNumericId(tasks),
+          title: content.length > 50 ? content.substring(0, 50) + "..." : content,
+          completed: false,
+          priority: "medium",
+          dueDate: "Today",
+          description: content.length > 50 ? content : undefined,
+          recurring: "none",
+          reminders: false,
+        },
+      ],
+    })
   }
 
   const handleClipboardNote = (content: string) => {
-    const newNote: Note = {
-      id: Math.max(...notes.map((n) => n.id), 0) + 1,
-      title: content.length > 30 ? content.substring(0, 30) + "..." : content,
-      content: content,
-      createdAt: "Just now",
-    }
-    setNotes([...notes, newNote])
+    persist({
+      notes: [
+        ...notes,
+        {
+          id: nextNumericId(notes),
+          title: content.length > 30 ? content.substring(0, 30) + "..." : content,
+          content,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    })
   }
 
   const handleVoiceNote = (audioBlob: Blob, transcription: string) => {
     const audioUrl = URL.createObjectURL(audioBlob)
-    const newNote: Note = {
-      id: Math.max(...notes.map((n) => n.id), 0) + 1,
-      title: transcription.length > 30 ? transcription.substring(0, 30) + "..." : transcription,
-      content: transcription,
-      createdAt: "Just now",
-      voiceNote: {
-        audioUrl,
-        transcription,
-        duration: 0,
-      },
-    }
-    setNotes([...notes, newNote])
+    persist({
+      notes: [
+        ...notes,
+        {
+          id: nextNumericId(notes),
+          title: transcription.length > 30 ? transcription.substring(0, 30) + "..." : transcription,
+          content: transcription,
+          createdAt: new Date().toISOString(),
+          voiceNote: {
+            audioUrl,
+            transcription,
+            duration: 0,
+          },
+        },
+      ],
+    })
   }
 
   const handleSpeechToText = (text: string) => {
-    const newNote: Note = {
-      id: Math.max(...notes.map((n) => n.id), 0) + 1,
-      title: text.length > 30 ? text.substring(0, 30) + "..." : text,
-      content: text,
-      createdAt: "Just now",
-      voiceNote: {
-        audioUrl: "",
-        transcription: text,
-        duration: 0,
-      },
-    }
-    setNotes([...notes, newNote])
+    persist({
+      notes: [
+        ...notes,
+        {
+          id: nextNumericId(notes),
+          title: text.length > 30 ? text.substring(0, 30) + "..." : text,
+          content: text,
+          createdAt: new Date().toISOString(),
+          voiceNote: {
+            audioUrl: "",
+            transcription: text,
+            duration: 0,
+          },
+        },
+      ],
+    })
+  }
+
+  const handleVoiceTask = (text: string) => {
+    persist({
+      tasks: [
+        ...tasks,
+        {
+          id: nextNumericId(tasks),
+          title: text.length > 50 ? text.substring(0, 50) + "..." : text,
+          completed: false,
+          priority: "medium",
+          dueDate: "Today",
+          description: text,
+          recurring: "none",
+          reminders: false,
+        },
+      ],
+    })
   }
 
   const completedTasksCount = tasks.filter((task) => task.completed).length
@@ -555,7 +395,10 @@ export default function Dashboard() {
   const renderOverviewContent = () => (
     <div className="space-y-6 sm:space-y-8">
       <div className="adaptive-grid">
-        <Card className="modern-card hover:scale-105 transition-all duration-300 cursor-pointer group responsive-card">
+        <Card
+          className="modern-card hover:scale-105 transition-all duration-300 cursor-pointer group responsive-card"
+          onClick={() => setCurrentView("tasks")}
+        >
           <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
             <div className="p-2 sm:p-3 bg-primary/10 rounded-xl sm:rounded-2xl group-hover:bg-primary/20 transition-colors">
               <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-primary" />
@@ -567,7 +410,10 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        <Card className="modern-card hover:scale-105 transition-all duration-300 cursor-pointer group responsive-card">
+        <Card
+          className="modern-card hover:scale-105 transition-all duration-300 cursor-pointer group responsive-card"
+          onClick={() => setCurrentView("tasks")}
+        >
           <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
             <div className="p-2 sm:p-3 bg-orange-500/10 rounded-xl sm:rounded-2xl group-hover:bg-orange-500/20 transition-colors">
               <Circle className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-orange-500" />
@@ -579,7 +425,10 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        <Card className="modern-card hover:scale-105 transition-all duration-300 cursor-pointer group responsive-card">
+        <Card
+          className="modern-card hover:scale-105 transition-all duration-300 cursor-pointer group responsive-card"
+          onClick={handleOpenHabitDashboard}
+        >
           <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
             <div className="p-2 sm:p-3 bg-blue-500/10 rounded-xl sm:rounded-2xl group-hover:bg-blue-500/20 transition-colors">
               <Target className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-blue-500" />
@@ -591,7 +440,10 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        <Card className="modern-card hover:scale-105 transition-all duration-300 cursor-pointer group responsive-card">
+        <Card
+          className="modern-card hover:scale-105 transition-all duration-300 cursor-pointer group responsive-card"
+          onClick={() => setCurrentView("notes")}
+        >
           <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
             <div className="p-2 sm:p-3 bg-green-500/10 rounded-xl sm:rounded-2xl group-hover:bg-green-500/20 transition-colors">
               <FileText className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-green-500" />
@@ -607,6 +459,14 @@ export default function Dashboard() {
       {/* Enhanced Recent Tasks */}
       <div>
         <h3 className="responsive-text-2xl font-bold font-sans text-readable mb-4 sm:mb-6">Recent Tasks</h3>
+        {tasks.length === 0 ? (
+          <EmptyState
+            title="Nothing on your plate yet"
+            description="Add a task to start a workspace that stays on this device after refresh."
+            actionLabel="Add task"
+            onAction={handleAddTask}
+          />
+        ) : (
         <div className="space-y-3">
           {tasks.slice(0, 3).map((task) => (
             <Card key={task.id} className="modern-card hover:shadow-lg transition-all duration-300 group">
@@ -643,6 +503,7 @@ export default function Dashboard() {
             </Card>
           ))}
         </div>
+        )}
       </div>
     </div>
   )
@@ -714,6 +575,18 @@ export default function Dashboard() {
       )}
 
       <div className="space-y-4">
+        {filteredTasks.length === 0 ? (
+          <EmptyState
+            title={searchQuery ? "No matching tasks" : "No tasks yet"}
+            description={
+              searchQuery
+                ? "Try a different search, or clear the box to see everything."
+                : "Create a task. It will still be here after you refresh."
+            }
+            actionLabel={searchQuery ? undefined : "Add task"}
+            onAction={searchQuery ? undefined : handleAddTask}
+          />
+        ) : null}
         {filteredTasks.map((task) => (
           <Card
             key={task.id}
@@ -776,7 +649,7 @@ export default function Dashboard() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="rounded-2xl h-10 w-10 opacity-0 group-hover:opacity-100 hover:scale-110 transition-all duration-200"
+                  className="rounded-2xl h-10 w-10 sm:opacity-0 sm:group-hover:opacity-100 hover:scale-110 transition-all duration-200"
                   onClick={() => handleEditTask(task)}
                 >
                   <Edit className="h-4 w-4 text-muted-foreground" />
@@ -800,6 +673,20 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
+        {filteredNotes.length === 0 ? (
+          <div className="md:col-span-2 lg:col-span-3">
+            <EmptyState
+              title={searchQuery ? "No matching notes" : "No notes yet"}
+              description={
+                searchQuery
+                  ? "Nothing in your notes matches that search."
+                  : "Capture a thought. Notes are saved locally with the rest of your workspace."
+              }
+              actionLabel={searchQuery ? undefined : "Add note"}
+              onAction={searchQuery ? undefined : handleAddNote}
+            />
+          </div>
+        ) : null}
         {filteredNotes.map((note) => (
           <Card
             key={note.id}
@@ -812,7 +699,7 @@ export default function Dashboard() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="h-6 w-6 rounded-full sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                   onClick={(e) => {
                     e.stopPropagation()
                     handleEditNote(note)
@@ -832,82 +719,26 @@ export default function Dashboard() {
 
   const renderMonitorContent = () => (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xl sm:text-2xl font-bold font-sans text-foreground">Team Monitoring</h3>
-        <Button onClick={handleOpenCollaboration} variant="outline" className="rounded-2xl bg-transparent">
-          <Users className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-          Full Dashboard
-        </Button>
+      <div>
+        <h3 className="text-xl sm:text-2xl font-bold font-sans text-foreground">Workspace</h3>
+        <p className="mt-2 text-sm text-muted-foreground">
+          This is a personal, on-device workspace. There is no live team feed yet.
+        </p>
       </div>
-
-      <div className="grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-5 md:grid-cols-3">
         <Card className="bg-card/95 backdrop-blur-xl border border-border/50 p-6 rounded-3xl">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                <User className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-              </div>
-              <div>
-                <p className="font-semibold font-sans">Team Alpha</p>
-                <p className="text-sm sm:text-base text-muted-foreground">5 members</p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm sm:text-base">
-                <span>Tasks Completed</span>
-                <span className="font-medium">12/15</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div className="bg-primary h-2 rounded-full" style={{ width: "80%" }} />
-              </div>
-            </div>
-          </div>
+          <p className="text-sm text-muted-foreground">Open tasks</p>
+          <p className="mt-2 text-2xl font-semibold">{pendingTasksCount}</p>
         </Card>
-
         <Card className="bg-card/95 backdrop-blur-xl border border-border/50 p-6 rounded-3xl">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-8 h-8 bg-green-500/10 rounded-full flex items-center justify-center">
-                <User className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" />
-              </div>
-              <div>
-                <p className="font-semibold font-sans">Team Beta</p>
-                <p className="text-sm sm:text-base text-muted-foreground">3 members</p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm sm:text-base">
-                <span>Tasks Completed</span>
-                <span className="font-medium">8/10</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div className="bg-green-500 h-2 rounded-full" style={{ width: "80%" }} />
-              </div>
-            </div>
-          </div>
+          <p className="text-sm text-muted-foreground">Completed</p>
+          <p className="mt-2 text-2xl font-semibold">{completedTasksCount}</p>
         </Card>
-
         <Card className="bg-card/95 backdrop-blur-xl border border-border/50 p-6 rounded-3xl">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-8 h-8 bg-orange-500/10 rounded-full flex items-center justify-center">
-                <User className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500" />
-              </div>
-              <div>
-                <p className="font-semibold font-sans">Team Gamma</p>
-                <p className="text-sm sm:text-base text-muted-foreground">4 members</p>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm sm:text-base">
-                <span>Tasks Completed</span>
-                <span className="font-medium">6/12</span>
-              </div>
-              <div className="w-full bg-muted rounded-full h-2">
-                <div className="bg-orange-500 h-2 rounded-full" style={{ width: "50%" }} />
-              </div>
-            </div>
-          </div>
+          <p className="text-sm text-muted-foreground">Habits today</p>
+          <p className="mt-2 text-2xl font-semibold">
+            {habits.filter((habit) => habit.completedToday).length}/{habits.length}
+          </p>
         </Card>
       </div>
     </div>
@@ -958,7 +789,11 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 pb-32">
-      <ClipboardMonitor onCreateTask={handleClipboardTask} onCreateNote={handleClipboardNote} enabled={true} />
+      <ClipboardMonitor
+        onCreateTask={handleClipboardTask}
+        onCreateNote={handleClipboardNote}
+        enabled={workspace.settings.privacy.clipboardMonitor}
+      />
 
       {/* Enhanced Header */}
       <div className="mb-6 pt-2 sm:mb-8 sm:pt-4">
@@ -974,7 +809,7 @@ export default function Dashboard() {
             </Button>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold font-sans gradient-text">Hello, {userName}!</h1>
-              <p className="text-muted-readable font-serif text-xs sm:text-sm">Welcome back to Manage.kar</p>
+              <p className="text-muted-readable font-serif text-xs sm:text-sm">Your workspace stays on this device</p>
             </div>
           </div>
           <Button
@@ -1043,7 +878,7 @@ export default function Dashboard() {
             onClick={handleOpenCollaboration}
           >
             <Users className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="responsive-text-xs font-medium">Teams</span>
+            <span className="responsive-text-xs font-medium">Preview</span>
           </Button>
           <Button
             variant="ghost"
@@ -1051,7 +886,7 @@ export default function Dashboard() {
             onClick={() => setCurrentView("monitor")}
           >
             <Monitor className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="responsive-text-xs font-medium">Monitor</span>
+            <span className="responsive-text-xs font-medium">Workspace</span>
           </Button>
         </div>
 
@@ -1114,7 +949,7 @@ export default function Dashboard() {
           onEditNote={handleEditNote}
           onVoiceNote={handleVoiceNote}
           onSpeechToText={handleSpeechToText}
-          systemOverlay={true}
+          onCreateTaskFromVoice={handleVoiceTask}
         />
       </div>
 
@@ -1168,7 +1003,15 @@ export default function Dashboard() {
 
       <FocusModal isOpen={focusModal} onClose={() => setFocusModal(false)} />
 
-      <ProfileModal isOpen={profileModal} onClose={() => setProfileModal(false)} />
+      <ProfileModal
+        isOpen={profileModal}
+        onClose={() => setProfileModal(false)}
+        stats={{
+          tasksCompleted: completedTasksCount,
+          habitsTracked: habits.length,
+        }}
+        onProfileChange={(profile) => persist({ profile })}
+      />
 
       <SettingsModal isOpen={settingsModal} onClose={() => setSettingsModal(false)} />
 
@@ -1200,8 +1043,8 @@ export default function Dashboard() {
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">Permissions Required</h3>
-                <p className="text-muted-foreground">Enable features for better experience</p>
+                <h3 className="text-xl font-semibold text-foreground mb-2">Optional permissions</h3>
+                <p className="text-muted-foreground">Skip if you only want tasks, notes, and habits. Voice needs the microphone.</p>
               </div>
 
               <div className="space-y-4">
