@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -24,6 +24,8 @@ import {
   Search,
   StickyNote,
   Activity,
+  Home,
+  Download,
 } from "lucide-react"
 import { FloatingToggle } from "@/components/floating-toggle"
 import { TaskModal } from "@/components/task-modal"
@@ -43,12 +45,13 @@ import type { Habit, Note, Task } from "@/lib/domain/types"
 import { useWorkspace } from "@/lib/store/use-workspace"
 import { allocateEntityId } from "@/lib/store/workspace"
 import { recordBrowserEvent } from "@/lib/analytics/local-events"
-import { formatDueDate, formatTimestamp, localDateKey, normalizeDueDate } from "@/lib/dates/due-date"
+import { formatDueDate, formatTimestamp, isTaskDueTodayOrOverdue, localDateKey, normalizeDueDate } from "@/lib/dates/due-date"
+import { isHabitScheduledOn } from "@/lib/habits/schedule"
 import { hydrateHabit, toggleHabitOnDate } from "@/lib/habits/streak"
 import { completeRecurringTask } from "@/lib/reminders/due"
 import { useLocalReminders } from "@/lib/reminders/use-local-reminders"
-
-type ViewMode = "overview" | "tasks" | "notes" | "habits"
+import { blobToDataUrl } from "@/lib/media/blob-to-data-url"
+import { parseWorkspaceSearch, serializeWorkspaceSearch, type WorkspaceView } from "@/lib/navigation/workspace-url"
 
 export default function Dashboard() {
   const { workspace, persist, hydrated, loadStatus, quarantineKey, dropped, resetCorrupt } = useWorkspace()
@@ -61,8 +64,9 @@ export default function Dashboard() {
 
   useLocalReminders(workspace, persist, hydrated)
 
-  const [currentView, setCurrentView] = useState<ViewMode>("overview")
-  const [searchQuery, setSearchQuery] = useState("")
+  const initialSearch = typeof window === "undefined" ? { view: "overview" as const, q: "" } : parseWorkspaceSearch(window.location.search)
+  const [currentView, setCurrentView] = useState<WorkspaceView>(initialSearch.view)
+  const [searchQuery, setSearchQuery] = useState(initialSearch.q)
   const [selectedTasks, setSelectedTasks] = useState<number[]>([])
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [taskModal, setTaskModal] = useState<{ isOpen: boolean; mode: "create" | "edit"; task?: Task }>({
@@ -85,6 +89,31 @@ export default function Dashboard() {
   const [analyticsModal, setAnalyticsModal] = useState(false)
   const [timeTrackerModal, setTimeTrackerModal] = useState(false)
   const [goalManagerModal, setGoalManagerModal] = useState(false)
+
+  const weekStartsOn = workspace.settings.general.weekStartsOn
+  const todayKey = localDateKey()
+
+  useEffect(() => {
+    const next = serializeWorkspaceSearch(currentView, searchQuery)
+    window.history.replaceState(null, "", `${window.location.pathname}${next}`)
+  }, [currentView, searchQuery])
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      const typing = target?.closest("input, textarea, select, [contenteditable=true]")
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault()
+        document.getElementById("workspace-search")?.focus()
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "n" && !typing) {
+        event.preventDefault()
+        setTaskModal({ isOpen: true, mode: "create" })
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
 
   const handleTaskToggle = (taskId: number) => {
     persist((current) => {
@@ -113,7 +142,7 @@ export default function Dashboard() {
   const handleSaveTask = (taskData: Omit<Task, "id"> | Task) => {
     persist((current) => {
       const title = taskData.title.trim()
-      const dueDate = normalizeDueDate(taskData.dueDate)
+      const dueDate = normalizeDueDate(taskData.dueDate, new Date(), weekStartsOn)
       if ("id" in taskData) {
         return {
           ...current,
@@ -201,10 +230,15 @@ export default function Dashboard() {
 
   const handleHabitToggle = (habitId: number) => {
     const today = localDateKey()
-    persist((current) => ({
-      ...current,
-      habits: current.habits.map((habit) =>
-        habit.id === habitId ? hydrateHabit(toggleHabitOnDate(habit, today), today) : habit,
+    const current = workspace.habits.find((habit) => habit.id === habitId)
+    if (current && !isHabitScheduledOn(current, today, weekStartsOn)) {
+      toast("This habit is not scheduled today.")
+      return
+    }
+    persist((store) => ({
+      ...store,
+      habits: store.habits.map((habit) =>
+        habit.id === habitId ? hydrateHabit(toggleHabitOnDate(habit, today, weekStartsOn), today, weekStartsOn) : habit,
       ),
     }))
   }
@@ -213,11 +247,18 @@ export default function Dashboard() {
     habitData: Omit<Habit, "id" | "streak" | "completed" | "completedToday" | "createdAt" | "history"> | Habit,
   ) => {
     persist((current) => {
-      if ("id" in habitData) {
+      const customDays =
+        habitData.frequency === "weekly" && (!habitData.customDays || habitData.customDays.length === 0)
+          ? [weekStartsOn === "sunday" ? "Sunday" : "Monday"]
+          : habitData.customDays
+      const scheduled = { ...habitData, customDays }
+      if ("id" in scheduled) {
         return {
           ...current,
           habits: current.habits.map((habit) =>
-            habit.id === habitData.id ? hydrateHabit({ ...habit, ...habitData, name: habitData.name.trim() }, localDateKey()) : habit,
+            habit.id === scheduled.id
+              ? hydrateHabit({ ...habit, ...scheduled, name: scheduled.name.trim() }, localDateKey(), weekStartsOn)
+              : habit,
           ),
         }
       }
@@ -228,9 +269,9 @@ export default function Dashboard() {
           ...allocated.workspace.habits,
           hydrateHabit(
             {
-              ...habitData,
+              ...scheduled,
               id: allocated.id,
-              name: habitData.name.trim(),
+              name: scheduled.name.trim(),
               streak: 0,
               completed: false,
               completedToday: false,
@@ -238,6 +279,7 @@ export default function Dashboard() {
               history: [],
             },
             localDateKey(),
+            weekStartsOn,
           ),
         ],
       }
@@ -306,27 +348,32 @@ export default function Dashboard() {
   }
 
   const handleVoiceNote = (audioBlob: Blob, transcription: string, duration = 0) => {
-    const audioUrl = URL.createObjectURL(audioBlob)
-    persist((current) => {
-      const allocated = allocateEntityId(current)
-      return {
-        ...allocated.workspace,
-        notes: [
-          ...allocated.workspace.notes,
-          {
-            id: allocated.id,
-            title: clipTitle(transcription || "Voice note", 30),
-            content: transcription,
-            createdAt: new Date().toISOString(),
-            voiceNote: {
-              audioUrl,
-              transcription,
-              duration,
-            },
-          },
-        ],
-      }
-    })
+    void blobToDataUrl(audioBlob)
+      .then((audioUrl) => {
+        persist((current) => {
+          const allocated = allocateEntityId(current)
+          return {
+            ...allocated.workspace,
+            notes: [
+              ...allocated.workspace.notes,
+              {
+                id: allocated.id,
+                title: clipTitle(transcription || "Voice note", 30),
+                content: transcription,
+                createdAt: new Date().toISOString(),
+                voiceNote: {
+                  audioUrl,
+                  transcription,
+                  duration,
+                },
+              },
+            ],
+          }
+        })
+      })
+      .catch(() => {
+        toast.error("Could not keep the recording on this device. The words were not saved as audio.")
+      })
   }
 
   const handleSpeechToText = (text: string) => {
@@ -372,6 +419,8 @@ export default function Dashboard() {
 
   const completedTasksCount = tasks.filter((task) => task.completed).length
   const pendingTasksCount = tasks.filter((task) => !task.completed).length
+  const todayTasks = tasks.filter((task) => isTaskDueTodayOrOverdue(task.dueDate, task.completed))
+  const todayHabits = habits.filter((habit) => isHabitScheduledOn(habit, todayKey, weekStartsOn))
   const query = searchQuery.toLowerCase()
   const filteredTasks = tasks.filter(
     (task) =>
@@ -424,8 +473,8 @@ export default function Dashboard() {
       )}
 
       <div className="mb-6 pt-2 sm:mb-8 sm:pt-4">
-        <div className="flex items-center justify-between mb-4 sm:mb-6">
-          <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex items-center justify-between gap-2 mb-4 sm:mb-6">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
             <Button
               variant="ghost"
               size="icon"
@@ -442,15 +491,25 @@ export default function Dashboard() {
               </p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="modern-card rounded-2xl h-10 w-10 sm:h-12 sm:w-12"
-            onClick={() => setSettingsModal(true)}
-            aria-label="Open settings"
-          >
-            <Settings className="h-5 w-5 sm:h-6 sm:w-6" />
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              variant="outline"
+              className="rounded-2xl h-10 sm:h-12 bg-transparent"
+              onClick={() => setShareModal(true)}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="modern-card rounded-2xl h-10 w-10 sm:h-12 sm:w-12"
+              onClick={() => setSettingsModal(true)}
+              aria-label="Open settings"
+            >
+              <Settings className="h-5 w-5 sm:h-6 sm:w-6" />
+            </Button>
+          </div>
         </div>
 
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -470,7 +529,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="mb-4 hidden sm:grid grid-cols-4 lg:grid-cols-6 gap-2">
+        <div className="mb-4 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
           <Button variant="ghost" className="modern-card rounded-xl h-14 flex-col gap-1" onClick={() => setHabitDashboard(true)}>
             <Activity className="h-4 w-4" />
             <span className="text-xs">Habits</span>
@@ -500,10 +559,12 @@ export default function Dashboard() {
         <div className="relative mb-4 sm:mb-6">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
+            id="workspace-search"
             placeholder="Search tasks, notes, and habits..."
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             className="pl-10 rounded-xl sm:rounded-2xl bg-card/95"
+            aria-label="Search workspace"
           />
         </div>
       </div>
@@ -539,18 +600,22 @@ export default function Dashboard() {
             </div>
 
             <div>
-              <h3 className="text-xl font-bold mb-4">Recent tasks</h3>
-              {tasks.length === 0 ? (
+              <h3 className="text-xl font-bold mb-4">Today</h3>
+              {todayTasks.length === 0 && todayHabits.length === 0 ? (
                 <EmptyState
-                  title="Nothing on your plate yet"
-                  description="Add one task. It stays on this device after refresh. There is no cloud backup until you export."
+                  title={tasks.length === 0 ? "Nothing on your plate yet" : "Nothing due today"}
+                  description={
+                    tasks.length === 0
+                      ? "Add one task. It stays on this device after refresh. There is no cloud backup until you export."
+                      : "Overdue and today’s work will land here."
+                  }
                   actionLabel="Add task"
                   onAction={() => setTaskModal({ isOpen: true, mode: "create" })}
                 />
               ) : (
                 <div className="space-y-3">
-                  {tasks.slice(0, 5).map((task) => (
-                    <Card key={task.id} className="modern-card p-4">
+                  {todayTasks.map((task) => (
+                    <Card key={`task-${task.id}`} className="modern-card p-4">
                       <div className="flex items-center gap-3">
                         <Button
                           variant="ghost"
@@ -562,8 +627,13 @@ export default function Dashboard() {
                           {task.completed ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5" />}
                         </Button>
                         <div className="flex-1">
-                          <p className={task.completed ? "line-through text-muted-readable" : ""}>{task.title}</p>
+                          <p>{task.title}</p>
                           <p className="text-xs text-muted-readable">{formatDueDate(task.dueDate, dateFormat)}</p>
+                          {task.checklist && task.checklist.length > 0 ? (
+                            <p className="text-xs text-muted-readable">
+                              {task.checklist.filter((item) => item.completed).length}/{task.checklist.length} checklist
+                            </p>
+                          ) : null}
                         </div>
                         <Button
                           variant="ghost"
@@ -573,6 +643,25 @@ export default function Dashboard() {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
+                      </div>
+                    </Card>
+                  ))}
+                  {todayHabits.map((habit) => (
+                    <Card key={`habit-${habit.id}`} className="modern-card p-4">
+                      <div className="flex items-center gap-3">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleHabitToggle(habit.id)}
+                          aria-label={habit.completedToday ? `Unmark ${habit.name} for today` : `Complete ${habit.name} today`}
+                        >
+                          {habit.completedToday ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5" />}
+                        </Button>
+                        <div className="flex-1">
+                          <p>{habit.name}</p>
+                          <p className="text-xs text-muted-readable">Habit · streak {habit.streak}</p>
+                        </div>
                       </div>
                     </Card>
                   ))}
@@ -639,6 +728,11 @@ export default function Dashboard() {
                           <Calendar className="h-3 w-3" />
                           {formatDueDate(task.dueDate, dateFormat)}
                         </span>
+                        {task.checklist && task.checklist.length > 0 ? (
+                          <span>
+                            {task.checklist.filter((item) => item.completed).length}/{task.checklist.length}
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                     <Button
@@ -716,7 +810,10 @@ export default function Dashboard() {
                     </Button>
                     <div className="flex-1">
                       <p>{habit.name}</p>
-                      <p className="text-xs text-muted-foreground">Streak {habit.streak}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Streak {habit.streak}
+                        {isHabitScheduledOn(habit, todayKey, weekStartsOn) ? "" : " · off today"}
+                      </p>
                     </div>
                     <Button
                       variant="ghost"
@@ -738,7 +835,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-4">
           {(
             [
-              ["overview", "Home", BarChart3],
+              ["overview", "Home", Home],
               ["tasks", "Tasks", CheckSquare],
               ["notes", "Notes", FileText],
               ["habits", "Habits", Activity],
@@ -769,6 +866,7 @@ export default function Dashboard() {
           onVoiceNote={handleVoiceNote}
           onSpeechToText={handleSpeechToText}
           onCreateTaskFromVoice={handleVoiceTask}
+          onStartFocus={() => setFocusModal(true)}
         />
       </div>
 

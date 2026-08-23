@@ -22,6 +22,13 @@ export const WORKSPACE_CORRUPT_PREFIX = "managekar.workspace.v1.corrupt."
 export const WORKSPACE_DROPPED_KEY = "managekar.workspace.v1.dropped"
 export const APP_VERSION = "0.2.0"
 
+export class WorkspaceSaveError extends Error {
+  constructor(message = "Could not save workspace on this device.") {
+    super(message)
+    this.name = "WorkspaceSaveError"
+  }
+}
+
 export interface KeyValueStore {
   getItem(key: string): string | null
   setItem(key: string, value: string): void
@@ -294,7 +301,7 @@ function parseArray<T>(
   return { items, dropped: rejected.length, rejected }
 }
 
-function asTask(item: unknown): Task | null {
+function asTask(item: unknown, weekStartsOn: "sunday" | "monday"): Task | null {
   const parsed = taskSchema.safeParse(item)
   if (!parsed.success) {
     return null
@@ -303,7 +310,7 @@ function asTask(item: unknown): Task | null {
   return {
     ...task,
     title: task.title.trim(),
-    dueDate: normalizeDueDate(task.dueDate),
+    dueDate: normalizeDueDate(task.dueDate, new Date(), weekStartsOn),
   }
 }
 
@@ -316,12 +323,12 @@ function asNote(item: unknown): Note | null {
   return { ...note, title: note.title.trim() }
 }
 
-function asHabit(item: unknown, today: string): Habit | null {
+function asHabit(item: unknown, today: string, weekStartsOn: "sunday" | "monday"): Habit | null {
   const parsed = habitSchema.safeParse(item)
   if (!parsed.success) {
     return null
   }
-  return hydrateHabit(parsed.data as Habit, today)
+  return hydrateHabit(parsed.data as Habit, today, weekStartsOn)
 }
 
 function asGoal(item: unknown): Goal | null {
@@ -437,9 +444,10 @@ function normalizeWorkspaceDetailed(value: unknown): { workspace: Workspace | nu
   }
 
   const today = localDateKey()
-  const tasks = parseArray(value.tasks, asTask)
+  const settings = mergeSettings(value.settings)
+  const tasks = parseArray(value.tasks, (item) => asTask(item, settings.general.weekStartsOn))
   const notes = parseArray(value.notes, asNote)
-  const habits = parseArray(value.habits, (item) => asHabit(item, today))
+  const habits = parseArray(value.habits, (item) => asHabit(item, today, settings.general.weekStartsOn))
   const goals = parseArray(value.goals, asGoal)
   const timeEntries = parseArray(value.timeEntries, asTimeEntry)
   const focusSessions = parseArray(value.focusSessions, asFocusSession)
@@ -473,7 +481,7 @@ function normalizeWorkspaceDetailed(value: unknown): { workspace: Workspace | nu
     activeFocus: mergeActiveFocus(value.activeFocus),
     importedShareHashes: asStringArray(value.importedShareHashes),
     firedReminderKeys: asStringArray(value.firedReminderKeys),
-    settings: mergeSettings(value.settings),
+    settings,
     profile: mergeProfile(value.profile),
   }
   const highest = collectedEntityIds(workspace).reduce((max, id) => Math.max(max, id), 0)
@@ -547,11 +555,33 @@ export function inspectWorkspace(storage: KeyValueStore): WorkspaceInspection {
   }
 
   persistDroppedRows(storage, normalized.rejected)
+  if (needsSanitizeWriteback(JSON.parse(raw), normalized.workspace)) {
+    try {
+      saveWorkspace(storage, normalized.workspace)
+    } catch {
+      // Memory stays sanitized even if the disk is full.
+    }
+  }
   return { status: "ok", workspace: normalized.workspace, dropped: normalized.dropped }
 }
 
 export function loadWorkspace(storage: KeyValueStore): Workspace {
   return inspectWorkspace(storage).workspace
+}
+
+function needsSanitizeWriteback(raw: unknown, workspace: Workspace): boolean {
+  if (!isRecord(raw) || !Array.isArray(raw.tasks)) {
+    return false
+  }
+  return raw.tasks.some((item) => {
+    if (!isRecord(item)) {
+      return false
+    }
+    const title = typeof item.title === "string" ? item.title : ""
+    const dueDate = typeof item.dueDate === "string" ? item.dueDate : ""
+    const match = workspace.tasks.find((task) => task.id === item.id)
+    return Boolean(match && (title !== match.title || dueDate !== match.dueDate))
+  })
 }
 
 export function saveWorkspace(storage: KeyValueStore, workspace: Workspace): Workspace {
@@ -560,7 +590,12 @@ export function saveWorkspace(storage: KeyValueStore, workspace: Workspace): Wor
     schemaVersion: 1,
     updatedAt: new Date().toISOString(),
   }
-  storage.setItem(WORKSPACE_KEY, JSON.stringify(next))
+  try {
+    storage.setItem(WORKSPACE_KEY, JSON.stringify(next))
+  } catch {
+    throw new WorkspaceSaveError()
+  }
+  notifyWorkspaceChanged()
   return next
 }
 
@@ -588,12 +623,14 @@ export function migrateLegacyWorkspace(storage: KeyValueStore): Workspace {
   }
 
   const workspace = createEmptyWorkspace()
-  workspace.tasks = parseArray(parseJson(storage.getItem("manageKarTasks")), asTask).items
+  workspace.settings = mergeSettings(parseJson(storage.getItem("manageKarAppSettings")))
+  workspace.tasks = parseArray(parseJson(storage.getItem("manageKarTasks")), (item) =>
+    asTask(item, workspace.settings.general.weekStartsOn),
+  ).items
   workspace.notes = parseArray(parseJson(storage.getItem("manageKarNotes")), asNote).items
   workspace.habits = parseArray(parseJson(storage.getItem("manageKarHabits")), (item) =>
-    asHabit(item, localDateKey()),
+    asHabit(item, localDateKey(), workspace.settings.general.weekStartsOn),
   ).items
-  workspace.settings = mergeSettings(parseJson(storage.getItem("manageKarAppSettings")))
   workspace.profile = mergeProfile(parseJson(storage.getItem("manageKarUserProfile")))
 
   return saveWorkspace(storage, workspace)

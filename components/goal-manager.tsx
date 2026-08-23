@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Target, Plus, Calendar, TrendingUp, Award, CheckCircle2 } from "lucide-react"
+import { toast } from "sonner"
+import { Target, Plus, Calendar, TrendingUp, Award, CheckCircle2, Trash2 } from "lucide-react"
 import type { Goal, Workspace } from "@/lib/domain/types"
 import { allocateEntityId } from "@/lib/store/workspace"
 
@@ -73,9 +74,47 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
     persist((current) => ({
       ...current,
       goals: current.goals.map((goal) =>
-        goal.id === goalId ? { ...goal, progress: Math.min(100, Math.max(0, progress)) } : goal,
+        goal.id === goalId
+          ? {
+              ...goal,
+              progress: Math.min(100, Math.max(0, progress)),
+              status: progress >= 100 ? "completed" : goal.status === "completed" ? "active" : goal.status,
+            }
+          : goal,
       ),
     }))
+  }
+
+  const setGoalStatus = (goalId: number, status: Goal["status"]) => {
+    persist((current) => ({
+      ...current,
+      goals: current.goals.map((goal) =>
+        goal.id === goalId
+          ? { ...goal, status, progress: status === "completed" ? 100 : goal.progress }
+          : goal,
+      ),
+    }))
+  }
+
+  const deleteGoal = (goalId: number) => {
+    if (!window.confirm("Delete this goal? You can undo from the toast for a few seconds.")) {
+      return
+    }
+    let removed: Goal | undefined
+    persist((current) => {
+      removed = current.goals.find((goal) => goal.id === goalId)
+      return { ...current, goals: current.goals.filter((goal) => goal.id !== goalId) }
+    })
+    if (removed) {
+      const snapshot = removed
+      toast("Goal deleted", {
+        duration: 8000,
+        action: {
+          label: "Undo",
+          onClick: () => persist((current) => ({ ...current, goals: [...current.goals, snapshot] })),
+        },
+      })
+    }
   }
 
   const toggleMilestone = (goalId: number, milestoneId: number) => {
@@ -291,9 +330,24 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
                         </span>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right space-y-2">
                       <p className="text-2xl font-bold text-primary">{goal.progress}%</p>
-                      <p className="text-sm text-muted-foreground">Complete</p>
+                      <p className="text-sm text-muted-foreground">{goal.status}</p>
+                      <div className="flex justify-end gap-2">
+                        {goal.status !== "completed" ? (
+                          <Button size="sm" variant="outline" onClick={() => setGoalStatus(goal.id, "completed")}>
+                            Mark done
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={() => setGoalStatus(goal.id, "active")}>
+                            Reopen
+                          </Button>
+                        )}
+                        <Button size="sm" variant="destructive" onClick={() => deleteGoal(goal.id)}>
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Delete {goal.title}</span>
+                        </Button>
+                      </div>
                     </div>
                   </div>
 

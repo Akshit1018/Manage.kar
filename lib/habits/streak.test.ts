@@ -44,4 +44,20 @@ describe("habit streaks", () => {
     expect(hydrateHabit(second, "2026-08-23").completedToday).toBe(false)
     expect(hydrateHabit(second, "2026-08-23").streak).toBe(0)
   })
+
+  it("does not record a completion on an unscheduled day", () => {
+    const custom = habit({ frequency: "custom", customDays: ["Monday"] })
+    const after = toggleHabitOnDate(custom, "2026-08-25", "monday")
+    expect(after.history).toEqual([])
+    expect(hydrateHabit(after, "2026-08-25", "monday").completedToday).toBe(false)
+  })
+
+  it("skips unscheduled days when computing a streak", () => {
+    const history = [
+      { date: "2026-08-17", completed: true },
+      { date: "2026-08-24", completed: true },
+    ]
+    const scheduled = (date: string) => date === "2026-08-17" || date === "2026-08-24"
+    expect(computeStreak(history, "2026-08-24", scheduled)).toBe(2)
+  })
 })

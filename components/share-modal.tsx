@@ -127,6 +127,13 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
   }
 
   const handleWhatsAppShare = () => {
+    if (
+      !window.confirm(
+        "WhatsApp will receive these task titles in plain text. This is not the password-protected link.",
+      )
+    ) {
+      return
+    }
     const message = generateWhatsAppMessage()
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer")
   }
@@ -146,8 +153,8 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
     const message = generateWhatsAppMessage().replace(/\*/g, "").replace(/~/g, "")
     const subject = `${userName}'s Task List from Manage.kar`
     const body = encodeURIComponent(message)
-    const mailtoUrl = emailAddress
-      ? `mailto:${emailAddress}?subject=${encodeURIComponent(subject)}&body=${body}`
+    const mailtoUrl = emailAddress.trim()
+      ? `mailto:${encodeURIComponent(emailAddress.trim())}?subject=${encodeURIComponent(subject)}&body=${body}`
       : `mailto:?subject=${encodeURIComponent(subject)}&body=${body}`
     window.open(mailtoUrl, "_blank", "noopener,noreferrer")
   }
@@ -197,7 +204,7 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
                   className="justify-start bg-transparent rounded-xl hover:scale-105 transition-all duration-200 responsive-button"
                 >
                   <MessageCircle className="h-4 w-4 mr-2" />
-                  WhatsApp
+                  WhatsApp (plain text)
                 </Button>
                 <Button
                   variant={shareMethod === "link" ? "default" : "outline"}
@@ -355,7 +362,7 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
               {shareMethod === "whatsapp" ? (
                 <>
                   <MessageCircle className="h-4 w-4 mr-2" />
-                  Share on WhatsApp
+                  Send titles to WhatsApp
                 </>
               ) : shareMethod === "link" ? (
                 <>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   formatDueDate,
+  isDueOnOrBefore,
   localDateKey,
   nextDueDate,
   normalizeDueDate,
@@ -30,5 +31,17 @@ describe("due dates", () => {
   it("uses the local calendar date, not UTC", () => {
     const lateEveningLocal = new Date(2026, 7, 23, 23, 30, 0)
     expect(localDateKey(lateEveningLocal)).toBe("2026-08-23")
+  })
+
+  it("maps this week to the last day of the configured week", () => {
+    const sunday = new Date(2026, 7, 23, 12, 0, 0)
+    expect(normalizeDueDate("this week", sunday, "monday")).toBe("2026-08-23")
+    expect(normalizeDueDate("this week", sunday, "sunday")).toBe("2026-08-29")
+  })
+
+  it("does not coerce unknown due-date text into today", () => {
+    const now = new Date(2026, 7, 23, 12, 0, 0)
+    expect(normalizeDueDate("whenever", now)).toBe("whenever")
+    expect(isDueOnOrBefore("whenever", now)).toBe(false)
   })
 })

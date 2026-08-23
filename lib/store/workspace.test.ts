@@ -332,6 +332,48 @@ describe("workspace store", () => {
     expect(parseBackup(JSON.stringify({ hello: "world" })).ok).toBe(false)
   })
 
+  it("writes slogan due dates back as ISO on load", () => {
+    const storage = new MemoryStore()
+    storage.setItem(
+      WORKSPACE_KEY,
+      JSON.stringify({
+        schemaVersion: 1,
+        tasks: [{ id: 1, title: "Pay rent  ", completed: false, priority: "high", dueDate: "Today" }],
+        notes: [],
+        habits: [],
+      }),
+    )
+
+    const inspected = inspectWorkspace(storage)
+    expect(inspected.workspace.tasks[0]?.dueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(inspected.workspace.tasks[0]?.title).toBe("Pay rent")
+    expect(JSON.parse(storage.getItem(WORKSPACE_KEY) ?? "{}").tasks[0].dueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    expect(JSON.parse(storage.getItem(WORKSPACE_KEY) ?? "{}").tasks[0].title).toBe("Pay rent")
+  })
+
+  it("surfaces a quota failure instead of throwing through persist", () => {
+    const storage = new MemoryStore()
+    saveWorkspace(storage, createEmptyWorkspace())
+    storage.setItem = () => {
+      throw new DOMException("full", "QuotaExceededError")
+    }
+
+    expect(() =>
+      mutateWorkspace(storage, (workspace) => ({
+        ...workspace,
+        tasks: [
+          {
+            id: 1,
+            title: "Too big",
+            completed: false,
+            priority: "low",
+            dueDate: "2026-08-23",
+          },
+        ],
+      })),
+    ).toThrow(/Could not save workspace/)
+  })
+
   it("accepts the legacy settings-export shape as a backup", () => {
     const parsed = parseBackup(
       JSON.stringify({

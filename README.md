@@ -19,18 +19,22 @@ pnpm build
 ## What works
 
 - Create / edit / complete / delete tasks and notes
-- Habits with a written history entry for today
-- Settings theme (light / dark / system)
+- Habits with a written history entry; frequency and custom days are enforced
+- Goals, time entries, and focus sessions persist in the same workspace document
+- Settings theme, font size, animations, and date format
 - Export / import / clear the **same** workspace the UI uses
-- Share a small task list via a size-capped link, or export JSON
+- Password-protected share links (`enc1.`). Ciphertext sits in the URL and does not expire. WhatsApp send is **plain text**, not that link.
 - Optional clipboard suggestions (off by default)
+- Local reminders while this tab is open (they respect habit reminder time; they do not fire in the background)
 
-## What is preview-only
+## What is not here
 
-- Google Workspace form
-- Team / ERP screens
-- Goals, time tracker, and focus sessions (not persisted yet)
+- Cloud backup / Google Drive
+- Team collaboration
+- Background notifications after you close the tab
+- Share-link revoke or expiry
 
 ## Docs
 
 Start with [`docs/PRODUCT_VISION.md`](docs/PRODUCT_VISION.md).
+The latest product-truth map is [`docs/forensic/FEATURE_TRUTH_MAP.md`](docs/forensic/FEATURE_TRUTH_MAP.md).

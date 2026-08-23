@@ -147,7 +147,9 @@ export default function SharedTasksPage() {
             Shared {new Date(sharedData.sharedAt).toLocaleDateString()} • {sharedData.tasks.length} tasks
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Anyone with this URL can read these tasks. Importing copies them onto this device.
+            {isEncryptedShareToken(encodedData)
+              ? "This list was unlocked with a password. Importing copies the tasks onto this device. The link does not expire."
+              : "Anyone with this URL can read these tasks. Importing copies them onto this device."}
           </p>
         </div>
         <Button onClick={handleImportTasks} className="rounded-xl">

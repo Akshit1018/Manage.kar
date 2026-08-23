@@ -194,7 +194,7 @@ export function AnalyticsDashboard({ isOpen, onClose, tasks = [], habits = [] }:
 
           {/* Weekly Progress Chart */}
           <Card className="glass-card p-6 rounded-2xl">
-            <h3 className="text-lg font-semibold font-sans mb-4">Weekly Progress</h3>
+            <h3 className="text-lg font-semibold font-sans mb-4">All items</h3>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Task Completion</span>
@@ -226,24 +226,9 @@ export function AnalyticsDashboard({ isOpen, onClose, tasks = [], habits = [] }:
             </div>
           </Card>
 
-          {/* Action Items */}
-          <Card className="glass-card p-6 rounded-2xl">
-            <h3 className="text-lg font-semibold font-sans mb-4">Recommended Actions</h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-xl">
-                <div className="w-2 h-2 bg-primary rounded-full" />
-                <span className="text-sm">Schedule your most important task for 9-11 AM tomorrow</span>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-blue-500/5 rounded-xl">
-                <div className="w-2 h-2 bg-blue-500 rounded-full" />
-                <span className="text-sm">Try a 45-minute focus session for your next complex task</span>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-green-500/5 rounded-xl">
-                <div className="w-2 h-2 bg-green-500 rounded-full" />
-                <span className="text-sm">Reduce active habits to 3 core ones for better consistency</span>
-              </div>
-            </div>
-          </Card>
+          <p className="text-xs text-muted-foreground">
+            Task completion is all stored tasks, not a calendar week. Habit consistency is today only.
+          </p>
         </div>
       </DialogContent>
     </Dialog>
