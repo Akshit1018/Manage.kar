@@ -36,6 +36,7 @@ interface FloatingToggleProps {
   onVoiceNote?: (audioBlob: Blob, transcription: string, duration?: number) => void
   onSpeechToText?: (text: string) => void
   onCreateTaskFromVoice?: (text: string) => void
+  onStartFocus?: () => void
 }
 
 export function FloatingToggle({
@@ -49,6 +50,7 @@ export function FloatingToggle({
   onVoiceNote,
   onSpeechToText,
   onCreateTaskFromVoice,
+  onStartFocus,
 }: FloatingToggleProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<"tasks" | "notes">("tasks")
@@ -513,30 +515,9 @@ export function FloatingToggle({
     }
   }, [])
 
-  const startFocusMode = (duration: number) => {
-    setFocusMode(true)
-    setFocusDuration(duration)
-    setFocusTimeLeft(duration * 60) // convert to seconds
-
-    const timer = setInterval(() => {
-      setFocusTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          setFocusMode(false)
-          if (permissionsGranted.notifications) {
-            new Notification("Focus Session Complete!", {
-              body: `You've completed a ${duration}-minute focus session!`,
-              icon: "/icon.png",
-            })
-          }
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-
-    setFocusTimer(timer)
+  const startFocusMode = (_duration: number) => {
     setIsOpen(false)
+    onStartFocus?.()
   }
 
   const stopFocusMode = () => {
@@ -582,6 +563,16 @@ export function FloatingToggle({
               aria-label="Add note"
             >
               <FileText className="h-4 w-4 text-green-500" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-10 w-10 rounded-full hover:bg-orange-500/20"
+              onClick={() => onStartFocus?.()}
+              title="Focus"
+              aria-label="Open focus timer"
+            >
+              <Clock className="h-4 w-4 text-orange-500" />
             </Button>
           </div>
         </div>

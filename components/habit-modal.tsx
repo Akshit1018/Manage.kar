@@ -229,9 +229,11 @@ export function HabitModal({
               </Select>
 
               {/* Custom Days Selection */}
-              {formData.frequency === "custom" && (
+              {(formData.frequency === "custom" || formData.frequency === "weekly") && (
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">Select Days</Label>
+                  <Label className="text-sm font-medium">
+                    {formData.frequency === "weekly" ? "Day of the week" : "Select days"}
+                  </Label>
                   <div className="grid grid-cols-2 gap-2">
                     {weekDays.map((day) => (
                       <Button

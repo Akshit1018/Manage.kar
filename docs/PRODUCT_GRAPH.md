@@ -6,22 +6,23 @@ User
      ├─ Profile (name, contact)
      ├─ Settings (theme, privacy, notifications)
      ├─ Tasks ── share payload ── shared page ── import → Tasks
-     ├─ Notes (optional voice blob URL)
-     └─ Habits ── history[date] ── streak (derived later)
+     ├─ Notes (optional voice data URL)
+     ├─ Habits ── schedule ── history[date] ── streak (scheduled days only)
+     ├─ Goals
+     ├─ Time entries
+     └─ Focus sessions / activeFocus
 ```
 
 ## Invalidation
 
 | Change | Downstream |
 | --- | --- |
-| Task create/edit/toggle/delete | Overview counts, analytics, share set, FAB list |
-| Note create/edit/delete | Notes view, FAB list, analytics (if added) |
-| Habit toggle | Habit dashboard, monitor counts, analytics |
-| Settings.theme | `document.documentElement.dark` |
+| Task create/edit/toggle/delete | Overview today, counts, share set, FAB list |
+| Note create/edit/delete | Notes view, FAB list |
+| Habit toggle | Habit list, today, counts (if scheduled) |
+| Settings.theme / font / animations | `document.documentElement` |
 | Settings.clipboardMonitor | ClipboardMonitor enabled |
-| Import / clear | Full workspace reload via `managekar:workspace-changed` |
-
-Goals, time entries, and focus sessions are still component-local. They are **not** on the graph yet.
+| Import / clear / any save | Full workspace via `managekar:workspace-changed` |
 
 ## Rejected nodes (template, not this product)
 

@@ -13,24 +13,28 @@ export function useLocalReminders(
     if (!hydrated || typeof window === "undefined") {
       return
     }
-    if (!workspace.settings.notifications.enabled || Notification.permission !== "granted") {
-      return
+
+    const fire = () => {
+      if (!workspace.settings.notifications.enabled || Notification.permission !== "granted") {
+        return
+      }
+      const due = dueReminders(workspace)
+      if (due.length === 0) {
+        return
+      }
+      for (const item of due) {
+        new Notification(item.kind === "task" ? "Task due" : "Habit reminder", {
+          body: item.title,
+        })
+      }
+      persist((current) => ({
+        ...current,
+        firedReminderKeys: [...current.firedReminderKeys, ...due.map((item) => item.key)],
+      }))
     }
 
-    const due = dueReminders(workspace)
-    if (due.length === 0) {
-      return
-    }
-
-    for (const item of due) {
-      new Notification(item.kind === "task" ? "Task due" : "Habit reminder", {
-        body: item.title,
-      })
-    }
-
-    persist((current) => ({
-      ...current,
-      firedReminderKeys: [...current.firedReminderKeys, ...due.map((item) => item.key)],
-    }))
+    fire()
+    const timer = window.setInterval(fire, 60_000)
+    return () => window.clearInterval(timer)
   }, [hydrated, persist, workspace])
 }

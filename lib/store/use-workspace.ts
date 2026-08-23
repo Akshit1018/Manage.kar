@@ -2,14 +2,17 @@
 
 import { useCallback, useEffect, useState } from "react"
 import type { Workspace } from "@/lib/domain/types"
+import { toast } from "sonner"
 import { applyAppearance } from "@/lib/theme/apply-theme"
 import {
   WORKSPACE_CHANGED_EVENT,
   WORKSPACE_KEY,
+  WorkspaceSaveError,
   browserStorage,
   createEmptyWorkspace,
   emptyDropped,
   inspectWorkspace,
+  loadWorkspace,
   migrateLegacyWorkspace,
   mutateWorkspace,
   resetCorruptWorkspace,
@@ -40,6 +43,7 @@ export function useWorkspace() {
     reload()
     const onStorage = (event: StorageEvent) => {
       if (event.key === WORKSPACE_KEY || event.key === null) {
+        toast("Another tab updated this workspace. Showing the latest copy.")
         reload()
       }
     }
@@ -53,10 +57,18 @@ export function useWorkspace() {
 
   const persist = useCallback((mutator: (current: Workspace) => Workspace) => {
     const storage = browserStorage()
-    const next = mutateWorkspace(storage, mutator)
-    setWorkspace(next)
-    applyAppearance(next.settings)
-    return next
+    try {
+      const next = mutateWorkspace(storage, mutator)
+      setWorkspace(next)
+      applyAppearance(next.settings)
+      return next
+    } catch (error) {
+      if (error instanceof WorkspaceSaveError) {
+        toast.error("Could not save on this device. Export a backup if you can.")
+        return loadWorkspace(storage)
+      }
+      throw error
+    }
   }, [])
 
   const resetCorrupt = useCallback(() => {

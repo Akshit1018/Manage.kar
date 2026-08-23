@@ -9,14 +9,15 @@ All canonical data lives in the browser. There is no server-side authorization.
 | Class | Examples | Handling |
 | --- | --- | --- |
 | User facts | tasks, notes, habits, profile | localStorage workspace document |
-| Inferred | analytics copy | Must not be labeled as AI fact |
-| External preview | Google / teams UI | Not connected; no secrets |
+| Inferred | counts copy | Must not be labeled as a model |
+| External preview | Google backup stub | Not connected; no secrets |
 
 ## Share links
 
-- Payload is visible to anyone with the URL (history, referrer, logs).
-- Encoder is unicode-safe and rejects oversized tokens.
-- Import writes only into the local workspace after an explicit click.
+- New links are AES-GCM ciphertext (`enc1.`) plus a password the sender must share separately.
+- The ciphertext sits in the URL (history, referrer, logs). The link does not expire and cannot be revoked without a server.
+- Old plaintext tokens still decode.
+- WhatsApp and email share **task titles in the message**, not the encrypted token.
 
 ## Clipboard
 

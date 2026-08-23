@@ -1,6 +1,8 @@
 import type { Task, Workspace } from "@/lib/domain/types"
 import { isDueOnOrBefore, localDateKey, nextDueDate } from "@/lib/dates/due-date"
+import { isHabitScheduledOn } from "@/lib/habits/schedule"
 import { hydrateHabit } from "@/lib/habits/streak"
+import { localTimeReached } from "@/lib/reminders/clock"
 
 export interface DueReminder {
   kind: "task" | "habit"
@@ -19,6 +21,7 @@ export function dueReminders(workspace: Workspace, now = new Date()): DueReminde
   }
 
   const today = localDateKey(now)
+  const weekStartsOn = workspace.settings.general.weekStartsOn
   const due: DueReminder[] = []
 
   if (workspace.settings.notifications.taskReminders) {
@@ -36,8 +39,13 @@ export function dueReminders(workspace: Workspace, now = new Date()): DueReminde
 
   if (workspace.settings.notifications.habitReminders) {
     for (const habit of workspace.habits) {
-      const hydrated = hydrateHabit(habit, today)
-      if (habit.reminders && !hydrated.completedToday) {
+      const hydrated = hydrateHabit(habit, today, weekStartsOn)
+      if (
+        habit.reminders &&
+        !hydrated.completedToday &&
+        isHabitScheduledOn(habit, today, weekStartsOn) &&
+        localTimeReached(now, habit.reminderTime ?? "00:00")
+      ) {
         due.push({
           kind: "habit",
           id: habit.id,

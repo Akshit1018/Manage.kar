@@ -1,4 +1,5 @@
 import type { RecurringRule } from "@/lib/domain/types"
+import { daysUntilEndOfWeek } from "@/lib/dates/week"
 
 export type DateFormat = "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD"
 
@@ -18,7 +19,17 @@ export function shiftLocalDate(isoDate: string, days: number): string {
   return localDateKey(date)
 }
 
-export function normalizeDueDate(value: string, now = new Date()): string {
+function lastDayOfMonth(isoDate: string): string {
+  const [year, month] = isoDate.split("-").map(Number)
+  const last = new Date(year, month, 0).getDate()
+  return `${year}-${String(month).padStart(2, "0")}-${String(last).padStart(2, "0")}`
+}
+
+export function normalizeDueDate(
+  value: string,
+  now = new Date(),
+  weekStartsOn: "sunday" | "monday" = "monday",
+): string {
   const trimmed = value.trim()
   if (ISO_DATE.test(trimmed)) {
     return trimmed
@@ -31,18 +42,21 @@ export function normalizeDueDate(value: string, now = new Date()): string {
     case "tomorrow":
       return shiftLocalDate(today, 1)
     case "this week":
-      return shiftLocalDate(today, 3)
+      return shiftLocalDate(today, daysUntilEndOfWeek(today, weekStartsOn))
     case "next week":
-      return shiftLocalDate(today, 7)
+      return shiftLocalDate(today, daysUntilEndOfWeek(today, weekStartsOn) + 7)
     case "this month":
-      return shiftLocalDate(today, 14)
+      return lastDayOfMonth(today)
     default:
-      return today
+      return trimmed
   }
 }
 
 export function formatDueDate(isoDate: string, format: DateFormat): string {
   const normalized = ISO_DATE.test(isoDate) ? isoDate : normalizeDueDate(isoDate)
+  if (!ISO_DATE.test(normalized)) {
+    return isoDate
+  }
   const [year, month, day] = normalized.split("-")
   switch (format) {
     case "YYYY-MM-DD":
@@ -68,6 +82,9 @@ export function formatTimestamp(value: string, format: DateFormat): string {
 
 export function nextDueDate(isoDate: string, rule: RecurringRule): string {
   const normalized = normalizeDueDate(isoDate)
+  if (!ISO_DATE.test(normalized)) {
+    return isoDate
+  }
   const [year, month, day] = normalized.split("-").map(Number)
   const date = new Date(year, month - 1, day)
 
@@ -95,5 +112,13 @@ export function nextDueDate(isoDate: string, rule: RecurringRule): string {
 }
 
 export function isDueOnOrBefore(isoDate: string, now = new Date()): boolean {
-  return normalizeDueDate(isoDate, now) <= localDateKey(now)
+  const normalized = normalizeDueDate(isoDate, now)
+  if (!ISO_DATE.test(normalized)) {
+    return false
+  }
+  return normalized <= localDateKey(now)
+}
+
+export function isTaskDueTodayOrOverdue(dueDate: string, completed: boolean, now = new Date()): boolean {
+  return !completed && isDueOnOrBefore(dueDate, now)
 }

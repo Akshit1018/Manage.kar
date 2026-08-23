@@ -1,6 +1,5 @@
-const CACHE_NAME = "managekar-static-v1"
+const CACHE_NAME = "managekar-static-v2"
 const STATIC_ASSETS = [
-  "/",
   "/icon.png",
   "/icon-192.png",
   "/icon-512.png",
@@ -8,6 +7,7 @@ const STATIC_ASSETS = [
   "/favicon.ico",
   "/manifest.json",
 ]
+const NETWORK_FIRST_PATHS = ["/"]
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -36,6 +36,20 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) {
     return
   }
+
+  if (NETWORK_FIRST_PATHS.includes(url.pathname)) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone()
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy))
+          return response
+        })
+        .catch(() => caches.match(request).then((cached) => cached || Response.error())),
+    )
+    return
+  }
+
   if (!STATIC_ASSETS.includes(url.pathname)) {
     return
   }

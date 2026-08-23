@@ -38,6 +38,30 @@ describe("local reminders and recurring tasks", () => {
     expect(due.map((item) => item.title)).toEqual(["Pay rent"])
   })
 
+  it("holds habit reminders until the scheduled time on a scheduled day", () => {
+    const workspace = createEmptyWorkspace()
+    workspace.habits.push({
+      id: 8,
+      name: "Walk",
+      category: "health",
+      frequency: "custom",
+      customDays: ["Sunday"],
+      streak: 0,
+      completed: false,
+      completedToday: false,
+      reminders: true,
+      reminderTime: "18:00",
+      createdAt: "2026-08-01T00:00:00.000Z",
+      history: [],
+    })
+    workspace.settings.notifications.enabled = true
+    workspace.settings.notifications.habitReminders = true
+
+    expect(dueReminders(workspace, new Date(2026, 7, 23, 9, 0, 0)).map((item) => item.title)).toEqual([])
+    expect(dueReminders(workspace, new Date(2026, 7, 23, 18, 0, 0)).map((item) => item.title)).toEqual(["Walk"])
+    expect(dueReminders(workspace, new Date(2026, 7, 24, 18, 0, 0)).map((item) => item.title)).toEqual([])
+  })
+
   it("spawns the next recurring instance when a task is completed", () => {
     const result = completeRecurringTask(
       {
