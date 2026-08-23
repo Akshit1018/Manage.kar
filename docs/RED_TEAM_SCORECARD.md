@@ -60,3 +60,12 @@ See `docs/UNVERIFIED_ASSUMPTIONS.md`.
 - Mobile 390: bottom nav Home / Tasks / Notes / Habits.
 - Icons `/icon-192.png` and `/apple-touch-icon.png` return 200.
 - `pnpm test` 28/28; `tsc --noEmit` clean.
+
+## Follow-up remediations (same branch)
+
+- Password-protected share links (`enc1.` AES-GCM). Old plaintext links still decode.
+- Workspace-wide `nextEntityId` allocation.
+- Device-only activity log in Settings → Privacy.
+- Unused UI packages removed from `package.json`.
+- Avatar is an https URL field. Greeting is “Your workspace” until a name is set.
+- `public/sw.js` caches icons and `/`.

@@ -118,7 +118,7 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 ### RT-006
 
 - **STATUS:** PARTIALLY RESOLVED
-- **RESOLUTION:** Default share method is JSON export. Link copy says anyone with the URL can read the tasks and the link does not expire. No encryption or expiry implemented (would need a server or a secret).
+- **RESOLUTION:** Default share method is JSON export. New links are AES-GCM password-protected (`enc1.` tokens). Plaintext tokens still decode for old URLs. Links still do not expire and cannot be revoked without a server.
 - **AREA:** Security / API
 - **TITLE:** Share “links” are public, unauthenticated, non-expiring Base64 of the payload
 - **WHAT IS WRONG:** Token is `utf8ToBase64Url(JSON.stringify(payload))` in `/shared/[data]`. Anyone with history, Slack, referrer, or a proxy log can read titles, descriptions, checklist, name.
@@ -402,8 +402,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-025
 
-- **STATUS:** PARTIALLY RESOLVED
-- **RESOLUTION:** `/icon.png`, `/icon-192.png`, `/apple-touch-icon.png`, `/favicon.ico` return 200. No service worker.
+- **STATUS:** RESOLVED
+- **RESOLUTION:** `/icon.png`, `/icon-192.png`, `/icon-512.png`, `/apple-touch-icon.png`, `/favicon.ico` are present. `public/sw.js` caches those static assets. No stale JS/HTML cache.
 - **AREA:** PWA
 - **TITLE:** Manifest and layout advertise installable PWA assets that 404
 - **EVIDENCE:** `curl` 404: `/icon-192.png`, `/icon-512.png`, `/apple-touch-icon.png`, `/favicon.ico`, `/screenshot-mobile.png`, `/screenshot-desktop.png`. Console: apple-touch-icon + deprecated `apple-mobile-web-app-capable`. `/icon.png` 200. No service worker.
@@ -518,7 +518,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-036
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Device-only event log (`managekar.events.v1`) records export/import/share/create/delete/errors. Settings → Privacy shows recent events. Nothing is sent off-device. No remote feature flags.
 - **AREA:** Data / Analytics
 - **TITLE:** No product analytics, no error reporting, no feature flags
 - **EVIDENCE:** Settings has analytics/crash toggles that write booleans only. No events. Cannot answer “does export get used?”
@@ -527,7 +528,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-037
 
-- **STATUS:** OPEN
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Unused Radix/cmdk/recharts/vaul/carousel/otp/day-picker/hook-form packages removed. Remaining UI primitives are the ones the app imports.
 - **AREA:** Frontend
 - **TITLE:** Dependency bloat vs used UI
 - **EVIDENCE:** `package.json` includes accordion, menubar, carousel, cmdk, input-otp, recharts, vaul, etc. App uses a handful of Radix primitives + custom cards.
@@ -536,8 +538,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-038
 
-- **STATUS:** PARTIALLY RESOLVED
-- **RESOLUTION:** Goals/time/focus now use `nextNumericId` against storage. Numeric IDs remain.
+- **STATUS:** RESOLVED
+- **RESOLUTION:** `allocateEntityId` uses a workspace-wide `nextEntityId` so tasks/notes/habits/goals/time/focus cannot reuse the same next id. Numeric IDs remain; they no longer collide across modules.
 - **AREA:** Database
 - **TITLE:** Numeric IDs + `Date.now()` IDs collide across modules
 - **EVIDENCE:** Workspace uses `nextNumericId`; goals/time/focus use `Date.now()`. Two-tab create can reuse id 2 (we created id 2 then imported another id 2-shaped row as id 3 — lucky). Race on `nextNumericId(tasks)` from stale lists.
@@ -546,8 +548,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ### RT-039
 
-- **STATUS:** PARTIALLY RESOLVED
-- **RESOLUTION:** Avatar URLs must be `https`. `javascript:` and `data:` are rejected. Still collected via prompt.
+- **STATUS:** RESOLVED
+- **RESOLUTION:** Avatar is an https URL field in the profile form. `javascript:` and `data:` are rejected. No `window.prompt`.
 - **AREA:** Security
 - **TITLE:** Avatar is a `prompt("Enter avatar URL")`
 - **EVIDENCE:** `components/profile-modal.tsx` 58–63. Tracking pixels / `javascript:` depending on `AvatarImage`.
@@ -588,8 +590,8 @@ That is RT-001 + RT-002 + RT-011 + RT-013. Everything else is downstream.
 
 ## LOW
 
-### RT-043 — Greeting is always “Hello, User!” until profile edit (`defaultProfile`).
-### RT-044 — Console still prefixed `[v0]` across Google, share, permissions, clipboard.
+### RT-043 — Greeting is always “Hello, User!” until profile edit (`defaultProfile`). **RESOLVED:** unnamed profiles see “Your workspace”.
+### RT-044 — Console still prefixed `[v0]` across Google, share, permissions, clipboard. **RESOLVED:** `[v0]` logs removed.
 ### RT-045 — Share modal and page duplicate Task types instead of domain types.
 ### RT-046 — `styles/globals.css` unused (`docs/KNOWN_ISSUES.md`).
 ### RT-047 — Deprecated apple-mobile-web-app-capable meta (console warning).

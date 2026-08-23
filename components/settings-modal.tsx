@@ -22,6 +22,7 @@ import {
   replaceWorkspace,
   serializeBackup,
 } from "@/lib/store/workspace"
+import { clearEvents, listEvents, recordEvent, type LocalEvent } from "@/lib/analytics/local-events"
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -32,15 +33,18 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [settings, setSettings] = useState<AppSettings>(defaultSettings)
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default")
   const [activeSection, setActiveSection] = useState<string>("notifications")
+  const [localEvents, setLocalEvents] = useState<LocalEvent[]>([])
 
   useEffect(() => {
     if (!isOpen) {
       return
     }
 
-    const workspace = loadWorkspace(browserStorage())
+    const storage = browserStorage()
+    const workspace = loadWorkspace(storage)
     setSettings(workspace.settings)
     applyAppearance(workspace.settings)
+    setLocalEvents(listEvents(storage))
 
     if ("Notification" in window) {
       setNotificationPermission(Notification.permission)
@@ -84,6 +88,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     anchor.click()
     document.body.removeChild(anchor)
     URL.revokeObjectURL(url)
+    recordEvent(browserStorage(), "export", { kind: "backup" })
+    setLocalEvents(listEvents(browserStorage()))
   }
 
   const importData = () => {
@@ -107,6 +113,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           replaceWorkspace(storage, parsed.workspace)
           setSettings(parsed.workspace.settings)
           applyAppearance(parsed.workspace.settings)
+          recordEvent(storage, "import", { kind: "backup" })
+          setLocalEvents(listEvents(storage))
           notifyWorkspaceChanged()
         }
       }
@@ -122,9 +130,12 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     if (!window.confirm("Are you absolutely sure? Tasks, notes, habits, goals, and settings will be removed.")) {
       return
     }
-    const empty = clearWorkspace(browserStorage())
+    const storage = browserStorage()
+    const empty = clearWorkspace(storage)
+    recordEvent(storage, "workspace_cleared")
     setSettings(empty.settings)
     applyAppearance(empty.settings)
+    setLocalEvents(listEvents(storage))
     notifyWorkspaceChanged()
   }
 
@@ -328,6 +339,38 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         checked={settings.privacy.clipboardMonitor}
                         onCheckedChange={(checked) => updateSettings("privacy", "clipboardMonitor", checked)}
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="responsive-text-sm text-readable">Device activity</Label>
+                      <p className="responsive-text-xs text-muted-readable">
+                        Export, import, share, and errors are logged here only. Nothing is sent to a server.
+                      </p>
+                      {localEvents.length === 0 ? (
+                        <p className="responsive-text-xs text-muted-readable">No local events yet.</p>
+                      ) : (
+                        <ul className="space-y-1 max-h-40 overflow-y-auto text-xs text-muted-readable">
+                          {localEvents
+                            .slice()
+                            .reverse()
+                            .slice(0, 12)
+                            .map((event) => (
+                              <li key={event.id}>
+                                {event.at.slice(0, 19).replace("T", " ")} — {event.name}
+                              </li>
+                            ))}
+                        </ul>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-transparent"
+                        onClick={() => {
+                          clearEvents(browserStorage())
+                          setLocalEvents([])
+                        }}
+                      >
+                        Clear device activity
+                      </Button>
                     </div>
                   </div>
                 </Card>

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Play, Pause, Square, Timer, Brain, Coffee, Target, TrendingUp, Clock, Zap } from "lucide-react"
 import type { ActiveFocus, FocusType, Workspace } from "@/lib/domain/types"
-import { nextNumericId } from "@/lib/store/workspace"
+import { allocateEntityId } from "@/lib/store/workspace"
 import { localDateKey } from "@/lib/dates/due-date"
 
 interface FocusModalProps {
@@ -80,18 +80,21 @@ export function FocusModal({ isOpen, onClose, workspace, persist }: FocusModalPr
   ]
 
   const startSession = (type: FocusType, durationMinutes: number) => {
-    persist((current) => ({
-      ...current,
-      activeFocus: {
-        sessionId: nextNumericId(current.focusSessions),
-        type,
-        durationSeconds: durationMinutes * 60,
-        remainingSeconds: durationMinutes * 60,
-        isRunning: true,
-        startedAt: new Date().toISOString(),
-        accumulatedElapsed: 0,
-      },
-    }))
+    persist((current) => {
+      const allocated = allocateEntityId(current)
+      return {
+        ...allocated.workspace,
+        activeFocus: {
+          sessionId: allocated.id,
+          type,
+          durationSeconds: durationMinutes * 60,
+          remainingSeconds: durationMinutes * 60,
+          isRunning: true,
+          startedAt: new Date().toISOString(),
+          accumulatedElapsed: 0,
+        },
+      }
+    })
   }
 
   const pauseSession = () => {

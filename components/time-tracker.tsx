@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Clock, Play, Pause, Square, Timer, BarChart3, Calendar } from "lucide-react"
 import type { TimeEntry, Workspace } from "@/lib/domain/types"
-import { nextNumericId } from "@/lib/store/workspace"
+import { allocateEntityId } from "@/lib/store/workspace"
 import { localDateKey } from "@/lib/dates/due-date"
 
 interface TimeTrackerProps {
@@ -56,24 +56,27 @@ export function TimeTracker({ isOpen, onClose, workspace, persist }: TimeTracker
     if (!taskName) {
       return
     }
-    persist((current) => ({
-      ...current,
-      timeEntries: [
-        {
-          id: nextNumericId(current.timeEntries),
-          taskName,
-          project: newProject,
-          startTime: new Date().toISOString(),
-          duration: 0,
-          isRunning: true,
-        },
-        ...current.timeEntries.map((entry) =>
-          entry.isRunning
-            ? { ...entry, isRunning: false, endTime: new Date().toISOString(), duration: runningDuration(entry) }
-            : entry,
-        ),
-      ],
-    }))
+    persist((current) => {
+      const allocated = allocateEntityId(current)
+      return {
+        ...allocated.workspace,
+        timeEntries: [
+          {
+            id: allocated.id,
+            taskName,
+            project: newProject,
+            startTime: new Date().toISOString(),
+            duration: 0,
+            isRunning: true,
+          },
+          ...allocated.workspace.timeEntries.map((entry) =>
+            entry.isRunning
+              ? { ...entry, isRunning: false, endTime: new Date().toISOString(), duration: runningDuration(entry) }
+              : entry,
+          ),
+        ],
+      }
+    })
     setNewTaskName("")
   }
 

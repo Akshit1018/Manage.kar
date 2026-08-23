@@ -1,13 +1,7 @@
 import type { Workspace } from "@/lib/domain/types"
 import type { SharePayload } from "@/lib/share/codec"
 import { normalizeDueDate } from "@/lib/dates/due-date"
-
-function nextTaskId(items: Array<{ id: number }>): number {
-  if (items.length === 0) {
-    return 1
-  }
-  return Math.max(...items.map((item) => item.id)) + 1
-}
+import { allocateEntityId } from "@/lib/store/workspace"
 
 export function hashString(value: string): string {
   let hash = 5381
@@ -37,23 +31,23 @@ export function importSharedTasks(
     return { workspace, imported: 0, skipped: payload.tasks.length, hash }
   }
 
-  let nextId = nextTaskId(workspace.tasks)
+  let current = workspace
   const imported = payload.tasks.map((task) => {
-    const copy = {
+    const allocated = allocateEntityId(current)
+    current = allocated.workspace
+    return {
       ...task,
-      id: nextId,
+      id: allocated.id,
       title: task.title.trim(),
       dueDate: normalizeDueDate(task.dueDate),
     }
-    nextId += 1
-    return copy
   })
 
   return {
     workspace: {
-      ...workspace,
-      tasks: [...workspace.tasks, ...imported],
-      importedShareHashes: [...workspace.importedShareHashes, hash],
+      ...current,
+      tasks: [...current.tasks, ...imported],
+      importedShareHashes: [...current.importedShareHashes, hash],
     },
     imported: imported.length,
     skipped: 0,

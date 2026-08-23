@@ -139,6 +139,7 @@ export interface AppSettings {
 export interface Workspace {
   schemaVersion: 1
   updatedAt: string
+  nextEntityId: number
   tasks: Task[]
   notes: Note[]
   habits: Habit[]

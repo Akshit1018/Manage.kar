@@ -118,7 +118,6 @@ export function FloatingToggle({
         recognition.lang = "en-US"
 
         recognition.onstart = () => {
-          console.log("[v0] Speech recognition started")
           setIsListening(true)
         }
 
@@ -146,7 +145,6 @@ export function FloatingToggle({
             if (finalTranscript.trim() || interimTranscript.trim()) {
               const fullText = (finalTranscript + interimTranscript).trim()
               if (fullText) {
-                console.log("[v0] Auto-saving voice note:", fullText)
                 onSpeechToText?.(fullText)
                 stopRecording()
 
@@ -160,18 +158,13 @@ export function FloatingToggle({
 
           setSilenceTimer(timer)
 
-          if (finalTranscript) {
-            console.log("[v0] Final transcript:", finalTranscript)
-          }
         }
 
-        recognition.onerror = (event: any) => {
-          console.error("[v0] Speech recognition error:", event.error)
+        recognition.onerror = () => {
           setIsListening(false)
         }
 
         recognition.onend = () => {
-          console.log("[v0] Speech recognition ended")
           setIsListening(false)
         }
 
@@ -194,8 +187,8 @@ export function FloatingToggle({
         micPermission.addEventListener("change", () => {
           setPermissionsGranted((prev) => ({ ...prev, microphone: micPermission.state === "granted" }))
         })
-      } catch (error) {
-        console.log("[v0] Microphone permission check not supported")
+      } catch {
+        // Permissions API is optional
       }
 
       // Check notification permission
@@ -226,7 +219,7 @@ export function FloatingToggle({
           }, 1000)
           return
         } catch (error) {
-          console.error("[v0] Speech recognition failed, falling back to audio recording:", error)
+          // Fall through to MediaRecorder
         }
       }
 
@@ -281,8 +274,7 @@ export function FloatingToggle({
       recordingIntervalRef.current = setInterval(() => {
         setRecordingTime((prev) => prev + 1)
       }, 1000)
-    } catch (error) {
-      console.error("[v0] Error starting recording:", error)
+    } catch {
       window.alert("Microphone access is needed only for voice notes. Allow it in the browser prompt, or skip voice.")
     }
   }
@@ -391,8 +383,7 @@ export function FloatingToggle({
       }
 
       setShowPermissionPrompt(false)
-    } catch (error) {
-      console.error("[v0] Permission request failed:", error)
+    } catch {
       alert("Please allow microphone access in your browser settings to use voice recording.")
     }
   }

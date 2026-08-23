@@ -14,6 +14,7 @@ import type {
 import { localDateKey, normalizeDueDate } from "@/lib/dates/due-date"
 import { hydrateHabit } from "@/lib/habits/streak"
 import { sanitizeAvatarUrl } from "@/lib/profile/avatar"
+import { ANALYTICS_KEY } from "@/lib/analytics/local-events"
 
 export const WORKSPACE_KEY = "managekar.workspace.v1"
 export const WORKSPACE_CHANGED_EVENT = "managekar:workspace-changed"
@@ -212,6 +213,7 @@ export function createEmptyWorkspace(): Workspace {
   return {
     schemaVersion: 1,
     updatedAt: new Date(0).toISOString(),
+    nextEntityId: 1,
     tasks: [],
     notes: [],
     habits: [],
@@ -231,6 +233,30 @@ export function nextNumericId(items: Array<{ id: number }>): number {
     return 1
   }
   return Math.max(...items.map((item) => item.id)) + 1
+}
+
+function collectedEntityIds(workspace: Workspace): number[] {
+  return [
+    ...workspace.tasks.map((item) => item.id),
+    ...workspace.notes.map((item) => item.id),
+    ...workspace.habits.map((item) => item.id),
+    ...workspace.goals.map((item) => item.id),
+    ...workspace.timeEntries.map((item) => item.id),
+    ...workspace.focusSessions.map((item) => item.id),
+    ...(workspace.activeFocus ? [workspace.activeFocus.sessionId] : []),
+  ]
+}
+
+export function allocateEntityId(workspace: Workspace): { workspace: Workspace; id: number } {
+  const highest = collectedEntityIds(workspace).reduce((max, id) => Math.max(max, id), 0)
+  const id = Math.max(workspace.nextEntityId || 1, highest + 1)
+  return {
+    workspace: {
+      ...workspace,
+      nextEntityId: id + 1,
+    },
+    id,
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -434,22 +460,28 @@ function normalizeWorkspaceDetailed(value: unknown): { workspace: Workspace | nu
     ...focusSessions.rejected,
   ]
 
+  const workspace: Workspace = {
+    schemaVersion: 1,
+    updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : new Date().toISOString(),
+    nextEntityId: 1,
+    tasks: tasks.items,
+    notes: notes.items,
+    habits: habits.items,
+    goals: goals.items,
+    timeEntries: timeEntries.items,
+    focusSessions: focusSessions.items,
+    activeFocus: mergeActiveFocus(value.activeFocus),
+    importedShareHashes: asStringArray(value.importedShareHashes),
+    firedReminderKeys: asStringArray(value.firedReminderKeys),
+    settings: mergeSettings(value.settings),
+    profile: mergeProfile(value.profile),
+  }
+  const highest = collectedEntityIds(workspace).reduce((max, id) => Math.max(max, id), 0)
+  const storedNext = typeof value.nextEntityId === "number" && Number.isFinite(value.nextEntityId) ? value.nextEntityId : 1
+  workspace.nextEntityId = Math.max(storedNext, highest + 1)
+
   return {
-    workspace: {
-      schemaVersion: 1,
-      updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : new Date().toISOString(),
-      tasks: tasks.items,
-      notes: notes.items,
-      habits: habits.items,
-      goals: goals.items,
-      timeEntries: timeEntries.items,
-      focusSessions: focusSessions.items,
-      activeFocus: mergeActiveFocus(value.activeFocus),
-      importedShareHashes: asStringArray(value.importedShareHashes),
-      firedReminderKeys: asStringArray(value.firedReminderKeys),
-      settings: mergeSettings(value.settings),
-      profile: mergeProfile(value.profile),
-    },
+    workspace,
     dropped,
     rejected,
   }
@@ -613,6 +645,7 @@ export function clearWorkspace(storage: KeyValueStore): Workspace {
   storage.removeItem("manage-kar-permissions")
   storage.removeItem("importedTasks")
   storage.removeItem(WORKSPACE_DROPPED_KEY)
+  storage.removeItem(ANALYTICS_KEY)
   return saveWorkspace(storage, empty)
 }
 

@@ -6,9 +6,12 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { CheckCircle2, Circle, Calendar, ArrowLeft, Download } from "lucide-react"
 import { decodeSharePayload, type SharePayload } from "@/lib/share/codec"
+import { decodeEncryptedSharePayload, isEncryptedShareToken } from "@/lib/share/secret"
 import { importSharedTasks } from "@/lib/share/import-tasks"
+import { recordBrowserEvent } from "@/lib/analytics/local-events"
 import { browserStorage, loadWorkspace, notifyWorkspaceChanged, replaceWorkspace } from "@/lib/store/workspace"
 
 export default function SharedTasksPage() {
@@ -17,9 +20,17 @@ export default function SharedTasksPage() {
   const [sharedData, setSharedData] = useState<SharePayload | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [needsPassword, setNeedsPassword] = useState(false)
+  const [password, setPassword] = useState("")
+  const [unlocking, setUnlocking] = useState(false)
+  const encodedData = decodeURIComponent(String(params.data ?? ""))
 
   useEffect(() => {
-    const encodedData = decodeURIComponent(String(params.data ?? ""))
+    if (isEncryptedShareToken(encodedData)) {
+      setNeedsPassword(true)
+      setLoading(false)
+      return
+    }
     const decoded = decodeSharePayload(encodedData)
     if (!decoded.ok) {
       setError(decoded.error)
@@ -27,7 +38,20 @@ export default function SharedTasksPage() {
       setSharedData(decoded.payload)
     }
     setLoading(false)
-  }, [params.data])
+  }, [encodedData])
+
+  const handleUnlock = async () => {
+    setUnlocking(true)
+    const decoded = await decodeEncryptedSharePayload(encodedData, password)
+    setUnlocking(false)
+    if (!decoded.ok) {
+      setError(decoded.error)
+      return
+    }
+    setError(null)
+    setNeedsPassword(false)
+    setSharedData(decoded.payload)
+  }
 
   const handleImportTasks = () => {
     if (!sharedData) {
@@ -44,6 +68,7 @@ export default function SharedTasksPage() {
     const result = importSharedTasks(loadWorkspace(storage), sharedData)
     replaceWorkspace(storage, result.workspace)
     notifyWorkspaceChanged()
+    recordBrowserEvent("import", { imported: result.imported, skipped: result.skipped })
     if (result.imported === 0) {
       toast("These tasks were already imported.")
     } else {
@@ -56,6 +81,36 @@ export default function SharedTasksPage() {
     return (
       <div className="min-h-screen p-4 flex items-center justify-center">
         <p className="text-muted-foreground">Loading shared tasks...</p>
+      </div>
+    )
+  }
+
+  if (needsPassword && !sharedData) {
+    return (
+      <div className="min-h-screen p-4 flex items-center justify-center">
+        <Card className="glass-card p-8 rounded-2xl max-w-md w-full">
+          <h1 className="text-xl font-semibold font-sans mb-2">Password required</h1>
+          <p className="text-muted-foreground font-serif mb-4 text-sm">
+            This share link is encrypted. Enter the password the sender gave you separately.
+          </p>
+          <Input
+            type="password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder="Share password"
+            className="mb-3"
+          />
+          {error ? <p className="text-sm text-destructive mb-3">{error}</p> : null}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => router.push("/")} className="rounded-xl">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Dashboard
+            </Button>
+            <Button onClick={handleUnlock} disabled={unlocking || !password.trim()} className="rounded-xl">
+              Unlock
+            </Button>
+          </div>
+        </Card>
       </div>
     )
   }

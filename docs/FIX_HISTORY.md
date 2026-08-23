@@ -35,3 +35,16 @@
 - **Symptom:** `window is not defined` on first render.
 - **Root cause:** `useState({ x: window.innerWidth })`.
 - **Fix:** Default `{0,0}`, set position in `useEffect`.
+
+## Cross-tab overwrite / fake Google / dead modules
+
+- **Symptom:** Second tab wiped work. Google “Connected” was theater. Goals/time/focus died on close.
+- **Root cause:** Stale React persist; fake adapters; session-only modules.
+- **Fix:** Storage-first `mutateWorkspace`, honest backup copy, persist goals/time/focus.
+- **Regression:** `lib/store/workspace.test.ts`
+
+## Remaining red-team leftovers
+
+- **Symptom:** Share links were readable Base64. IDs collided across modules. Unused dependency pile. No local activity log. Avatar used `prompt()`.
+- **Fix:** Password AES-GCM share tokens, workspace-wide `allocateEntityId`, pruned unused packages, device-only event log, https URL field, static service worker.
+- **Regression:** `lib/share/secret.test.ts`, `lib/analytics/local-events.test.ts`, `lib/dates/week.test.ts`

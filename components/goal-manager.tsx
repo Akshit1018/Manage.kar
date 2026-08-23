@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Target, Plus, Calendar, TrendingUp, Award, CheckCircle2 } from "lucide-react"
 import type { Goal, Workspace } from "@/lib/domain/types"
-import { nextNumericId } from "@/lib/store/workspace"
+import { allocateEntityId } from "@/lib/store/workspace"
 
 interface GoalManagerProps {
   isOpen: boolean
@@ -40,21 +40,24 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
       return
     }
 
-    persist((current) => ({
-      ...current,
-      goals: [
-        {
-          id: nextNumericId(current.goals),
-          ...newGoal,
-          title,
-          progress: 0,
-          milestones: [],
-          status: "active",
-          createdAt: new Date().toISOString(),
-        },
-        ...current.goals,
-      ],
-    }))
+    persist((current) => {
+      const allocated = allocateEntityId(current)
+      return {
+        ...allocated.workspace,
+        goals: [
+          {
+            id: allocated.id,
+            ...newGoal,
+            title,
+            progress: 0,
+            milestones: [],
+            status: "active",
+            createdAt: new Date().toISOString(),
+          },
+          ...allocated.workspace.goals,
+        ],
+      }
+    })
     setNewGoal({
       title: "",
       description: "",

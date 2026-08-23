@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Geist } from "next/font/google"
 import { Manrope } from "next/font/google"
 import { Toaster } from "sonner"
+import { ServiceWorkerRegister } from "@/components/service-worker-register"
 import "./globals.css"
 
 const geist = Geist({
@@ -53,6 +54,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen">
         {children}
+        <ServiceWorkerRegister />
         <Toaster position="bottom-center" />
       </body>
     </html>

@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Card } from "@/components/ui/card"
 import { X, Trash2, Target, Bell } from "lucide-react"
-import type { Habit } from "@/lib/domain/types"
+import type { Habit, HabitCategory } from "@/lib/domain/types"
+import { weekdayOrder } from "@/lib/dates/week"
 
 interface HabitModalProps {
   isOpen: boolean
@@ -20,9 +21,18 @@ interface HabitModalProps {
   onDelete?: (habitId: number) => void
   habit?: Habit
   mode: "create" | "edit"
+  weekStartsOn?: "sunday" | "monday"
 }
 
-export function HabitModal({ isOpen, onClose, onSave, onDelete, habit, mode }: HabitModalProps) {
+export function HabitModal({
+  isOpen,
+  onClose,
+  onSave,
+  onDelete,
+  habit,
+  mode,
+  weekStartsOn = "monday",
+}: HabitModalProps) {
   const [formData, setFormData] = useState<
     Omit<Habit, "id" | "streak" | "completed" | "completedToday" | "createdAt" | "history">
   >({
@@ -47,7 +57,7 @@ export function HabitModal({ isOpen, onClose, onSave, onDelete, habit, mode }: H
     { value: "lifestyle", label: "Lifestyle", icon: "🌟" },
   ]
 
-  const weekDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+  const weekDays = weekdayOrder(weekStartsOn)
 
   useEffect(() => {
     if (habit && mode === "edit") {
@@ -183,7 +193,7 @@ export function HabitModal({ isOpen, onClose, onSave, onDelete, habit, mode }: H
               <Label className="text-sm font-medium">Category</Label>
               <Select
                 value={formData.category}
-                onValueChange={(value: any) => setFormData({ ...formData, category: value })}
+                onValueChange={(value: HabitCategory) => setFormData({ ...formData, category: value })}
               >
                 <SelectTrigger className="glass rounded-xl">
                   <SelectValue />

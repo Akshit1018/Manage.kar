@@ -88,9 +88,8 @@ export function ClipboardMonitor({ onCreateTask, onCreateNote, enabled = false }
           setShowSuggestion(false)
         }, 10000)
       }
-    } catch (error) {
+    } catch {
       // Clipboard access denied or not available
-      console.log("[v0] Clipboard access not available")
     }
   }
 

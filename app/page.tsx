@@ -41,7 +41,8 @@ import { ClipboardMonitor } from "@/components/clipboard-monitor"
 import { EmptyState } from "@/components/empty-state"
 import type { Habit, Note, Task } from "@/lib/domain/types"
 import { useWorkspace } from "@/lib/store/use-workspace"
-import { nextNumericId } from "@/lib/store/workspace"
+import { allocateEntityId } from "@/lib/store/workspace"
+import { recordBrowserEvent } from "@/lib/analytics/local-events"
 import { formatDueDate, formatTimestamp, localDateKey, normalizeDueDate } from "@/lib/dates/due-date"
 import { hydrateHabit, toggleHabitOnDate } from "@/lib/habits/streak"
 import { completeRecurringTask } from "@/lib/reminders/due"
@@ -55,6 +56,7 @@ export default function Dashboard() {
   const notes = workspace.notes
   const habits = workspace.habits
   const userName = workspace.profile.name
+  const greeting = userName.trim() && userName.trim() !== "User" ? `Hello, ${userName}` : "Your workspace"
   const dateFormat = workspace.settings.general.dateFormat
 
   useLocalReminders(workspace, persist, hydrated)
@@ -91,10 +93,14 @@ export default function Dashboard() {
         return current
       }
       if (!existing.completed) {
-        const { completed, next } = completeRecurringTask(existing, nextNumericId(current.tasks))
+        const allocated = allocateEntityId(current)
+        const { completed, next } = completeRecurringTask(existing, allocated.id)
         return {
-          ...current,
-          tasks: [...current.tasks.map((task) => (task.id === taskId ? completed : task)), ...(next ? [next] : [])],
+          ...allocated.workspace,
+          tasks: [
+            ...allocated.workspace.tasks.map((task) => (task.id === taskId ? completed : task)),
+            ...(next ? [next] : []),
+          ],
         }
       }
       return {
@@ -114,13 +120,15 @@ export default function Dashboard() {
           tasks: current.tasks.map((task) => (task.id === taskData.id ? { ...taskData, title, dueDate } : task)),
         }
       }
+      const allocated = allocateEntityId(current)
+      recordBrowserEvent("task_created")
       return {
-        ...current,
+        ...allocated.workspace,
         tasks: [
-          ...current.tasks,
+          ...allocated.workspace.tasks,
           {
             ...taskData,
-            id: nextNumericId(current.tasks),
+            id: allocated.id,
             title,
             dueDate,
           },
@@ -137,6 +145,7 @@ export default function Dashboard() {
     })
     if (removed) {
       const snapshot = removed
+      recordBrowserEvent("task_deleted")
       toast("Task deleted", {
         duration: 8000,
         action: {
@@ -156,13 +165,14 @@ export default function Dashboard() {
           notes: current.notes.map((note) => (note.id === noteData.id ? { ...noteData, title } : note)),
         }
       }
+      const allocated = allocateEntityId(current)
       return {
-        ...current,
+        ...allocated.workspace,
         notes: [
-          ...current.notes,
+          ...allocated.workspace.notes,
           {
             ...noteData,
-            id: nextNumericId(current.notes),
+            id: allocated.id,
             title,
             createdAt: new Date().toISOString(),
           },
@@ -211,14 +221,15 @@ export default function Dashboard() {
           ),
         }
       }
+      const allocated = allocateEntityId(current)
       return {
-        ...current,
+        ...allocated.workspace,
         habits: [
-          ...current.habits,
+          ...allocated.workspace.habits,
           hydrateHabit(
             {
               ...habitData,
-              id: nextNumericId(current.habits),
+              id: allocated.id,
               name: habitData.name.trim(),
               streak: 0,
               completed: false,
@@ -255,92 +266,108 @@ export default function Dashboard() {
     content.length > limit ? `${content.slice(0, limit).trim()}…` : content.trim()
 
   const handleClipboardTask = (content: string) => {
-    persist((current) => ({
-      ...current,
-      tasks: [
-        ...current.tasks,
-        {
-          id: nextNumericId(current.tasks),
-          title: clipTitle(content, 50),
-          completed: false,
-          priority: "medium",
-          dueDate: localDateKey(),
-          description: content.length > 50 ? content : undefined,
-          recurring: "none",
-          reminders: false,
-        },
-      ],
-    }))
+    persist((current) => {
+      const allocated = allocateEntityId(current)
+      return {
+        ...allocated.workspace,
+        tasks: [
+          ...allocated.workspace.tasks,
+          {
+            id: allocated.id,
+            title: clipTitle(content, 50),
+            completed: false,
+            priority: "medium",
+            dueDate: localDateKey(),
+            description: content.length > 50 ? content : undefined,
+            recurring: "none",
+            reminders: false,
+          },
+        ],
+      }
+    })
   }
 
   const handleClipboardNote = (content: string) => {
-    persist((current) => ({
-      ...current,
-      notes: [
-        ...current.notes,
-        {
-          id: nextNumericId(current.notes),
-          title: clipTitle(content, 30),
-          content,
-          createdAt: new Date().toISOString(),
-        },
-      ],
-    }))
+    persist((current) => {
+      const allocated = allocateEntityId(current)
+      return {
+        ...allocated.workspace,
+        notes: [
+          ...allocated.workspace.notes,
+          {
+            id: allocated.id,
+            title: clipTitle(content, 30),
+            content,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      }
+    })
   }
 
   const handleVoiceNote = (audioBlob: Blob, transcription: string, duration = 0) => {
     const audioUrl = URL.createObjectURL(audioBlob)
-    persist((current) => ({
-      ...current,
-      notes: [
-        ...current.notes,
-        {
-          id: nextNumericId(current.notes),
-          title: clipTitle(transcription || "Voice note", 30),
-          content: transcription,
-          createdAt: new Date().toISOString(),
-          voiceNote: {
-            audioUrl,
-            transcription,
-            duration,
+    persist((current) => {
+      const allocated = allocateEntityId(current)
+      return {
+        ...allocated.workspace,
+        notes: [
+          ...allocated.workspace.notes,
+          {
+            id: allocated.id,
+            title: clipTitle(transcription || "Voice note", 30),
+            content: transcription,
+            createdAt: new Date().toISOString(),
+            voiceNote: {
+              audioUrl,
+              transcription,
+              duration,
+            },
           },
-        },
-      ],
-    }))
+        ],
+      }
+    })
   }
 
   const handleSpeechToText = (text: string) => {
-    persist((current) => ({
-      ...current,
-      notes: [
-        ...current.notes,
-        {
-          id: nextNumericId(current.notes),
-          title: clipTitle(text, 30),
-          content: text,
-          createdAt: new Date().toISOString(),
-        },
-      ],
-    }))
+    persist((current) => {
+      const allocated = allocateEntityId(current)
+      return {
+        ...allocated.workspace,
+        notes: [
+          ...allocated.workspace.notes,
+          {
+            id: allocated.id,
+            title: clipTitle(text, 30),
+            content: text,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      }
+    })
   }
 
   const handleVoiceTask = (text: string) => {
-    persist((current) => ({
-      ...current,
-      tasks: [
-        ...current.tasks,
-        {
-          id: nextNumericId(current.tasks),
-          title: clipTitle(text, 50),
-          completed: false,
-          priority: "medium",
-          dueDate: localDateKey(),
-          description: text,
-          recurring: "none",
-          reminders: false,
-        },
-      ],
-    }))
+    persist((current) => {
+      const allocated = allocateEntityId(current)
+      recordBrowserEvent("task_created")
+      return {
+        ...allocated.workspace,
+        tasks: [
+          ...allocated.workspace.tasks,
+          {
+            id: allocated.id,
+            title: clipTitle(text, 50),
+            completed: false,
+            priority: "medium",
+            dueDate: localDateKey(),
+            description: text,
+            recurring: "none",
+            reminders: false,
+          },
+        ],
+      }
+    })
   }
 
   const completedTasksCount = tasks.filter((task) => task.completed).length
@@ -409,7 +436,7 @@ export default function Dashboard() {
               <User className="h-5 w-5 sm:h-6 sm:w-6" />
             </Button>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold font-sans">Hello, {userName}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold font-sans">{greeting}</h1>
               <p className="text-muted-readable font-serif text-xs sm:text-sm">
                 Local workspace on this device. Export if you want a backup.
               </p>
@@ -768,6 +795,7 @@ export default function Dashboard() {
         onDelete={handleDeleteHabit}
         habit={habitModal.habit}
         mode={habitModal.mode}
+        weekStartsOn={workspace.settings.general.weekStartsOn}
       />
       <ShareModal
         isOpen={shareModal}

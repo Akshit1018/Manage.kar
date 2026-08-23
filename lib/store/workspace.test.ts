@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   WORKSPACE_CORRUPT_PREFIX,
   WORKSPACE_KEY,
+  allocateEntityId,
   createEmptyWorkspace,
   inspectWorkspace,
   loadWorkspace,
@@ -274,6 +275,38 @@ describe("workspace store", () => {
   it("assigns the next numeric id from the highest existing id", () => {
     expect(nextNumericId([])).toBe(1)
     expect(nextNumericId([{ id: 2 }, { id: 7 }])).toBe(8)
+  })
+
+  it("allocates workspace-wide ids so modules cannot collide", () => {
+    const workspace = createEmptyWorkspace()
+    workspace.tasks.push({
+      id: 2,
+      title: "Existing task",
+      completed: false,
+      priority: "low",
+      dueDate: "2026-08-23",
+    })
+    workspace.goals.push({
+      id: 5,
+      title: "Existing goal",
+      description: "",
+      category: "work",
+      priority: "medium",
+      targetDate: "2026-09-01",
+      progress: 0,
+      milestones: [],
+      status: "active",
+      createdAt: "2026-08-23T00:00:00.000Z",
+    })
+
+    const first = allocateEntityId(workspace)
+    const second = allocateEntityId(first.workspace)
+
+    expect(first.id).toBe(6)
+    expect(second.id).toBe(7)
+    expect(second.workspace.nextEntityId).toBe(8)
+    expect(first.id).not.toBe(workspace.tasks[0]?.id)
+    expect(first.id).not.toBe(workspace.goals[0]?.id)
   })
 
   it("parses a v1 backup and rejects garbage", () => {

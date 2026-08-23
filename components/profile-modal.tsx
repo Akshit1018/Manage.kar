@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { User, Edit, Camera, Mail, Phone, MapPin, Calendar, Trophy, TrendingUp } from "lucide-react"
+import { User, Edit, Mail, Phone, MapPin, Calendar, Trophy, TrendingUp } from "lucide-react"
 
 import type { UserProfile } from "@/lib/domain/types"
 import { sanitizeAvatarUrl } from "@/lib/profile/avatar"
@@ -57,11 +57,8 @@ export function ProfileModal({ isOpen, onClose, stats, onProfileChange }: Profil
     setIsEditing(false)
   }
 
-  const handleAvatarChange = () => {
-    const avatarUrl = window.prompt("Enter an https image URL, or leave empty:")
-    if (avatarUrl !== null) {
-      setEditedProfile({ ...editedProfile, avatar: avatarUrl.trim() })
-    }
+  const handleAvatarChange = (value: string) => {
+    setEditedProfile({ ...editedProfile, avatar: value })
   }
 
   const achievements = [
@@ -92,20 +89,20 @@ export function ProfileModal({ isOpen, onClose, stats, onProfileChange }: Profil
                     {(isEditing ? editedProfile.name : profile.name).charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                {isEditing && (
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-card/95 backdrop-blur-xl border border-border/50 hover:scale-110 transition-all duration-200 mobile-touch-target"
-                    onClick={handleAvatarChange}
-                  >
-                    <Camera className="h-4 w-4" />
-                  </Button>
-                )}
               </div>
 
               {isEditing ? (
                 <div className="space-y-3">
+                  <div className="text-left">
+                    <Label className="responsive-text-xs text-muted-readable">Avatar URL (https only)</Label>
+                    <Input
+                      type="url"
+                      value={editedProfile.avatar}
+                      onChange={(event) => handleAvatarChange(event.target.value)}
+                      placeholder="https://example.com/me.png"
+                      className="mt-1 bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl mobile-touch-target"
+                    />
+                  </div>
                   <Input
                     value={editedProfile.name}
                     onChange={(e) => setEditedProfile({ ...editedProfile, name: e.target.value })}

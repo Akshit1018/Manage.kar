@@ -8,7 +8,9 @@ import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { X, Share2, MessageCircle, Link, Copy, Check, Mail, Download } from "lucide-react"
-import { encodeSharePayload } from "@/lib/share/codec"
+import { encodeEncryptedSharePayload } from "@/lib/share/secret"
+import { recordBrowserEvent } from "@/lib/analytics/local-events"
+import { APP_VERSION } from "@/lib/store/workspace"
 import type { Task } from "@/lib/domain/types"
 
 interface ShareModalProps {
@@ -25,6 +27,8 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
   const [generatedLink, setGeneratedLink] = useState("")
   const [linkCopied, setLinkCopied] = useState(false)
   const [emailAddress, setEmailAddress] = useState("")
+  const [linkPassword, setLinkPassword] = useState("")
+  const [linkError, setLinkError] = useState("")
 
   useEffect(() => {
     if (!isOpen) {
@@ -79,7 +83,7 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
     return message
   }
 
-  const generateShareableLink = () => {
+  const generateShareableLink = async () => {
     const shareData = {
       userName,
       tasks: filteredTasks,
@@ -87,14 +91,16 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
       customMessage,
     }
 
-    const encoded = encodeSharePayload(shareData)
+    const encoded = await encodeEncryptedSharePayload(shareData, linkPassword)
     if (!encoded.ok) {
-      console.error("Error generating shareable link:", encoded.error)
+      setLinkError(encoded.error)
       setGeneratedLink("")
       return ""
     }
     const link = `${window.location.origin}/shared/${encoded.token}`
+    setLinkError("")
     setGeneratedLink(link)
+    recordBrowserEvent("share_link", { count: filteredTasks.length })
     return link
   }
 
@@ -105,7 +111,7 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
       exportedAt: new Date().toISOString(),
       customMessage,
       appName: "Manage.kar",
-      version: "1.0.0",
+      version: APP_VERSION,
     }
 
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" })
@@ -117,6 +123,7 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
+    recordBrowserEvent("export", { kind: "tasks", count: filteredTasks.length })
   }
 
   const handleWhatsAppShare = () => {
@@ -124,8 +131,8 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer")
   }
 
-  const handleLinkShare = () => {
-    const link = generateShareableLink()
+  const handleLinkShare = async () => {
+    const link = await generateShareableLink()
     if (!link) {
       return
     }
@@ -165,15 +172,21 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
               </div>
               <h2 className="responsive-text-xl font-semibold font-sans text-readable">Share Tasks</h2>
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full mobile-touch-target">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="rounded-full mobile-touch-target"
+              aria-label="Close share"
+            >
               <X className="h-5 w-5 text-readable" />
             </Button>
           </div>
 
           <div className="space-y-4 sm:space-y-6 max-h-[60vh] overflow-y-auto">
             <p className="text-xs text-muted-readable">
-              Export a JSON file to keep a private copy. A share link encodes the tasks in the URL. Anyone with that
-              link can read them, and the link does not expire.
+              Export a JSON file to keep a private copy. Link sharing is password-protected. The ciphertext sits in
+              the URL and does not expire. Anyone with both the URL and the password can read the tasks.
             </p>
             <div className="space-y-3">
               <Label className="responsive-text-sm font-medium text-readable">Share method</Label>
@@ -285,9 +298,20 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
             </div>
 
             {shareMethod === "link" && (
-              <p className="text-xs text-muted-readable">
-                This is not a private invite. Treat the URL like the task list itself.
-              </p>
+              <div className="space-y-2">
+                <Label className="responsive-text-sm font-medium text-readable">Link password</Label>
+                <Input
+                  type="password"
+                  value={linkPassword}
+                  onChange={(event) => setLinkPassword(event.target.value)}
+                  placeholder="Required to encrypt the link"
+                  className="bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl mobile-touch-target"
+                />
+                <p className="text-xs text-muted-readable">
+                  Share the password separately. We cannot recover it. The link still does not expire.
+                </p>
+                {linkError ? <p className="text-xs text-destructive">{linkError}</p> : null}
+              </div>
             )}
             {shareMethod === "link" && generatedLink && (
               <div className="space-y-2">
