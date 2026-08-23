@@ -7,12 +7,12 @@ import { Card } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Slider } from "@/components/ui/slider"
 import { Settings, Bell, Shield, Database, Palette, Globe, Download, Upload, Trash2, Link2 } from "lucide-react"
 import { GoogleIntegration } from "./google-integration"
 import type { AppSettings } from "@/lib/domain/types"
-import { applyThemePreference } from "@/lib/theme/apply-theme"
+import { applyAppearance } from "@/lib/theme/apply-theme"
 import {
+  APP_VERSION,
   browserStorage,
   clearWorkspace,
   defaultSettings,
@@ -22,6 +22,7 @@ import {
   replaceWorkspace,
   serializeBackup,
 } from "@/lib/store/workspace"
+import { clearEvents, listEvents, recordEvent, type LocalEvent } from "@/lib/analytics/local-events"
 
 interface SettingsModalProps {
   isOpen: boolean
@@ -30,31 +31,23 @@ interface SettingsModalProps {
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [settings, setSettings] = useState<AppSettings>(defaultSettings)
-
-  const [permissionStatus, setPermissionStatus] = useState({
-    notifications: "default" as NotificationPermission,
-    location: "prompt" as PermissionState,
-  })
-
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default")
   const [activeSection, setActiveSection] = useState<string>("notifications")
+  const [localEvents, setLocalEvents] = useState<LocalEvent[]>([])
 
   useEffect(() => {
     if (!isOpen) {
       return
     }
 
-    const workspace = loadWorkspace(browserStorage())
+    const storage = browserStorage()
+    const workspace = loadWorkspace(storage)
     setSettings(workspace.settings)
-    applyThemePreference(workspace.settings.appearance.theme)
+    applyAppearance(workspace.settings)
+    setLocalEvents(listEvents(storage))
 
     if ("Notification" in window) {
-      setPermissionStatus((prev) => ({ ...prev, notifications: Notification.permission }))
-    }
-
-    if ("permissions" in navigator) {
-      navigator.permissions.query({ name: "geolocation" }).then((result) => {
-        setPermissionStatus((prev) => ({ ...prev, location: result.state }))
-      })
+      setNotificationPermission(Notification.permission)
     }
   }, [isOpen])
 
@@ -70,16 +63,14 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const storage = browserStorage()
     const workspace = loadWorkspace(storage)
     replaceWorkspace(storage, { ...workspace, settings: newSettings })
-    if (section === "appearance" && key === "theme") {
-      applyThemePreference(newSettings.appearance.theme)
-    }
+    applyAppearance(newSettings)
     notifyWorkspaceChanged()
   }
 
   const requestNotificationPermission = async () => {
     if ("Notification" in window) {
       const permission = await Notification.requestPermission()
-      setPermissionStatus((prev) => ({ ...prev, notifications: permission }))
+      setNotificationPermission(permission)
       if (permission === "granted") {
         updateSettings("notifications", "enabled", true)
       }
@@ -90,13 +81,15 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     const workspace = loadWorkspace(browserStorage())
     const blob = new Blob([serializeBackup({ ...workspace, settings })], { type: "application/json" })
     const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `manage-kar-backup-${new Date().toISOString().split("T")[0]}.json`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = `manage-kar-backup-${new Date().toISOString().split("T")[0]}.json`
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
     URL.revokeObjectURL(url)
+    recordEvent(browserStorage(), "export", { kind: "backup" })
+    setLocalEvents(listEvents(browserStorage()))
   }
 
   const importData = () => {
@@ -112,14 +105,16 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       reader.onload = () => {
         const parsed = parseBackup(String(reader.result ?? ""))
         if (!parsed.ok) {
-          alert(parsed.error)
+          window.alert(parsed.error)
           return
         }
-        if (confirm("This will replace all your current Manage.kar data. Are you sure?")) {
+        if (window.confirm("This will replace all your current Manage.kar data. Continue?")) {
           const storage = browserStorage()
           replaceWorkspace(storage, parsed.workspace)
           setSettings(parsed.workspace.settings)
-          applyThemePreference(parsed.workspace.settings.appearance.theme)
+          applyAppearance(parsed.workspace.settings)
+          recordEvent(storage, "import", { kind: "backup" })
+          setLocalEvents(listEvents(storage))
           notifyWorkspaceChanged()
         }
       }
@@ -129,14 +124,19 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   }
 
   const clearAllData = () => {
-    if (confirm("This will permanently delete all your Manage.kar data. This action cannot be undone. Are you sure?")) {
-      if (confirm("Are you absolutely sure? This will delete all tasks, notes, habits, and settings from Manage.kar.")) {
-        const empty = clearWorkspace(browserStorage())
-        setSettings(empty.settings)
-        applyThemePreference(empty.settings.appearance.theme)
-        notifyWorkspaceChanged()
-      }
+    if (!window.confirm("This will permanently delete all Manage.kar data on this device.")) {
+      return
     }
+    if (!window.confirm("Are you absolutely sure? Tasks, notes, habits, goals, and settings will be removed.")) {
+      return
+    }
+    const storage = browserStorage()
+    const empty = clearWorkspace(storage)
+    recordEvent(storage, "workspace_cleared")
+    setSettings(empty.settings)
+    applyAppearance(empty.settings)
+    setLocalEvents(listEvents(storage))
+    notifyWorkspaceChanged()
   }
 
   if (!isOpen) return null
@@ -144,7 +144,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const sections = [
     { id: "notifications", label: "Notifications", icon: Bell },
     { id: "appearance", label: "Appearance", icon: Palette },
-    { id: "integrations", label: "Integrations", icon: Link2 },
+    { id: "integrations", label: "Backup", icon: Link2 },
     { id: "privacy", label: "Privacy", icon: Shield },
     { id: "data", label: "Data", icon: Database },
     { id: "general", label: "General", icon: Globe },
@@ -169,6 +169,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   return (
                     <button
                       key={section.id}
+                      type="button"
                       onClick={() => setActiveSection(section.id)}
                       className={`flex items-center gap-2 sm:gap-3 px-3 py-2 rounded-xl text-left transition-colors whitespace-nowrap mobile-touch-target ${
                         activeSection === section.id
@@ -189,18 +190,21 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 <Card className="bg-card/95 backdrop-blur-xl border border-border/50 responsive-card">
                   <h4 className="font-semibold font-sans mb-3 sm:mb-4 flex items-center gap-2 text-readable">
                     <Bell className="h-4 w-4" />
-                    Notifications
+                    Local notifications
                   </h4>
                   <div className="space-y-3 sm:space-y-4">
+                    <p className="responsive-text-sm text-muted-readable">
+                      Reminders stay on this device. The browser must be open for them to fire.
+                    </p>
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-1">
-                        <Label className="responsive-text-sm font-medium text-readable">Enable Notifications</Label>
-                        {permissionStatus.notifications === "denied" && (
-                          <p className="responsive-text-xs text-destructive mt-1">Permission denied</p>
+                        <Label className="responsive-text-sm font-medium text-readable">Enable notifications</Label>
+                        {notificationPermission === "denied" && (
+                          <p className="responsive-text-xs text-destructive mt-1">Permission denied in the browser</p>
                         )}
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        {permissionStatus.notifications === "default" && (
+                        {notificationPermission === "default" && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -211,9 +215,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                           </Button>
                         )}
                         <Switch
-                          checked={settings.notifications.enabled && permissionStatus.notifications === "granted"}
+                          checked={settings.notifications.enabled && notificationPermission === "granted"}
                           onCheckedChange={(checked) => updateSettings("notifications", "enabled", checked)}
-                          disabled={permissionStatus.notifications !== "granted"}
+                          disabled={notificationPermission !== "granted"}
                         />
                       </div>
                     </div>
@@ -221,54 +225,25 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     {settings.notifications.enabled && (
                       <>
                         <div className="flex items-center justify-between gap-4">
-                          <Label className="responsive-text-sm text-readable">Task Reminders</Label>
+                          <Label className="responsive-text-sm text-readable">Task reminders</Label>
                           <Switch
                             checked={settings.notifications.taskReminders}
                             onCheckedChange={(checked) => updateSettings("notifications", "taskReminders", checked)}
                           />
                         </div>
                         <div className="flex items-center justify-between gap-4">
-                          <Label className="responsive-text-sm text-readable">Habit Reminders</Label>
+                          <Label className="responsive-text-sm text-readable">Habit reminders</Label>
                           <Switch
                             checked={settings.notifications.habitReminders}
                             onCheckedChange={(checked) => updateSettings("notifications", "habitReminders", checked)}
                           />
                         </div>
                         <div className="flex items-center justify-between gap-4">
-                          <Label className="responsive-text-sm text-readable">Focus Break Alerts</Label>
+                          <Label className="responsive-text-sm text-readable">Focus session complete</Label>
                           <Switch
                             checked={settings.notifications.focusBreaks}
                             onCheckedChange={(checked) => updateSettings("notifications", "focusBreaks", checked)}
                           />
-                        </div>
-                        <div className="flex items-center justify-between gap-4">
-                          <Label className="responsive-text-sm text-readable">Daily Summary</Label>
-                          <Switch
-                            checked={settings.notifications.dailySummary}
-                            onCheckedChange={(checked) => updateSettings("notifications", "dailySummary", checked)}
-                          />
-                        </div>
-
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between gap-4">
-                            <Label className="responsive-text-sm text-readable">Sound</Label>
-                            <Switch
-                              checked={settings.notifications.soundEnabled}
-                              onCheckedChange={(checked) => updateSettings("notifications", "soundEnabled", checked)}
-                            />
-                          </div>
-                          {settings.notifications.soundEnabled && (
-                            <div className="space-y-2">
-                              <Label className="responsive-text-xs text-muted-readable">Volume</Label>
-                              <Slider
-                                value={[settings.notifications.volume]}
-                                onValueChange={([value]) => updateSettings("notifications", "volume", value)}
-                                max={100}
-                                step={10}
-                                className="w-full"
-                              />
-                            </div>
-                          )}
                         </div>
                       </>
                     )}
@@ -303,7 +278,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="responsive-text-sm text-readable">Font Size</Label>
+                      <Label className="responsive-text-sm text-readable">Font size</Label>
                       <Select
                         value={settings.appearance.fontSize}
                         onValueChange={(value: "small" | "medium" | "large") =>
@@ -336,12 +311,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 <div className="space-y-3">
                   <h3 className="responsive-text-lg font-semibold font-sans mb-2 flex items-center gap-2 text-readable">
                     <Link2 className="h-5 w-5" />
-                    Integrations
+                    Backup
                   </h3>
-                  <p className="responsive-text-sm text-muted-readable">
-                    Google Workspace is not connected. Nothing leaves this device. The form below is a preview of a
-                    future optional backup adapter.
-                  </p>
                   <GoogleIntegration />
                 </div>
               )}
@@ -350,7 +321,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 <Card className="bg-card/95 backdrop-blur-xl border border-border/50 responsive-card">
                   <h4 className="font-semibold font-sans mb-3 sm:mb-4 flex items-center gap-2 text-readable">
                     <Shield className="h-4 w-4" />
-                    Privacy & Security
+                    Privacy
                   </h4>
                   <div className="space-y-3 sm:space-y-4">
                     <p className="responsive-text-sm text-muted-readable">
@@ -360,13 +331,46 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       <div className="flex-1">
                         <Label className="responsive-text-sm text-readable">Clipboard suggestions</Label>
                         <p className="responsive-text-xs text-muted-readable mt-1">
-                          Off by default. When on, the app may read clipboard text to offer a task or note.
+                          Off by default. When on, the app may read clipboard text to offer a task or note. Text is
+                          never logged.
                         </p>
                       </div>
                       <Switch
                         checked={settings.privacy.clipboardMonitor}
                         onCheckedChange={(checked) => updateSettings("privacy", "clipboardMonitor", checked)}
                       />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="responsive-text-sm text-readable">Device activity</Label>
+                      <p className="responsive-text-xs text-muted-readable">
+                        Export, import, share, and errors are logged here only. Nothing is sent to a server.
+                      </p>
+                      {localEvents.length === 0 ? (
+                        <p className="responsive-text-xs text-muted-readable">No local events yet.</p>
+                      ) : (
+                        <ul className="space-y-1 max-h-40 overflow-y-auto text-xs text-muted-readable">
+                          {localEvents
+                            .slice()
+                            .reverse()
+                            .slice(0, 12)
+                            .map((event) => (
+                              <li key={event.id}>
+                                {event.at.slice(0, 19).replace("T", " ")} — {event.name}
+                              </li>
+                            ))}
+                        </ul>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-transparent"
+                        onClick={() => {
+                          clearEvents(browserStorage())
+                          setLocalEvents([])
+                        }}
+                      >
+                        Clear device activity
+                      </Button>
                     </div>
                   </div>
                 </Card>
@@ -376,40 +380,12 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 <Card className="bg-card/95 backdrop-blur-xl border border-border/50 responsive-card">
                   <h4 className="font-semibold font-sans mb-3 sm:mb-4 flex items-center gap-2 text-readable">
                     <Database className="h-4 w-4" />
-                    Data Management
+                    Data
                   </h4>
                   <div className="space-y-3 sm:space-y-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <Label className="responsive-text-sm text-readable">Auto Backup</Label>
-                      <Switch
-                        checked={settings.data.autoBackup}
-                        onCheckedChange={(checked) => updateSettings("data", "autoBackup", checked)}
-                      />
-                    </div>
-
-                    {settings.data.autoBackup && (
-                      <div className="space-y-2">
-                        <Label className="responsive-text-sm text-readable">Backup Frequency</Label>
-                        <Select
-                          value={settings.data.backupFrequency}
-                          onValueChange={(value: "daily" | "weekly" | "monthly") =>
-                            updateSettings("data", "backupFrequency", value)
-                          }
-                        >
-                          <SelectTrigger className="mobile-touch-target">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="daily">Daily</SelectItem>
-                            <SelectItem value="weekly">Weekly</SelectItem>
-                            <SelectItem value="monthly">Monthly</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-
                     <p className="responsive-text-xs text-muted-readable">
-                      Export downloads the same workspace the dashboard uses. Import replaces it after confirmation.
+                      Export downloads this device&apos;s workspace. Import replaces it after confirmation. Random JSON
+                      files are rejected.
                     </p>
 
                     <div className="flex flex-col sm:flex-row gap-2">
@@ -435,7 +411,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
                     <Button variant="destructive" size="sm" className="w-full responsive-button" onClick={clearAllData}>
                       <Trash2 className="h-4 w-4 mr-2" />
-                      Clear All Data
+                      Clear all data
                     </Button>
                   </div>
                 </Card>
@@ -448,26 +424,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     General
                   </h4>
                   <div className="space-y-3 sm:space-y-4">
+                    <p className="responsive-text-sm text-muted-readable">The interface is English only.</p>
                     <div className="space-y-2">
-                      <Label className="responsive-text-sm text-readable">Language</Label>
-                      <Select
-                        value={settings.general.language}
-                        onValueChange={(value) => updateSettings("general", "language", value)}
-                      >
-                        <SelectTrigger className="mobile-touch-target">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="English">English</SelectItem>
-                          <SelectItem value="Spanish">Español</SelectItem>
-                          <SelectItem value="French">Français</SelectItem>
-                          <SelectItem value="German">Deutsch</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="responsive-text-sm text-readable">Week Starts On</Label>
+                      <Label className="responsive-text-sm text-readable">Week starts on</Label>
                       <Select
                         value={settings.general.weekStartsOn}
                         onValueChange={(value: "sunday" | "monday") => updateSettings("general", "weekStartsOn", value)}
@@ -483,7 +442,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     </div>
 
                     <div className="space-y-2">
-                      <Label className="responsive-text-sm text-readable">Date Format</Label>
+                      <Label className="responsive-text-sm text-readable">Date format</Label>
                       <Select
                         value={settings.general.dateFormat}
                         onValueChange={(value: "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD") =>
@@ -505,16 +464,12 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               )}
 
               <Card className="bg-card/95 backdrop-blur-xl border border-border/50 responsive-card">
-                <div className="text-center space-y-3">
-                  <div className="flex items-center justify-center gap-2 mb-3">
-                    <div className="w-8 h-8 bg-primary rounded-xl flex items-center justify-center">
-                      <span className="text-primary-foreground font-bold responsive-text-sm">M</span>
-                    </div>
-                    <h4 className="font-bold font-sans responsive-text-lg text-readable">Manage.kar</h4>
-                  </div>
-                  <p className="responsive-text-sm text-muted-readable">Smart Task & Life Management</p>
-                  <p className="responsive-text-sm text-muted-readable">Version 1.0.0</p>
-                  <p className="responsive-text-xs text-muted-readable">Built for productivity enthusiasts</p>
+                <div className="text-center space-y-2">
+                  <h4 className="font-bold font-sans responsive-text-lg text-readable">Manage.kar</h4>
+                  <p className="responsive-text-sm text-muted-readable">
+                    Local-first tasks, notes, and habits. Your data stays in this browser unless you export it.
+                  </p>
+                  <p className="responsive-text-xs text-muted-readable">Workspace format {APP_VERSION}</p>
                 </div>
               </Card>
             </div>

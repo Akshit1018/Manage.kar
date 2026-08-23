@@ -101,21 +101,18 @@ export function TextToSpeech({
     utterance.volume = volume[0]
 
     utterance.onstart = () => {
-      console.log("[v0] TTS started")
       setIsPlaying(true)
       setIsPaused(false)
       onStart?.()
     }
 
     utterance.onend = () => {
-      console.log("[v0] TTS ended")
       setIsPlaying(false)
       setIsPaused(false)
       onEnd?.()
     }
 
     utterance.onerror = (event) => {
-      console.error("[v0] TTS error:", event.error)
       setIsPlaying(false)
       setIsPaused(false)
       onError?.(event.error)

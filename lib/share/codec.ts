@@ -74,7 +74,7 @@ export function encodeSharePayload(
   }
 }
 
-function parsePayload(raw: unknown): SharePayload | null {
+export function parseSharePayload(raw: unknown): SharePayload | null {
   const parsed = sharePayloadSchema.safeParse(raw)
   if (!parsed.success) {
     return null
@@ -88,6 +88,9 @@ export function decodeSharePayload(
   if (!token || token.length > MAX_SHARE_TOKEN_LENGTH * 2) {
     return { ok: false, error: "Invalid or corrupted share link" }
   }
+  if (token.startsWith("enc1.")) {
+    return { ok: false, error: "This share link is password-protected." }
+  }
 
   const attempts = [
     () => JSON.parse(base64UrlToUtf8(token)),
@@ -96,7 +99,7 @@ export function decodeSharePayload(
 
   for (const attempt of attempts) {
     try {
-      const payload = parsePayload(attempt())
+      const payload = parseSharePayload(attempt())
       if (payload) {
         return { ok: true, payload }
       }

@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest"
 import {
+  WORKSPACE_CORRUPT_PREFIX,
   WORKSPACE_KEY,
+  allocateEntityId,
   createEmptyWorkspace,
+  inspectWorkspace,
   loadWorkspace,
   migrateLegacyWorkspace,
+  mutateWorkspace,
   nextNumericId,
   parseBackup,
+  resetCorruptWorkspace,
   saveWorkspace,
   serializeBackup,
   type KeyValueStore,
@@ -35,6 +40,10 @@ describe("workspace store", () => {
     expect(workspace.tasks).toEqual([])
     expect(workspace.notes).toEqual([])
     expect(workspace.habits).toEqual([])
+    expect(workspace.goals).toEqual([])
+    expect(workspace.timeEntries).toEqual([])
+    expect(workspace.focusSessions).toEqual([])
+    expect(workspace.activeFocus).toBeNull()
     expect(workspace.profile.name).toBe("User")
   })
 
@@ -53,7 +62,7 @@ describe("workspace store", () => {
       title: "Ship persistence",
       completed: false,
       priority: "high",
-      dueDate: "Today",
+      dueDate: "2026-08-23",
     })
     workspace.notes.push({
       id: 1,
@@ -84,11 +93,141 @@ describe("workspace store", () => {
     expect(loaded.schemaVersion).toBe(1)
   })
 
-  it("recovers from corrupt workspace JSON", () => {
+  it("quarantines corrupt workspace JSON and refuses to overwrite it", () => {
     const storage = new MemoryStore()
     storage.setItem(WORKSPACE_KEY, "{not-json")
 
-    expect(loadWorkspace(storage).tasks).toEqual([])
+    const inspected = inspectWorkspace(storage)
+    expect(inspected.status).toBe("corrupt")
+    expect(inspected.quarantineKey?.startsWith(WORKSPACE_CORRUPT_PREFIX)).toBe(true)
+    expect(storage.getItem(inspected.quarantineKey ?? "")).toBe("{not-json")
+    expect(storage.getItem(WORKSPACE_KEY)).toBe("{not-json")
+    expect(inspected.workspace.tasks).toEqual([])
+
+    const afterMutate = mutateWorkspace(storage, (workspace) => ({
+      ...workspace,
+      tasks: [
+        {
+          id: 1,
+          title: "should not persist over damage",
+          completed: false,
+          priority: "low",
+          dueDate: "2026-08-23",
+        },
+      ],
+    }))
+    expect(afterMutate.tasks).toEqual([])
+    expect(storage.getItem(WORKSPACE_KEY)).toBe("{not-json")
+
+    const reset = resetCorruptWorkspace(storage)
+    expect(reset.tasks).toEqual([])
+    expect(JSON.parse(storage.getItem(WORKSPACE_KEY) ?? "{}").schemaVersion).toBe(1)
+  })
+
+  it("keeps valid rows and reports dropped invalid ones", () => {
+    const storage = new MemoryStore()
+    storage.setItem(
+      WORKSPACE_KEY,
+      JSON.stringify({
+        schemaVersion: 1,
+        tasks: [
+          { id: 1, title: "Good", completed: false, priority: "low", dueDate: "2026-08-23" },
+          { id: "bad", title: 12 },
+        ],
+        notes: [],
+        habits: [],
+      }),
+    )
+
+    const inspected = inspectWorkspace(storage)
+    expect(inspected.workspace.tasks).toHaveLength(1)
+    expect(inspected.workspace.tasks[0]?.title).toBe("Good")
+    expect(inspected.dropped.tasks).toBe(1)
+  })
+
+  it("patches storage instead of replacing it with a stale tab snapshot", () => {
+    const storage = new MemoryStore()
+    saveWorkspace(storage, {
+      ...createEmptyWorkspace(),
+      tasks: [
+        {
+          id: 1,
+          title: "Shared",
+          completed: false,
+          priority: "medium",
+          dueDate: "2026-08-23",
+        },
+      ],
+    })
+
+    mutateWorkspace(storage, (workspace) => ({
+      ...workspace,
+      tasks: [
+        ...workspace.tasks,
+        {
+          id: 99,
+          title: "TAB1-ONLY-SHOULD-SURVIVE",
+          completed: false,
+          priority: "high",
+          dueDate: "2026-08-23",
+        },
+      ],
+    }))
+
+    mutateWorkspace(storage, (workspace) => ({
+      ...workspace,
+      tasks: workspace.tasks.map((task) =>
+        task.id === 1 ? { ...task, completed: true } : task,
+      ),
+    }))
+
+    const loaded = loadWorkspace(storage)
+    expect(loaded.tasks.map((task) => task.title)).toEqual([
+      "Shared",
+      "TAB1-ONLY-SHOULD-SURVIVE",
+    ])
+    expect(loaded.tasks[0]?.completed).toBe(true)
+  })
+
+  it("round-trips goals, time entries, and focus state", () => {
+    const storage = new MemoryStore()
+    const workspace = createEmptyWorkspace()
+    workspace.goals.push({
+      id: 1,
+      title: "Ship remediations",
+      description: "Fix the red-team findings",
+      category: "work",
+      priority: "high",
+      targetDate: "2026-09-01",
+      progress: 10,
+      milestones: [],
+      status: "active",
+      createdAt: "2026-08-23T00:00:00.000Z",
+    })
+    workspace.timeEntries.push({
+      id: 1,
+      taskName: "Write tests",
+      project: "Manage.kar",
+      startTime: "2026-08-23T10:00:00.000Z",
+      duration: 120000,
+      isRunning: false,
+    })
+    workspace.activeFocus = {
+      sessionId: 7,
+      type: "pomodoro",
+      durationSeconds: 1500,
+      remainingSeconds: 1400,
+      isRunning: true,
+      startedAt: "2026-08-23T10:05:00.000Z",
+      accumulatedElapsed: 100,
+    }
+
+    saveWorkspace(storage, workspace)
+    const loaded = loadWorkspace(storage)
+
+    expect(loaded.goals[0]?.title).toBe("Ship remediations")
+    expect(loaded.timeEntries[0]?.taskName).toBe("Write tests")
+    expect(loaded.activeFocus?.sessionId).toBe(7)
   })
 
   it("migrates orphan localStorage keys into the workspace document", () => {
@@ -119,7 +258,7 @@ describe("workspace store", () => {
       title: "Canonical",
       completed: false,
       priority: "medium",
-      dueDate: "Today",
+      dueDate: "2026-08-23",
     })
     saveWorkspace(storage, existing)
     storage.setItem(
@@ -138,6 +277,38 @@ describe("workspace store", () => {
     expect(nextNumericId([{ id: 2 }, { id: 7 }])).toBe(8)
   })
 
+  it("allocates workspace-wide ids so modules cannot collide", () => {
+    const workspace = createEmptyWorkspace()
+    workspace.tasks.push({
+      id: 2,
+      title: "Existing task",
+      completed: false,
+      priority: "low",
+      dueDate: "2026-08-23",
+    })
+    workspace.goals.push({
+      id: 5,
+      title: "Existing goal",
+      description: "",
+      category: "work",
+      priority: "medium",
+      targetDate: "2026-09-01",
+      progress: 0,
+      milestones: [],
+      status: "active",
+      createdAt: "2026-08-23T00:00:00.000Z",
+    })
+
+    const first = allocateEntityId(workspace)
+    const second = allocateEntityId(first.workspace)
+
+    expect(first.id).toBe(6)
+    expect(second.id).toBe(7)
+    expect(second.workspace.nextEntityId).toBe(8)
+    expect(first.id).not.toBe(workspace.tasks[0]?.id)
+    expect(first.id).not.toBe(workspace.goals[0]?.id)
+  })
+
   it("parses a v1 backup and rejects garbage", () => {
     const workspace = createEmptyWorkspace()
     workspace.tasks.push({
@@ -145,7 +316,7 @@ describe("workspace store", () => {
       title: "Backup me",
       completed: true,
       priority: "low",
-      dueDate: "Today",
+      dueDate: "2026-08-23",
     })
 
     const parsed = parseBackup(serializeBackup(workspace))
@@ -156,6 +327,9 @@ describe("workspace store", () => {
 
     const invalid = parseBackup("not-json")
     expect(invalid.ok).toBe(false)
+
+    expect(parseBackup("{}").ok).toBe(false)
+    expect(parseBackup(JSON.stringify({ hello: "world" })).ok).toBe(false)
   })
 
   it("accepts the legacy settings-export shape as a backup", () => {

@@ -1,10 +1,10 @@
 # Known issues
 
-- Goals, time tracker, and focus sessions still reset when the modal unmounts.
-- Recurring tasks and reminder toggles are stored but never scheduled.
-- PWA manifest references missing icons and there is no service worker.
+- Share links are password-encrypted in the URL. They still do not expire and cannot be revoked without a server.
+- There is no hosted marketing site. First-run value is the in-app empty state.
+- The desktop FAB remains a large leftover file (`components/floating-toggle.tsx`).
+- Voice note audio is a blob URL. It does not survive a full browser restart.
 - `styles/globals.css` is unused; styling lives in `app/globals.css`.
-- Task `@mention` list is still a static demo roster.
-- Analytics “productivity score” is a simple ratio, not a model.
-- Share-by-link remains unsuitable for large or private task lists; JSON export is the safe path.
-- `parallel-cli` / Firecrawl auth were unavailable in this environment; research used `gh` + web search.
+- Counts is a completion ratio, not a model.
+- Local activity events stay on this device. There is no remote analytics or crash reporter.
+- Encrypted cloud sync needs a provider. Export/import is the backup path.

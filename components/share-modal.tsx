@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -8,19 +8,10 @@ import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { X, Share2, MessageCircle, Link, Copy, Check, Mail, Download } from "lucide-react"
-import { encodeSharePayload } from "@/lib/share/codec"
-
-interface Task {
-  id: number
-  title: string
-  completed: boolean
-  priority: "high" | "medium" | "low"
-  dueDate: string
-  description?: string
-  recurring?: "none" | "daily" | "weekly" | "monthly"
-  reminders?: boolean
-  checklist?: { id: number; text: string; completed: boolean }[]
-}
+import { encodeEncryptedSharePayload } from "@/lib/share/secret"
+import { recordBrowserEvent } from "@/lib/analytics/local-events"
+import { APP_VERSION } from "@/lib/store/workspace"
+import type { Task } from "@/lib/domain/types"
 
 interface ShareModalProps {
   isOpen: boolean
@@ -30,12 +21,27 @@ interface ShareModalProps {
 }
 
 export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareModalProps) {
-  const [shareMethod, setShareMethod] = useState<"whatsapp" | "link" | "email" | "export">("whatsapp")
+  const [shareMethod, setShareMethod] = useState<"whatsapp" | "link" | "email" | "export">("export")
   const [includeCompleted, setIncludeCompleted] = useState(false)
   const [customMessage, setCustomMessage] = useState("")
   const [generatedLink, setGeneratedLink] = useState("")
   const [linkCopied, setLinkCopied] = useState(false)
   const [emailAddress, setEmailAddress] = useState("")
+  const [linkPassword, setLinkPassword] = useState("")
+  const [linkError, setLinkError] = useState("")
+
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose()
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [isOpen, onClose])
 
   const filteredTasks = includeCompleted ? tasks : tasks.filter((task) => !task.completed)
 
@@ -77,7 +83,7 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
     return message
   }
 
-  const generateShareableLink = () => {
+  const generateShareableLink = async () => {
     const shareData = {
       userName,
       tasks: filteredTasks,
@@ -85,14 +91,16 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
       customMessage,
     }
 
-    const encoded = encodeSharePayload(shareData)
+    const encoded = await encodeEncryptedSharePayload(shareData, linkPassword)
     if (!encoded.ok) {
-      console.error("Error generating shareable link:", encoded.error)
+      setLinkError(encoded.error)
       setGeneratedLink("")
       return ""
     }
     const link = `${window.location.origin}/shared/${encoded.token}`
+    setLinkError("")
     setGeneratedLink(link)
+    recordBrowserEvent("share_link", { count: filteredTasks.length })
     return link
   }
 
@@ -103,7 +111,7 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
       exportedAt: new Date().toISOString(),
       customMessage,
       appName: "Manage.kar",
-      version: "1.0.0",
+      version: APP_VERSION,
     }
 
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" })
@@ -115,104 +123,33 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
+    recordBrowserEvent("export", { kind: "tasks", count: filteredTasks.length })
   }
 
   const handleWhatsAppShare = () => {
-    console.log("[v0] WhatsApp share clicked")
     const message = generateWhatsAppMessage()
-    const encodedMessage = encodeURIComponent(message)
-
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
-    const isAndroid = /Android/.test(navigator.userAgent)
-
-    console.log("[v0] Device detection - Mobile:", isMobile, "iOS:", isIOS, "Android:", isAndroid)
-
-    try {
-      if (isMobile) {
-        if (isIOS) {
-          // iOS WhatsApp deep link
-          const whatsappUrl = `whatsapp://send?text=${encodedMessage}`
-          console.log("[v0] Opening iOS WhatsApp:", whatsappUrl)
-          window.location.href = whatsappUrl
-        } else if (isAndroid) {
-          // Android WhatsApp intent
-          const whatsappUrl = `intent://send?text=${encodedMessage}#Intent;scheme=whatsapp;package=com.whatsapp;end`
-          console.log("[v0] Opening Android WhatsApp:", whatsappUrl)
-          window.location.href = whatsappUrl
-
-          // Fallback for Android
-          setTimeout(() => {
-            const fallbackUrl = `whatsapp://send?text=${encodedMessage}`
-            console.log("[v0] Android fallback:", fallbackUrl)
-            window.location.href = fallbackUrl
-          }, 500)
-        } else {
-          // Generic mobile fallback
-          const whatsappUrl = `whatsapp://send?text=${encodedMessage}`
-          console.log("[v0] Generic mobile WhatsApp:", whatsappUrl)
-          window.location.href = whatsappUrl
-        }
-
-        // Universal fallback to web WhatsApp after delay
-        setTimeout(() => {
-          console.log("[v0] Opening web WhatsApp fallback")
-          window.open(`https://wa.me/?text=${encodedMessage}`, "_blank")
-        }, 2000)
-      } else {
-        // Desktop - use web WhatsApp
-        console.log("[v0] Opening web WhatsApp for desktop")
-        window.open(`https://wa.me/?text=${encodedMessage}`, "_blank")
-      }
-    } catch (error) {
-      console.error("[v0] WhatsApp share error:", error)
-      // Final fallback
-      window.open(`https://wa.me/?text=${encodedMessage}`, "_blank")
-    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer")
   }
 
-  const handleLinkShare = () => {
-    console.log("[v0] Link share clicked")
-    const link = generateShareableLink()
-    if (link) {
-      console.log("[v0] Generated link:", link)
-      navigator.clipboard
-        .writeText(link)
-        .then(() => {
-          console.log("[v0] Link copied to clipboard successfully")
-          setLinkCopied(true)
-          setTimeout(() => setLinkCopied(false), 2000)
-        })
-        .catch((error) => {
-          console.error("[v0] Clipboard failed:", error)
-          setGeneratedLink(link)
-        })
-    } else {
-      console.error("[v0] Failed to generate link")
+  const handleLinkShare = async () => {
+    const link = await generateShareableLink()
+    if (!link) {
+      return
     }
+    navigator.clipboard.writeText(link).then(() => {
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    })
   }
 
   const handleEmailShare = () => {
-    console.log("[v0] Email share clicked")
     const message = generateWhatsAppMessage().replace(/\*/g, "").replace(/~/g, "")
     const subject = `${userName}'s Task List from Manage.kar`
     const body = encodeURIComponent(message)
-
-    try {
-      let mailtoUrl
-      if (emailAddress) {
-        mailtoUrl = `mailto:${emailAddress}?subject=${encodeURIComponent(subject)}&body=${body}`
-        console.log("[v0] Opening email with specific address:", emailAddress)
-      } else {
-        mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${body}`
-        console.log("[v0] Opening email without specific address")
-      }
-
-      console.log("[v0] Email URL:", mailtoUrl)
-      window.location.href = mailtoUrl
-    } catch (error) {
-      console.error("[v0] Email share error:", error)
-    }
+    const mailtoUrl = emailAddress
+      ? `mailto:${emailAddress}?subject=${encodeURIComponent(subject)}&body=${body}`
+      : `mailto:?subject=${encodeURIComponent(subject)}&body=${body}`
+    window.open(mailtoUrl, "_blank", "noopener,noreferrer")
   }
 
   const handleCopyLink = () => {
@@ -235,14 +172,24 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
               </div>
               <h2 className="responsive-text-xl font-semibold font-sans text-readable">Share Tasks</h2>
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full mobile-touch-target">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="rounded-full mobile-touch-target"
+              aria-label="Close share"
+            >
               <X className="h-5 w-5 text-readable" />
             </Button>
           </div>
 
           <div className="space-y-4 sm:space-y-6 max-h-[60vh] overflow-y-auto">
+            <p className="text-xs text-muted-readable">
+              Export a JSON file to keep a private copy. Link sharing is password-protected. The ciphertext sits in
+              the URL and does not expire. Anyone with both the URL and the password can read the tasks.
+            </p>
             <div className="space-y-3">
-              <Label className="responsive-text-sm font-medium text-readable">Share Method</Label>
+              <Label className="responsive-text-sm font-medium text-readable">Share method</Label>
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant={shareMethod === "whatsapp" ? "default" : "outline"}
@@ -350,6 +297,22 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
               </div>
             </div>
 
+            {shareMethod === "link" && (
+              <div className="space-y-2">
+                <Label className="responsive-text-sm font-medium text-readable">Link password</Label>
+                <Input
+                  type="password"
+                  value={linkPassword}
+                  onChange={(event) => setLinkPassword(event.target.value)}
+                  placeholder="Required to encrypt the link"
+                  className="bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl mobile-touch-target"
+                />
+                <p className="text-xs text-muted-readable">
+                  Share the password separately. We cannot recover it. The link still does not expire.
+                </p>
+                {linkError ? <p className="text-xs text-destructive">{linkError}</p> : null}
+              </div>
+            )}
             {shareMethod === "link" && generatedLink && (
               <div className="space-y-2">
                 <Label className="responsive-text-sm font-medium text-readable">Generated Link</Label>

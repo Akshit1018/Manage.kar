@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -9,7 +10,6 @@ import {
   CheckCircle2,
   Circle,
   Calendar,
-  Users,
   Target,
   Settings,
   User,
@@ -24,13 +24,11 @@ import {
   Search,
   StickyNote,
   Activity,
-  Monitor,
 } from "lucide-react"
 import { FloatingToggle } from "@/components/floating-toggle"
 import { TaskModal } from "@/components/task-modal"
 import { NoteModal } from "@/components/note-modal"
 import { ShareModal } from "@/components/share-modal"
-import { CollaborationDashboard } from "@/components/collaboration-dashboard"
 import { HabitModal } from "@/components/habit-modal"
 import { HabitDashboard } from "@/components/habit-dashboard"
 import { FocusModal } from "@/components/focus-modal"
@@ -43,53 +41,43 @@ import { ClipboardMonitor } from "@/components/clipboard-monitor"
 import { EmptyState } from "@/components/empty-state"
 import type { Habit, Note, Task } from "@/lib/domain/types"
 import { useWorkspace } from "@/lib/store/use-workspace"
-import { nextNumericId } from "@/lib/store/workspace"
+import { allocateEntityId } from "@/lib/store/workspace"
+import { recordBrowserEvent } from "@/lib/analytics/local-events"
+import { formatDueDate, formatTimestamp, localDateKey, normalizeDueDate } from "@/lib/dates/due-date"
+import { hydrateHabit, toggleHabitOnDate } from "@/lib/habits/streak"
+import { completeRecurringTask } from "@/lib/reminders/due"
+import { useLocalReminders } from "@/lib/reminders/use-local-reminders"
 
-type ViewMode = "overview" | "tasks" | "notes" | "monitor"
+type ViewMode = "overview" | "tasks" | "notes" | "habits"
 
 export default function Dashboard() {
-  const { workspace, persist, hydrated } = useWorkspace()
+  const { workspace, persist, hydrated, loadStatus, quarantineKey, dropped, resetCorrupt } = useWorkspace()
   const tasks = workspace.tasks
   const notes = workspace.notes
   const habits = workspace.habits
   const userName = workspace.profile.name
+  const greeting = userName.trim() && userName.trim() !== "User" ? `Hello, ${userName}` : "Your workspace"
+  const dateFormat = workspace.settings.general.dateFormat
+
+  useLocalReminders(workspace, persist, hydrated)
 
   const [currentView, setCurrentView] = useState<ViewMode>("overview")
   const [searchQuery, setSearchQuery] = useState("")
-
   const [selectedTasks, setSelectedTasks] = useState<number[]>([])
   const [isSelectionMode, setIsSelectionMode] = useState(false)
-
-  // Modal states
-  const [taskModal, setTaskModal] = useState<{
-    isOpen: boolean
-    mode: "create" | "edit"
-    task?: Task
-  }>({
+  const [taskModal, setTaskModal] = useState<{ isOpen: boolean; mode: "create" | "edit"; task?: Task }>({
     isOpen: false,
     mode: "create",
   })
-
-  const [noteModal, setNoteModal] = useState<{
-    isOpen: boolean
-    mode: "create" | "edit"
-    note?: Note
-  }>({
+  const [noteModal, setNoteModal] = useState<{ isOpen: boolean; mode: "create" | "edit"; note?: Note }>({
     isOpen: false,
     mode: "create",
   })
-
-  const [habitModal, setHabitModal] = useState<{
-    isOpen: boolean
-    mode: "create" | "edit"
-    habit?: Habit
-  }>({
+  const [habitModal, setHabitModal] = useState<{ isOpen: boolean; mode: "create" | "edit"; habit?: Habit }>({
     isOpen: false,
     mode: "create",
   })
-
   const [shareModal, setShareModal] = useState(false)
-  const [collaborationModal, setCollaborationModal] = useState(false)
   const [habitDashboard, setHabitDashboard] = useState(false)
   const [focusModal, setFocusModal] = useState(false)
   const [profileModal, setProfileModal] = useState(false)
@@ -98,694 +86,303 @@ export default function Dashboard() {
   const [timeTrackerModal, setTimeTrackerModal] = useState(false)
   const [goalManagerModal, setGoalManagerModal] = useState(false)
 
-  // Permissions state and handling
-  const [showPermissionsModal, setShowPermissionsModal] = useState(false)
-
-  useEffect(() => {
-    const hasPermissions = localStorage.getItem("manage-kar-permissions")
-    if (!hasPermissions) {
-      setShowPermissionsModal(true)
-    }
-  }, [])
-
   const handleTaskToggle = (taskId: number) => {
-    persist({
-      tasks: tasks.map((task) => (task.id === taskId ? { ...task, completed: !task.completed } : task)),
+    persist((current) => {
+      const existing = current.tasks.find((task) => task.id === taskId)
+      if (!existing) {
+        return current
+      }
+      if (!existing.completed) {
+        const allocated = allocateEntityId(current)
+        const { completed, next } = completeRecurringTask(existing, allocated.id)
+        return {
+          ...allocated.workspace,
+          tasks: [
+            ...allocated.workspace.tasks.map((task) => (task.id === taskId ? completed : task)),
+            ...(next ? [next] : []),
+          ],
+        }
+      }
+      return {
+        ...current,
+        tasks: current.tasks.map((task) => (task.id === taskId ? { ...task, completed: false } : task)),
+      }
     })
-  }
-
-  const handleTaskSelect = (taskId: number) => {
-    if (selectedTasks.includes(taskId)) {
-      setSelectedTasks(selectedTasks.filter((id) => id !== taskId))
-    } else {
-      setSelectedTasks([...selectedTasks, taskId])
-    }
-  }
-
-  const handleSelectAll = () => {
-    if (selectedTasks.length === filteredTasks.length) {
-      setSelectedTasks([])
-    } else {
-      setSelectedTasks(filteredTasks.map((task) => task.id))
-    }
-  }
-
-  const handleClearSelection = () => {
-    setSelectedTasks([])
-    setIsSelectionMode(false)
-  }
-
-  const handleBulkShare = () => {
-    setShareModal(true)
-  }
-
-  const handleAddTask = () => {
-    setTaskModal({ isOpen: true, mode: "create" })
-  }
-
-  const handleEditTask = (task: Task) => {
-    setTaskModal({ isOpen: true, mode: "edit", task })
   }
 
   const handleSaveTask = (taskData: Omit<Task, "id"> | Task) => {
-    if ("id" in taskData) {
-      persist({ tasks: tasks.map((task) => (task.id === taskData.id ? taskData : task)) })
-    } else {
-      persist({
+    persist((current) => {
+      const title = taskData.title.trim()
+      const dueDate = normalizeDueDate(taskData.dueDate)
+      if ("id" in taskData) {
+        return {
+          ...current,
+          tasks: current.tasks.map((task) => (task.id === taskData.id ? { ...taskData, title, dueDate } : task)),
+        }
+      }
+      const allocated = allocateEntityId(current)
+      recordBrowserEvent("task_created")
+      return {
+        ...allocated.workspace,
         tasks: [
-          ...tasks,
+          ...allocated.workspace.tasks,
           {
             ...taskData,
-            id: nextNumericId(tasks),
+            id: allocated.id,
+            title,
+            dueDate,
           },
         ],
-      })
-    }
-  }
-
-  const handleDeleteTask = (taskId: number) => {
-    persist({ tasks: tasks.filter((task) => task.id !== taskId) })
-  }
-
-  const handleAddNote = () => {
-    setNoteModal({ isOpen: true, mode: "create" })
-  }
-
-  const handleEditNote = (note: Note) => {
-    setNoteModal({ isOpen: true, mode: "edit", note })
-  }
-
-  const handleSaveNote = (noteData: Omit<Note, "id" | "createdAt"> | Note) => {
-    if ("id" in noteData) {
-      persist({ notes: notes.map((note) => (note.id === noteData.id ? noteData : note)) })
-    } else {
-      persist({
-        notes: [
-          ...notes,
-          {
-            ...noteData,
-            id: nextNumericId(notes),
-            createdAt: new Date().toISOString(),
-          },
-        ],
-      })
-    }
-  }
-
-  const handleDeleteNote = (noteId: number) => {
-    persist({ notes: notes.filter((note) => note.id !== noteId) })
-  }
-
-  const handleOpenShare = () => {
-    setShareModal(true)
-  }
-
-  const handleOpenCollaboration = () => {
-    setCollaborationModal(true)
-  }
-
-  const handleHabitToggle = (habitId: number) => {
-    const today = new Date().toISOString().slice(0, 10)
-    persist({
-      habits: habits.map((habit) => {
-        if (habit.id !== habitId) {
-          return habit
-        }
-        const newCompletedToday = !habit.completedToday
-        const history = habit.history.filter((entry) => entry.date !== today)
-        history.push({ date: today, completed: newCompletedToday })
-        return {
-          ...habit,
-          completedToday: newCompletedToday,
-          completed: newCompletedToday,
-          streak: newCompletedToday ? habit.streak + 1 : Math.max(0, habit.streak - 1),
-          history,
-        }
-      }),
+      }
     })
   }
 
-  const handleAddHabit = () => {
-    setHabitModal({ isOpen: true, mode: "create" })
+  const handleDeleteTask = (taskId: number) => {
+    let removed: Task | undefined
+    persist((current) => {
+      removed = current.tasks.find((task) => task.id === taskId)
+      return { ...current, tasks: current.tasks.filter((task) => task.id !== taskId) }
+    })
+    if (removed) {
+      const snapshot = removed
+      recordBrowserEvent("task_deleted")
+      toast("Task deleted", {
+        duration: 8000,
+        action: {
+          label: "Undo",
+          onClick: () => persist((current) => ({ ...current, tasks: [...current.tasks, snapshot] })),
+        },
+      })
+    }
   }
 
-  const handleEditHabit = (habit: Habit) => {
-    setHabitModal({ isOpen: true, mode: "edit", habit })
+  const handleSaveNote = (noteData: Omit<Note, "id" | "createdAt"> | Note) => {
+    persist((current) => {
+      const title = noteData.title.trim()
+      if ("id" in noteData) {
+        return {
+          ...current,
+          notes: current.notes.map((note) => (note.id === noteData.id ? { ...noteData, title } : note)),
+        }
+      }
+      const allocated = allocateEntityId(current)
+      return {
+        ...allocated.workspace,
+        notes: [
+          ...allocated.workspace.notes,
+          {
+            ...noteData,
+            id: allocated.id,
+            title,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      }
+    })
+  }
+
+  const handleDeleteNote = (noteId: number) => {
+    let removed: Note | undefined
+    persist((current) => {
+      removed = current.notes.find((note) => note.id === noteId)
+      return { ...current, notes: current.notes.filter((note) => note.id !== noteId) }
+    })
+    if (removed) {
+      const snapshot = removed
+      toast("Note deleted", {
+        duration: 8000,
+        action: {
+          label: "Undo",
+          onClick: () => persist((current) => ({ ...current, notes: [...current.notes, snapshot] })),
+        },
+      })
+    }
+  }
+
+  const handleHabitToggle = (habitId: number) => {
+    const today = localDateKey()
+    persist((current) => ({
+      ...current,
+      habits: current.habits.map((habit) =>
+        habit.id === habitId ? hydrateHabit(toggleHabitOnDate(habit, today), today) : habit,
+      ),
+    }))
   }
 
   const handleSaveHabit = (
     habitData: Omit<Habit, "id" | "streak" | "completed" | "completedToday" | "createdAt" | "history"> | Habit,
   ) => {
-    if ("id" in habitData) {
-      persist({ habits: habits.map((habit) => (habit.id === habitData.id ? habitData : habit)) })
-    } else {
-      persist({
+    persist((current) => {
+      if ("id" in habitData) {
+        return {
+          ...current,
+          habits: current.habits.map((habit) =>
+            habit.id === habitData.id ? hydrateHabit({ ...habit, ...habitData, name: habitData.name.trim() }, localDateKey()) : habit,
+          ),
+        }
+      }
+      const allocated = allocateEntityId(current)
+      return {
+        ...allocated.workspace,
         habits: [
-          ...habits,
-          {
-            ...habitData,
-            id: nextNumericId(habits),
-            streak: 0,
-            completed: false,
-            completedToday: false,
-            createdAt: new Date().toISOString(),
-            history: [],
-          },
+          ...allocated.workspace.habits,
+          hydrateHabit(
+            {
+              ...habitData,
+              id: allocated.id,
+              name: habitData.name.trim(),
+              streak: 0,
+              completed: false,
+              completedToday: false,
+              createdAt: new Date().toISOString(),
+              history: [],
+            },
+            localDateKey(),
+          ),
         ],
+      }
+    })
+  }
+
+  const handleDeleteHabit = (habitId: number) => {
+    let removed: Habit | undefined
+    persist((current) => {
+      removed = current.habits.find((habit) => habit.id === habitId)
+      return { ...current, habits: current.habits.filter((habit) => habit.id !== habitId) }
+    })
+    if (removed) {
+      const snapshot = removed
+      toast("Habit deleted", {
+        duration: 8000,
+        action: {
+          label: "Undo",
+          onClick: () => persist((current) => ({ ...current, habits: [...current.habits, snapshot] })),
+        },
       })
     }
   }
 
-  const handleDeleteHabit = (habitId: number) => {
-    persist({ habits: habits.filter((habit) => habit.id !== habitId) })
-  }
-
-  const handleOpenHabitDashboard = () => {
-    setHabitDashboard(true)
-  }
-
-  const handleOpenFocus = () => {
-    setFocusModal(true)
-  }
-
-  const handleOpenProfile = () => {
-    setProfileModal(true)
-  }
-
-  const handleOpenSettings = () => {
-    setSettingsModal(true)
-  }
-
-  const handleOpenAnalytics = () => {
-    setAnalyticsModal(true)
-  }
-
-  const handleOpenTimeTracker = () => {
-    setTimeTrackerModal(true)
-  }
-
-  const handleOpenGoalManager = () => {
-    setGoalManagerModal(true)
-  }
+  const clipTitle = (content: string, limit: number) =>
+    content.length > limit ? `${content.slice(0, limit).trim()}…` : content.trim()
 
   const handleClipboardTask = (content: string) => {
-    persist({
-      tasks: [
-        ...tasks,
-        {
-          id: nextNumericId(tasks),
-          title: content.length > 50 ? content.substring(0, 50) + "..." : content,
-          completed: false,
-          priority: "medium",
-          dueDate: "Today",
-          description: content.length > 50 ? content : undefined,
-          recurring: "none",
-          reminders: false,
-        },
-      ],
+    persist((current) => {
+      const allocated = allocateEntityId(current)
+      return {
+        ...allocated.workspace,
+        tasks: [
+          ...allocated.workspace.tasks,
+          {
+            id: allocated.id,
+            title: clipTitle(content, 50),
+            completed: false,
+            priority: "medium",
+            dueDate: localDateKey(),
+            description: content.length > 50 ? content : undefined,
+            recurring: "none",
+            reminders: false,
+          },
+        ],
+      }
     })
   }
 
   const handleClipboardNote = (content: string) => {
-    persist({
-      notes: [
-        ...notes,
-        {
-          id: nextNumericId(notes),
-          title: content.length > 30 ? content.substring(0, 30) + "..." : content,
-          content,
-          createdAt: new Date().toISOString(),
-        },
-      ],
+    persist((current) => {
+      const allocated = allocateEntityId(current)
+      return {
+        ...allocated.workspace,
+        notes: [
+          ...allocated.workspace.notes,
+          {
+            id: allocated.id,
+            title: clipTitle(content, 30),
+            content,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      }
     })
   }
 
-  const handleVoiceNote = (audioBlob: Blob, transcription: string) => {
+  const handleVoiceNote = (audioBlob: Blob, transcription: string, duration = 0) => {
     const audioUrl = URL.createObjectURL(audioBlob)
-    persist({
-      notes: [
-        ...notes,
-        {
-          id: nextNumericId(notes),
-          title: transcription.length > 30 ? transcription.substring(0, 30) + "..." : transcription,
-          content: transcription,
-          createdAt: new Date().toISOString(),
-          voiceNote: {
-            audioUrl,
-            transcription,
-            duration: 0,
+    persist((current) => {
+      const allocated = allocateEntityId(current)
+      return {
+        ...allocated.workspace,
+        notes: [
+          ...allocated.workspace.notes,
+          {
+            id: allocated.id,
+            title: clipTitle(transcription || "Voice note", 30),
+            content: transcription,
+            createdAt: new Date().toISOString(),
+            voiceNote: {
+              audioUrl,
+              transcription,
+              duration,
+            },
           },
-        },
-      ],
+        ],
+      }
     })
   }
 
   const handleSpeechToText = (text: string) => {
-    persist({
-      notes: [
-        ...notes,
-        {
-          id: nextNumericId(notes),
-          title: text.length > 30 ? text.substring(0, 30) + "..." : text,
-          content: text,
-          createdAt: new Date().toISOString(),
-          voiceNote: {
-            audioUrl: "",
-            transcription: text,
-            duration: 0,
+    persist((current) => {
+      const allocated = allocateEntityId(current)
+      return {
+        ...allocated.workspace,
+        notes: [
+          ...allocated.workspace.notes,
+          {
+            id: allocated.id,
+            title: clipTitle(text, 30),
+            content: text,
+            createdAt: new Date().toISOString(),
           },
-        },
-      ],
+        ],
+      }
     })
   }
 
   const handleVoiceTask = (text: string) => {
-    persist({
-      tasks: [
-        ...tasks,
-        {
-          id: nextNumericId(tasks),
-          title: text.length > 50 ? text.substring(0, 50) + "..." : text,
-          completed: false,
-          priority: "medium",
-          dueDate: "Today",
-          description: text,
-          recurring: "none",
-          reminders: false,
-        },
-      ],
+    persist((current) => {
+      const allocated = allocateEntityId(current)
+      recordBrowserEvent("task_created")
+      return {
+        ...allocated.workspace,
+        tasks: [
+          ...allocated.workspace.tasks,
+          {
+            id: allocated.id,
+            title: clipTitle(text, 50),
+            completed: false,
+            priority: "medium",
+            dueDate: localDateKey(),
+            description: text,
+            recurring: "none",
+            reminders: false,
+          },
+        ],
+      }
     })
   }
 
   const completedTasksCount = tasks.filter((task) => task.completed).length
   const pendingTasksCount = tasks.filter((task) => !task.completed).length
-
+  const query = searchQuery.toLowerCase()
   const filteredTasks = tasks.filter(
     (task) =>
-      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      task.description?.toLowerCase().includes(searchQuery.toLowerCase()),
+      task.title.toLowerCase().includes(query) || task.description?.toLowerCase().includes(query),
   )
-
   const filteredNotes = notes.filter(
-    (note) =>
-      note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.content.toLowerCase().includes(searchQuery.toLowerCase()),
+    (note) => note.title.toLowerCase().includes(query) || note.content.toLowerCase().includes(query),
   )
-
-  const renderOverviewContent = () => (
-    <div className="space-y-6 sm:space-y-8">
-      <div className="adaptive-grid">
-        <Card
-          className="modern-card hover:scale-105 transition-all duration-300 cursor-pointer group responsive-card"
-          onClick={() => setCurrentView("tasks")}
-        >
-          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-            <div className="p-2 sm:p-3 bg-primary/10 rounded-xl sm:rounded-2xl group-hover:bg-primary/20 transition-colors">
-              <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-primary" />
-            </div>
-            <div>
-              <p className="responsive-text-xl font-bold font-sans gradient-text">{completedTasksCount}</p>
-              <p className="responsive-text-xs text-muted-readable font-serif">Completed</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card
-          className="modern-card hover:scale-105 transition-all duration-300 cursor-pointer group responsive-card"
-          onClick={() => setCurrentView("tasks")}
-        >
-          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-            <div className="p-2 sm:p-3 bg-orange-500/10 rounded-xl sm:rounded-2xl group-hover:bg-orange-500/20 transition-colors">
-              <Circle className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-orange-500" />
-            </div>
-            <div>
-              <p className="responsive-text-xl font-bold font-sans gradient-text">{pendingTasksCount}</p>
-              <p className="responsive-text-xs text-muted-readable font-serif">Pending</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card
-          className="modern-card hover:scale-105 transition-all duration-300 cursor-pointer group responsive-card"
-          onClick={handleOpenHabitDashboard}
-        >
-          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-            <div className="p-2 sm:p-3 bg-blue-500/10 rounded-xl sm:rounded-2xl group-hover:bg-blue-500/20 transition-colors">
-              <Target className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-blue-500" />
-            </div>
-            <div>
-              <p className="responsive-text-xl font-bold font-sans gradient-text">{habits.length}</p>
-              <p className="responsive-text-xs text-muted-readable font-serif">Habits</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card
-          className="modern-card hover:scale-105 transition-all duration-300 cursor-pointer group responsive-card"
-          onClick={() => setCurrentView("notes")}
-        >
-          <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-            <div className="p-2 sm:p-3 bg-green-500/10 rounded-xl sm:rounded-2xl group-hover:bg-green-500/20 transition-colors">
-              <FileText className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-green-500" />
-            </div>
-            <div>
-              <p className="responsive-text-xl font-bold font-sans gradient-text">{notes.length}</p>
-              <p className="responsive-text-xs text-muted-readable font-serif">Notes</p>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Enhanced Recent Tasks */}
-      <div>
-        <h3 className="responsive-text-2xl font-bold font-sans text-readable mb-4 sm:mb-6">Recent Tasks</h3>
-        {tasks.length === 0 ? (
-          <EmptyState
-            title="Nothing on your plate yet"
-            description="Add a task to start a workspace that stays on this device after refresh."
-            actionLabel="Add task"
-            onAction={handleAddTask}
-          />
-        ) : (
-        <div className="space-y-3">
-          {tasks.slice(0, 3).map((task) => (
-            <Card key={task.id} className="modern-card hover:shadow-lg transition-all duration-300 group">
-              <div className="flex items-center gap-4">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-xl h-8 w-8 hover:scale-110 transition-all duration-200 btn-theme"
-                  onClick={() => handleTaskToggle(task.id)}
-                >
-                  {task.completed ? (
-                    <CheckCircle2 className="h-5 w-5 text-primary" />
-                  ) : (
-                    <Circle className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                  )}
-                </Button>
-                <div className="flex-1">
-                  <p className={`font-serif ${task.completed ? "line-through text-muted-readable" : "text-readable"}`}>
-                    {task.title}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge
-                      variant={
-                        task.priority === "high" ? "destructive" : task.priority === "medium" ? "default" : "secondary"
-                      }
-                      className="text-xs sm:text-sm"
-                    >
-                      {task.priority}
-                    </Badge>
-                    <span className="text-xs sm:text-sm text-muted-readable">{task.dueDate}</span>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-        )}
-      </div>
-    </div>
+  const filteredHabits = habits.filter(
+    (habit) => habit.name.toLowerCase().includes(query) || habit.description?.toLowerCase().includes(query),
   )
-
-  const renderTasksContent = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xl sm:text-2xl font-bold font-sans text-foreground">All Tasks</h3>
-        <div className="flex items-center gap-2">
-          {isSelectionMode && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleSelectAll}
-                className="rounded-xl responsive-button bg-transparent"
-              >
-                {selectedTasks.length === filteredTasks.length ? "Deselect All" : "Select All"}
-              </Button>
-              {selectedTasks.length > 0 && (
-                <Button variant="default" size="sm" onClick={handleBulkShare} className="rounded-xl responsive-button">
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Share ({selectedTasks.length})
-                </Button>
-              )}
-              <Button variant="ghost" size="sm" onClick={handleClearSelection} className="rounded-xl responsive-button">
-                Cancel
-              </Button>
-            </>
-          )}
-          {!isSelectionMode && (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => setIsSelectionMode(true)}
-                className="rounded-xl responsive-button"
-              >
-                <CheckSquare className="h-4 w-4 mr-2" />
-                Select
-              </Button>
-              <Button onClick={handleAddTask} className="rounded-2xl responsive-button">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Task
-              </Button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {isSelectionMode && (
-        <div className="flex items-center justify-between p-3 bg-primary/10 border border-primary/20 rounded-xl">
-          <span className="responsive-text-sm text-primary font-medium">
-            {selectedTasks.length} of {filteredTasks.length} tasks selected
-          </span>
-          {selectedTasks.length > 0 && (
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleBulkShare}
-                className="text-primary hover:bg-primary/20 responsive-button"
-              >
-                <Share2 className="h-4 w-4 mr-1" />
-                Share Selected
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="space-y-4">
-        {filteredTasks.length === 0 ? (
-          <EmptyState
-            title={searchQuery ? "No matching tasks" : "No tasks yet"}
-            description={
-              searchQuery
-                ? "Try a different search, or clear the box to see everything."
-                : "Create a task. It will still be here after you refresh."
-            }
-            actionLabel={searchQuery ? undefined : "Add task"}
-            onAction={searchQuery ? undefined : handleAddTask}
-          />
-        ) : null}
-        {filteredTasks.map((task) => (
-          <Card
-            key={task.id}
-            className={`bg-card/95 backdrop-blur-xl border border-border/50 p-6 rounded-3xl hover:shadow-lg transition-all duration-300 group ${
-              selectedTasks.includes(task.id) ? "ring-2 ring-primary bg-primary/5" : ""
-            }`}
-          >
-            <div className="flex items-center gap-4">
-              {isSelectionMode && (
-                <input
-                  type="checkbox"
-                  checked={selectedTasks.includes(task.id)}
-                  onChange={() => handleTaskSelect(task.id)}
-                  className="w-5 h-5 rounded border-border accent-primary mobile-touch-target"
-                />
-              )}
-
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-2xl h-10 w-10 hover:scale-110 transition-all duration-200"
-                onClick={() => handleTaskToggle(task.id)}
-              >
-                {task.completed ? (
-                  <CheckCircle2 className="h-6 w-6 text-primary" />
-                ) : (
-                  <Circle className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
-                )}
-              </Button>
-
-              <div className="flex-1 space-y-2">
-                <p
-                  className={`font-serif text-lg sm:text-xl ${task.completed ? "line-through text-muted-foreground" : "text-foreground"}`}
-                >
-                  {task.title}
-                </p>
-                {task.description && <p className="text-sm sm:text-base text-muted-foreground">{task.description}</p>}
-                <div className="flex items-center gap-3 flex-wrap">
-                  <Badge
-                    variant={
-                      task.priority === "high" ? "destructive" : task.priority === "medium" ? "default" : "secondary"
-                    }
-                    className="text-xs sm:text-sm px-3 py-1 rounded-full"
-                  >
-                    {task.priority}
-                  </Badge>
-                  <span className="text-sm sm:text-base text-muted-foreground flex items-center gap-2">
-                    <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
-                    {task.dueDate}
-                  </span>
-                  {task.checklist && task.checklist.length > 0 && (
-                    <span className="text-sm sm:text-base text-muted-foreground bg-secondary/50 px-3 py-1 rounded-full">
-                      {task.checklist.filter((item) => item.completed).length}/{task.checklist.length} items
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {!isSelectionMode && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-2xl h-10 w-10 sm:opacity-0 sm:group-hover:opacity-100 hover:scale-110 transition-all duration-200"
-                  onClick={() => handleEditTask(task)}
-                >
-                  <Edit className="h-4 w-4 text-muted-foreground" />
-                </Button>
-              )}
-            </div>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
-
-  const renderNotesContent = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xl sm:text-2xl font-bold font-sans text-foreground">All Notes</h3>
-        <Button onClick={handleAddNote} className="rounded-2xl">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Note
-        </Button>
-      </div>
-
-      <div className="grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
-        {filteredNotes.length === 0 ? (
-          <div className="md:col-span-2 lg:col-span-3">
-            <EmptyState
-              title={searchQuery ? "No matching notes" : "No notes yet"}
-              description={
-                searchQuery
-                  ? "Nothing in your notes matches that search."
-                  : "Capture a thought. Notes are saved locally with the rest of your workspace."
-              }
-              actionLabel={searchQuery ? undefined : "Add note"}
-              onAction={searchQuery ? undefined : handleAddNote}
-            />
-          </div>
-        ) : null}
-        {filteredNotes.map((note) => (
-          <Card
-            key={note.id}
-            className="bg-card/95 backdrop-blur-xl border border-border/50 p-6 rounded-3xl hover:shadow-lg transition-all duration-300 group cursor-pointer"
-            onClick={() => handleEditNote(note)}
-          >
-            <div className="space-y-3">
-              <div className="flex items-start justify-between">
-                <h4 className="font-semibold font-sans text-foreground truncate flex-1">{note.title}</h4>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 rounded-full sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleEditNote(note)
-                  }}
-                >
-                  <Edit className="h-3 w-3 text-muted-foreground" />
-                </Button>
-              </div>
-              <p className="text-sm sm:text-base text-muted-foreground font-serif line-clamp-3">{note.content}</p>
-              <p className="text-xs sm:text-sm">{note.createdAt}</p>
-            </div>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
-
-  const renderMonitorContent = () => (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-xl sm:text-2xl font-bold font-sans text-foreground">Workspace</h3>
-        <p className="mt-2 text-sm text-muted-foreground">
-          This is a personal, on-device workspace. There is no live team feed yet.
-        </p>
-      </div>
-      <div className="grid gap-4 sm:gap-5 md:grid-cols-3">
-        <Card className="bg-card/95 backdrop-blur-xl border border-border/50 p-6 rounded-3xl">
-          <p className="text-sm text-muted-foreground">Open tasks</p>
-          <p className="mt-2 text-2xl font-semibold">{pendingTasksCount}</p>
-        </Card>
-        <Card className="bg-card/95 backdrop-blur-xl border border-border/50 p-6 rounded-3xl">
-          <p className="text-sm text-muted-foreground">Completed</p>
-          <p className="mt-2 text-2xl font-semibold">{completedTasksCount}</p>
-        </Card>
-        <Card className="bg-card/95 backdrop-blur-xl border border-border/50 p-6 rounded-3xl">
-          <p className="text-sm text-muted-foreground">Habits today</p>
-          <p className="mt-2 text-2xl font-semibold">
-            {habits.filter((habit) => habit.completedToday).length}/{habits.length}
-          </p>
-        </Card>
-      </div>
-    </div>
-  )
-
-  const handleGrantPermissions = async () => {
-    console.log("[v0] Grant permissions clicked")
-    try {
-      let permissionsGranted = true
-
-      // Request microphone permission
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        try {
-          await navigator.mediaDevices.getUserMedia({ audio: true })
-          console.log("[v0] Microphone permission granted")
-        } catch (micError) {
-          console.log("[v0] Microphone permission denied:", micError)
-          permissionsGranted = false
-        }
-      }
-
-      // Request notification permission
-      if ("Notification" in window) {
-        try {
-          const permission = await Notification.requestPermission()
-          console.log("[v0] Notification permission:", permission)
-        } catch (notifError) {
-          console.log("[v0] Notification permission error:", notifError)
-        }
-      }
-
-      localStorage.setItem("manage-kar-permissions", permissionsGranted ? "granted" : "partial")
-      setShowPermissionsModal(false)
-      console.log("[v0] Permissions modal closed")
-    } catch (error) {
-      console.error("[v0] Permission request failed:", error)
-      localStorage.setItem("manage-kar-permissions", "partial")
-      setShowPermissionsModal(false)
-    }
-  }
-
-  const handleSkipPermissions = () => {
-    console.log("[v0] Skip permissions clicked")
-    localStorage.setItem("manage-kar-permissions", "skipped")
-    setShowPermissionsModal(false)
-    console.log("[v0] Permissions modal closed via skip")
-  }
 
   if (!hydrated) {
     return (
@@ -796,172 +393,385 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 pb-32">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 pb-28">
       <ClipboardMonitor
         onCreateTask={handleClipboardTask}
         onCreateNote={handleClipboardNote}
         enabled={workspace.settings.privacy.clipboardMonitor}
       />
 
-      {/* Enhanced Header */}
+      {loadStatus === "corrupt" && (
+        <Card className="mb-4 border-destructive/40 bg-destructive/10 p-4">
+          <p className="font-medium text-destructive">This workspace looks damaged.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            The original bytes were copied to {quarantineKey ?? "a quarantine key"}. Reset to start writing again.
+            Existing data was not overwritten.
+          </p>
+          <Button className="mt-3" variant="destructive" onClick={() => resetCorrupt()}>
+            Reset workspace
+          </Button>
+        </Card>
+      )}
+
+      {dropped.tasks + dropped.notes + dropped.habits > 0 && (
+        <Card className="mb-4 border-orange-500/30 bg-orange-500/10 p-4">
+          <p className="text-sm">
+            Skipped {dropped.tasks} invalid task{dropped.tasks === 1 ? "" : "s"}
+            {dropped.notes ? `, ${dropped.notes} notes` : ""}
+            {dropped.habits ? `, ${dropped.habits} habits` : ""}. Valid rows were kept.
+          </p>
+        </Card>
+      )}
+
       <div className="mb-6 pt-2 sm:mb-8 sm:pt-4">
         <div className="flex items-center justify-between mb-4 sm:mb-6">
           <div className="flex items-center gap-3 sm:gap-4">
             <Button
               variant="ghost"
               size="icon"
-              className="modern-card rounded-2xl h-10 w-10 sm:h-12 sm:w-12 hover:scale-105 transition-all duration-200 btn-theme iphone-touch-target"
-              onClick={handleOpenProfile}
+              className="modern-card rounded-2xl h-10 w-10 sm:h-12 sm:w-12"
+              onClick={() => setProfileModal(true)}
+              aria-label="Open profile"
             >
               <User className="h-5 w-5 sm:h-6 sm:w-6" />
             </Button>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold font-sans gradient-text">Hello, {userName}!</h1>
-              <p className="text-muted-readable font-serif text-xs sm:text-sm">Your workspace stays on this device</p>
+              <h1 className="text-xl sm:text-2xl font-bold font-sans">{greeting}</h1>
+              <p className="text-muted-readable font-serif text-xs sm:text-sm">
+                Local workspace on this device. Export if you want a backup.
+              </p>
             </div>
           </div>
           <Button
             variant="ghost"
             size="icon"
-            className="modern-card rounded-2xl h-10 w-10 sm:h-12 sm:w-12 hover:scale-105 transition-all duration-200 btn-theme iphone-touch-target"
-            onClick={handleOpenSettings}
+            className="modern-card rounded-2xl h-10 w-10 sm:h-12 sm:w-12"
+            onClick={() => setSettingsModal(true)}
+            aria-label="Open settings"
           >
             <Settings className="h-5 w-5 sm:h-6 sm:w-6" />
           </Button>
         </div>
 
-        {/* Enhanced Feature Grid with Responsive Layout */}
-        <div className="feature-grid mb-4 sm:mb-6">
-          <Button
-            variant="ghost"
-            className="modern-card rounded-xl sm:rounded-2xl h-12 sm:h-14 lg:h-16 w-full flex flex-col items-center justify-center gap-1 hover:scale-105 transition-all duration-200 btn-theme mobile-touch-target responsive-button"
-            onClick={handleOpenAnalytics}
-          >
-            <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="responsive-text-xs font-medium">Analytics</span>
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <Button onClick={() => setTaskModal({ isOpen: true, mode: "create" })} className="rounded-2xl h-12 sm:h-11">
+            <Plus className="h-4 w-4 mr-2" />
+            Add task
           </Button>
-          <Button
-            variant="ghost"
-            className="modern-card rounded-xl sm:rounded-2xl h-12 sm:h-14 lg:h-16 w-full flex flex-col items-center justify-center gap-1 hover:scale-105 transition-all duration-200 btn-theme mobile-touch-target responsive-button"
-            onClick={handleOpenTimeTracker}
-          >
-            <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="responsive-text-xs font-medium">Time</span>
+          <div className="grid grid-cols-2 sm:flex gap-2 flex-1">
+            <Button variant="outline" className="rounded-xl bg-transparent" onClick={() => setNoteModal({ isOpen: true, mode: "create" })}>
+              <StickyNote className="h-4 w-4 mr-2" />
+              Note
+            </Button>
+            <Button variant="outline" className="rounded-xl bg-transparent" onClick={() => setHabitModal({ isOpen: true, mode: "create" })}>
+              <Activity className="h-4 w-4 mr-2" />
+              Habit
+            </Button>
+          </div>
+        </div>
+
+        <div className="mb-4 hidden sm:grid grid-cols-4 lg:grid-cols-6 gap-2">
+          <Button variant="ghost" className="modern-card rounded-xl h-14 flex-col gap-1" onClick={() => setHabitDashboard(true)}>
+            <Activity className="h-4 w-4" />
+            <span className="text-xs">Habits</span>
           </Button>
-          <Button
-            variant="ghost"
-            className="modern-card rounded-xl sm:rounded-2xl h-12 sm:h-14 lg:h-16 w-full flex flex-col items-center justify-center gap-1 hover:scale-105 transition-all duration-200 btn-theme mobile-touch-target responsive-button"
-            onClick={handleOpenGoalManager}
-          >
-            <Target className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="responsive-text-xs font-medium">Goals</span>
+          <Button variant="ghost" className="modern-card rounded-xl h-14 flex-col gap-1" onClick={() => setGoalManagerModal(true)}>
+            <Target className="h-4 w-4" />
+            <span className="text-xs">Goals</span>
           </Button>
-          <Button
-            variant="ghost"
-            className="modern-card rounded-xl sm:rounded-2xl h-12 sm:h-14 lg:h-16 w-full flex flex-col items-center justify-center gap-1 hover:scale-105 transition-all duration-200 btn-theme mobile-touch-target responsive-button"
-            onClick={handleOpenHabitDashboard}
-          >
-            <Activity className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="responsive-text-xs font-medium">Habits</span>
+          <Button variant="ghost" className="modern-card rounded-xl h-14 flex-col gap-1" onClick={() => setTimeTrackerModal(true)}>
+            <Clock className="h-4 w-4" />
+            <span className="text-xs">Time</span>
           </Button>
-          <Button
-            variant="ghost"
-            className="modern-card rounded-xl sm:rounded-2xl h-12 sm:h-14 lg:h-16 w-full flex flex-col items-center justify-center gap-1 hover:scale-105 transition-all duration-200 btn-theme mobile-touch-target responsive-button"
-            onClick={handleOpenFocus}
-          >
-            <Zap className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="responsive-text-xs font-medium">Focus</span>
+          <Button variant="ghost" className="modern-card rounded-xl h-14 flex-col gap-1" onClick={() => setFocusModal(true)}>
+            <Zap className="h-4 w-4" />
+            <span className="text-xs">Focus</span>
           </Button>
-          <Button
-            variant="ghost"
-            className="modern-card rounded-xl sm:rounded-2xl h-12 sm:h-14 lg:h-16 w-full flex flex-col items-center justify-center gap-1 hover:scale-105 transition-all duration-200 btn-theme mobile-touch-target responsive-button"
-            onClick={handleOpenShare}
-          >
-            <Share2 className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="responsive-text-xs font-medium">Share</span>
+          <Button variant="ghost" className="modern-card rounded-xl h-14 flex-col gap-1" onClick={() => setShareModal(true)}>
+            <Share2 className="h-4 w-4" />
+            <span className="text-xs">Share</span>
           </Button>
-          <Button
-            variant="ghost"
-            className="modern-card rounded-xl sm:rounded-2xl h-12 sm:h-14 lg:h-16 w-full flex flex-col items-center justify-center gap-1 hover:scale-105 transition-all duration-200 btn-theme mobile-touch-target responsive-button"
-            onClick={handleOpenCollaboration}
-          >
-            <Users className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="responsive-text-xs font-medium">Preview</span>
-          </Button>
-          <Button
-            variant="ghost"
-            className="modern-card rounded-xl sm:rounded-2xl h-12 sm:h-14 lg:h-16 w-full flex flex-col items-center justify-center gap-1 hover:scale-105 transition-all duration-200 btn-theme mobile-touch-target responsive-button"
-            onClick={() => setCurrentView("monitor")}
-          >
-            <Monitor className="h-4 w-4 sm:h-5 sm:w-5" />
-            <span className="responsive-text-xs font-medium">Workspace</span>
+          <Button variant="ghost" className="modern-card rounded-xl h-14 flex-col gap-1" onClick={() => setAnalyticsModal(true)}>
+            <BarChart3 className="h-4 w-4" />
+            <span className="text-xs">Counts</span>
           </Button>
         </div>
 
-        {/* Enhanced Main Navigation with Responsive Buttons */}
-        <div className="flex gap-2 sm:gap-3 mb-4 sm:mb-6">
-          <Button
-            variant={currentView === "overview" ? "default" : "outline"}
-            className="rounded-xl sm:rounded-2xl flex-1 modern-card bg-transparent border-border/50 btn-theme responsive-button mobile-touch-target"
-            onClick={() => setCurrentView("overview")}
-          >
-            <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            <span className="responsive-text-sm">Overview</span>
-          </Button>
-          <Button
-            variant={currentView === "tasks" ? "default" : "outline"}
-            className="rounded-xl sm:rounded-2xl flex-1 modern-card bg-transparent border-border/50 btn-theme responsive-button mobile-touch-target"
-            onClick={() => setCurrentView("tasks")}
-          >
-            <CheckSquare className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            <span className="responsive-text-sm">Tasks</span>
-          </Button>
-          <Button
-            variant={currentView === "notes" ? "default" : "outline"}
-            className="rounded-xl sm:rounded-2xl flex-1 modern-card bg-transparent border-border/50 btn-theme responsive-button mobile-touch-target"
-            onClick={() => setCurrentView("notes")}
-          >
-            <StickyNote className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-            <span className="responsive-text-sm">Notes</span>
-          </Button>
-        </div>
-
-        {/* Enhanced Search Bar with Responsive Styling */}
         <div className="relative mb-4 sm:mb-6">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search tasks and notes..."
+            placeholder="Search tasks, notes, and habits..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 rounded-xl sm:rounded-2xl bg-card/95 backdrop-blur-xl border-border/50 responsive-container mobile-touch-target"
+            onChange={(event) => setSearchQuery(event.target.value)}
+            className="pl-10 rounded-xl sm:rounded-2xl bg-card/95"
           />
         </div>
       </div>
 
-      {/* Content Area */}
       <div className="mb-10">
-        {currentView === "overview" && renderOverviewContent()}
-        {currentView === "tasks" && renderTasksContent()}
-        {currentView === "notes" && renderNotesContent()}
-        {currentView === "monitor" && renderMonitorContent()}
+        {currentView === "overview" && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <button type="button" className="text-left" onClick={() => setCurrentView("tasks")} aria-label={`${pendingTasksCount} pending tasks`}>
+                <Card className="modern-card p-4">
+                  <p className="text-2xl font-bold">{pendingTasksCount}</p>
+                  <p className="text-xs text-muted-readable">Pending</p>
+                </Card>
+              </button>
+              <button type="button" className="text-left" onClick={() => setCurrentView("tasks")} aria-label={`${completedTasksCount} completed tasks`}>
+                <Card className="modern-card p-4">
+                  <p className="text-2xl font-bold">{completedTasksCount}</p>
+                  <p className="text-xs text-muted-readable">Done</p>
+                </Card>
+              </button>
+              <button type="button" className="text-left" onClick={() => setCurrentView("habits")} aria-label={`${habits.filter((habit) => habit.completedToday).length} of ${habits.length} habits done today`}>
+                <Card className="modern-card p-4">
+                  <p className="text-2xl font-bold">{habits.filter((habit) => habit.completedToday).length}/{habits.length}</p>
+                  <p className="text-xs text-muted-readable">Habits today</p>
+                </Card>
+              </button>
+              <button type="button" className="text-left" onClick={() => setCurrentView("notes")} aria-label={`${notes.length} notes`}>
+                <Card className="modern-card p-4">
+                  <p className="text-2xl font-bold">{notes.length}</p>
+                  <p className="text-xs text-muted-readable">Notes</p>
+                </Card>
+              </button>
+            </div>
+
+            <div>
+              <h3 className="text-xl font-bold mb-4">Recent tasks</h3>
+              {tasks.length === 0 ? (
+                <EmptyState
+                  title="Nothing on your plate yet"
+                  description="Add one task. It stays on this device after refresh. There is no cloud backup until you export."
+                  actionLabel="Add task"
+                  onAction={() => setTaskModal({ isOpen: true, mode: "create" })}
+                />
+              ) : (
+                <div className="space-y-3">
+                  {tasks.slice(0, 5).map((task) => (
+                    <Card key={task.id} className="modern-card p-4">
+                      <div className="flex items-center gap-3">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleTaskToggle(task.id)}
+                          aria-label={task.completed ? `Mark ${task.title} incomplete` : `Complete ${task.title}`}
+                        >
+                          {task.completed ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5" />}
+                        </Button>
+                        <div className="flex-1">
+                          <p className={task.completed ? "line-through text-muted-readable" : ""}>{task.title}</p>
+                          <p className="text-xs text-muted-readable">{formatDueDate(task.dueDate, dateFormat)}</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setTaskModal({ isOpen: true, mode: "edit", task })}
+                          aria-label={`Edit ${task.title}`}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {currentView === "tasks" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold">Tasks</h3>
+              <div className="flex gap-2">
+                <Button variant="outline" className="bg-transparent" onClick={() => setIsSelectionMode((value) => !value)}>
+                  <CheckSquare className="h-4 w-4 mr-2" />
+                  {isSelectionMode ? "Done" : "Select"}
+                </Button>
+                <Button onClick={() => setTaskModal({ isOpen: true, mode: "create" })}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add task
+                </Button>
+              </div>
+            </div>
+            {isSelectionMode && selectedTasks.length > 0 && (
+              <Button onClick={() => setShareModal(true)}>Share selected ({selectedTasks.length})</Button>
+            )}
+            {filteredTasks.length === 0 ? (
+              <EmptyState
+                title={searchQuery ? "No matching tasks" : "No tasks yet"}
+                description={searchQuery ? "Try a different search." : "Create a task. It will still be here after refresh."}
+                actionLabel={searchQuery ? undefined : "Add task"}
+                onAction={searchQuery ? undefined : () => setTaskModal({ isOpen: true, mode: "create" })}
+              />
+            ) : (
+              filteredTasks.map((task) => (
+                <Card key={task.id} className="p-4">
+                  <div className="flex items-center gap-3">
+                    {isSelectionMode && (
+                      <input
+                        type="checkbox"
+                        checked={selectedTasks.includes(task.id)}
+                        onChange={() =>
+                          setSelectedTasks((current) =>
+                            current.includes(task.id) ? current.filter((id) => id !== task.id) : [...current, task.id],
+                          )
+                        }
+                        aria-label={`Select ${task.title}`}
+                      />
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleTaskToggle(task.id)}
+                      aria-label={task.completed ? `Mark ${task.title} incomplete` : `Complete ${task.title}`}
+                    >
+                      {task.completed ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5" />}
+                    </Button>
+                    <div className="flex-1">
+                      <p className={task.completed ? "line-through text-muted-foreground" : ""}>{task.title}</p>
+                      <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                        <Badge variant={task.priority === "high" ? "destructive" : "secondary"}>{task.priority}</Badge>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {formatDueDate(task.dueDate, dateFormat)}
+                        </span>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setTaskModal({ isOpen: true, mode: "edit", task })}
+                      aria-label={`Edit ${task.title}`}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
+        )}
+
+        {currentView === "notes" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold">Notes</h3>
+              <Button onClick={() => setNoteModal({ isOpen: true, mode: "create" })}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add note
+              </Button>
+            </div>
+            {filteredNotes.length === 0 ? (
+              <EmptyState
+                title={searchQuery ? "No matching notes" : "No notes yet"}
+                description={searchQuery ? "Nothing matches that search." : "Capture a thought. It is saved locally."}
+                actionLabel={searchQuery ? undefined : "Add note"}
+                onAction={searchQuery ? undefined : () => setNoteModal({ isOpen: true, mode: "create" })}
+              />
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {filteredNotes.map((note) => (
+                  <Card key={note.id} className="p-4 cursor-pointer" onClick={() => setNoteModal({ isOpen: true, mode: "edit", note })}>
+                    <h4 className="font-semibold truncate">{note.title}</h4>
+                    <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{note.content}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">{formatTimestamp(note.createdAt, dateFormat)}</p>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {currentView === "habits" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold">Habits</h3>
+              <Button onClick={() => setHabitModal({ isOpen: true, mode: "create" })}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add habit
+              </Button>
+            </div>
+            {filteredHabits.length === 0 ? (
+              <EmptyState
+                title={searchQuery ? "No matching habits" : "No habits yet"}
+                description={searchQuery ? "Nothing matches that search." : "Track one daily action. Completions reset at local midnight."}
+                actionLabel={searchQuery ? undefined : "Add habit"}
+                onAction={searchQuery ? undefined : () => setHabitModal({ isOpen: true, mode: "create" })}
+              />
+            ) : (
+              filteredHabits.map((habit) => (
+                <Card key={habit.id} className="p-4">
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleHabitToggle(habit.id)}
+                      aria-label={habit.completedToday ? `Unmark ${habit.name} for today` : `Complete ${habit.name} today`}
+                    >
+                      {habit.completedToday ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5" />}
+                    </Button>
+                    <div className="flex-1">
+                      <p>{habit.name}</p>
+                      <p className="text-xs text-muted-foreground">Streak {habit.streak}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setHabitModal({ isOpen: true, mode: "edit", habit })}
+                      aria-label={`Edit ${habit.name}`}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
-      <div className="fixed bottom-6 right-4 sm:bottom-8 sm:right-8 z-50">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background/95 backdrop-blur sm:hidden">
+        <div className="grid grid-cols-4">
+          {(
+            [
+              ["overview", "Home", BarChart3],
+              ["tasks", "Tasks", CheckSquare],
+              ["notes", "Notes", FileText],
+              ["habits", "Habits", Activity],
+            ] as const
+          ).map(([view, label, Icon]) => (
+            <button
+              key={view}
+              type="button"
+              className={`flex flex-col items-center gap-1 py-3 text-xs ${currentView === view ? "text-primary" : "text-muted-foreground"}`}
+              onClick={() => setCurrentView(view)}
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      <div className="hidden sm:block fixed bottom-6 right-4 sm:bottom-8 sm:right-8 z-50">
         <FloatingToggle
           tasks={tasks}
           notes={notes}
           onTaskToggle={handleTaskToggle}
-          onAddTask={handleAddTask}
-          onAddNote={handleAddNote}
-          onEditTask={handleEditTask}
-          onEditNote={handleEditNote}
+          onAddTask={() => setTaskModal({ isOpen: true, mode: "create" })}
+          onAddNote={() => setNoteModal({ isOpen: true, mode: "create" })}
+          onEditTask={(task) => setTaskModal({ isOpen: true, mode: "edit", task })}
+          onEditNote={(note) => setNoteModal({ isOpen: true, mode: "edit", note })}
           onVoiceNote={handleVoiceNote}
           onSpeechToText={handleSpeechToText}
           onCreateTaskFromVoice={handleVoiceTask}
         />
       </div>
 
-      {/* Modals */}
       <TaskModal
         isOpen={taskModal.isOpen}
         onClose={() => setTaskModal({ isOpen: false, mode: "create" })}
@@ -970,7 +780,6 @@ export default function Dashboard() {
         task={taskModal.task}
         mode={taskModal.mode}
       />
-
       <NoteModal
         isOpen={noteModal.isOpen}
         onClose={() => setNoteModal({ isOpen: false, mode: "create" })}
@@ -979,7 +788,6 @@ export default function Dashboard() {
         note={noteModal.note}
         mode={noteModal.mode}
       />
-
       <HabitModal
         isOpen={habitModal.isOpen}
         onClose={() => setHabitModal({ isOpen: false, mode: "create" })}
@@ -987,131 +795,38 @@ export default function Dashboard() {
         onDelete={handleDeleteHabit}
         habit={habitModal.habit}
         mode={habitModal.mode}
+        weekStartsOn={workspace.settings.general.weekStartsOn}
       />
-
       <ShareModal
         isOpen={shareModal}
         onClose={() => setShareModal(false)}
-        tasks={
-          isSelectionMode && selectedTasks.length > 0 ? tasks.filter((task) => selectedTasks.includes(task.id)) : tasks
-        }
+        tasks={isSelectionMode && selectedTasks.length > 0 ? tasks.filter((task) => selectedTasks.includes(task.id)) : tasks}
         userName={userName}
       />
-
-      <CollaborationDashboard isOpen={collaborationModal} onClose={() => setCollaborationModal(false)} />
-
       <HabitDashboard
         isOpen={habitDashboard}
         onClose={() => setHabitDashboard(false)}
         habits={habits}
         onHabitToggle={handleHabitToggle}
-        onAddHabit={handleAddHabit}
-        onEditHabit={handleEditHabit}
+        onAddHabit={() => setHabitModal({ isOpen: true, mode: "create" })}
+        onEditHabit={(habit) => setHabitModal({ isOpen: true, mode: "edit", habit })}
       />
-
-      <FocusModal isOpen={focusModal} onClose={() => setFocusModal(false)} />
-
+      <FocusModal
+        isOpen={focusModal}
+        onClose={() => setFocusModal(false)}
+        workspace={workspace}
+        persist={persist}
+      />
       <ProfileModal
         isOpen={profileModal}
         onClose={() => setProfileModal(false)}
-        stats={{
-          tasksCompleted: completedTasksCount,
-          habitsTracked: habits.length,
-        }}
-        onProfileChange={(profile) => persist({ profile })}
+        stats={{ tasksCompleted: completedTasksCount, habitsTracked: habits.length }}
+        onProfileChange={(profile) => persist((current) => ({ ...current, profile }))}
       />
-
       <SettingsModal isOpen={settingsModal} onClose={() => setSettingsModal(false)} />
-
-      <AnalyticsDashboard
-        isOpen={analyticsModal}
-        onClose={() => setAnalyticsModal(false)}
-        tasks={tasks}
-        habits={habits}
-      />
-
-      <TimeTracker isOpen={timeTrackerModal} onClose={() => setTimeTrackerModal(false)} />
-
-      <GoalManager isOpen={goalManagerModal} onClose={() => setGoalManagerModal(false)} />
-
-      {/* Permissions Modal */}
-      {showPermissionsModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-card/95 backdrop-blur-xl border border-border/50 shadow-xl rounded-3xl max-w-md w-full p-6">
-            <div className="text-center space-y-6">
-              <div className="p-3 bg-primary/20 rounded-full w-fit mx-auto">
-                <svg className="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                  />
-                </svg>
-              </div>
-
-              <div>
-                <h3 className="text-xl font-semibold text-foreground mb-2">Optional permissions</h3>
-                <p className="text-muted-foreground">Skip if you only want tasks, notes, and habits. Voice needs the microphone.</p>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/20">
-                  <div className="p-2 bg-blue-500/20 rounded-lg">
-                    <svg className="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 016 0v6a3 3 0 01-3 3z"
-                      />
-                    </svg>
-                  </div>
-                  <div className="flex-1 text-left">
-                    <p className="font-medium text-foreground">Microphone Access</p>
-                    <p className="text-sm text-muted-foreground">For voice notes and speech-to-text</p>
-                  </div>
-                  <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                </div>
-
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/20">
-                  <div className="p-2 bg-green-500/20 rounded-lg">
-                    <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 17h5l-5 5-5-5h5v-5a7.5 7.5 0 01-7.5-7.5H7.5a7.5 7.5 0 017.5 7.5v5z"
-                      />
-                    </svg>
-                  </div>
-                  <div className="flex-1 text-left">
-                    <p className="font-medium text-foreground">Notifications</p>
-                    <p className="text-sm text-muted-foreground">For task reminders and confirmations</p>
-                  </div>
-                  <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={handleSkipPermissions}
-                  className="flex-1 rounded-xl bg-transparent hover:bg-muted/20 transition-colors duration-200 min-h-[44px]"
-                >
-                  Skip
-                </Button>
-                <Button
-                  onClick={handleGrantPermissions}
-                  className="flex-1 rounded-xl hover:scale-105 transition-all duration-200 min-h-[44px]"
-                >
-                  Grant Permissions
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <AnalyticsDashboard isOpen={analyticsModal} onClose={() => setAnalyticsModal(false)} tasks={tasks} habits={habits} />
+      <TimeTracker isOpen={timeTrackerModal} onClose={() => setTimeTrackerModal(false)} workspace={workspace} persist={persist} />
+      <GoalManager isOpen={goalManagerModal} onClose={() => setGoalManagerModal(false)} workspace={workspace} persist={persist} />
     </div>
   )
 }

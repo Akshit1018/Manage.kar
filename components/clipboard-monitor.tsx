@@ -20,7 +20,7 @@ interface ClipboardMonitorProps {
   enabled?: boolean
 }
 
-export function ClipboardMonitor({ onCreateTask, onCreateNote, enabled = true }: ClipboardMonitorProps) {
+export function ClipboardMonitor({ onCreateTask, onCreateNote, enabled = false }: ClipboardMonitorProps) {
   const [suggestions, setSuggestions] = useState<ClipboardSuggestion[]>([])
   const [showSuggestion, setShowSuggestion] = useState(false)
   const [currentSuggestion, setCurrentSuggestion] = useState<ClipboardSuggestion | null>(null)
@@ -70,8 +70,6 @@ export function ClipboardMonitor({ onCreateTask, onCreateNote, enabled = true }:
       const text = await navigator.clipboard.readText()
 
       if (text && text !== lastClipboardContent.current && shouldSuggestContent(text)) {
-        console.log("[v0] New clipboard content detected:", text.substring(0, 50) + "...")
-
         const suggestion: ClipboardSuggestion = {
           id: Date.now().toString(),
           content: text,
@@ -90,9 +88,8 @@ export function ClipboardMonitor({ onCreateTask, onCreateNote, enabled = true }:
           setShowSuggestion(false)
         }, 10000)
       }
-    } catch (error) {
+    } catch {
       // Clipboard access denied or not available
-      console.log("[v0] Clipboard access not available")
     }
   }
 
