@@ -48,7 +48,7 @@ import { nextNumericId } from "@/lib/store/workspace"
 type ViewMode = "overview" | "tasks" | "notes" | "monitor"
 
 export default function Dashboard() {
-  const { workspace, persist } = useWorkspace()
+  const { workspace, persist, hydrated } = useWorkspace()
   const tasks = workspace.tasks
   const notes = workspace.notes
   const habits = workspace.habits
@@ -785,6 +785,14 @@ export default function Dashboard() {
     localStorage.setItem("manage-kar-permissions", "skipped")
     setShowPermissionsModal(false)
     console.log("[v0] Permissions modal closed via skip")
+  }
+
+  if (!hydrated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p className="text-sm text-muted-foreground">Loading your workspace…</p>
+      </div>
+    )
   }
 
   return (

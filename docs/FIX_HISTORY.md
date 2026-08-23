@@ -23,6 +23,13 @@
 - **Fix:** UTF-8 base64url codec with a token cap.
 - **Verification:** `lib/share/codec.test.ts`
 
+## Double permission wall
+
+- **Symptom:** First visit stacked two full-screen permission modals.
+- **Root cause:** Page modal plus FAB auto-prompt whenever the app was not installed as a PWA.
+- **Fix:** FAB only asks when recording is denied. Page copy is optional.
+- **Verification:** Browser session no longer opens the FAB prompt on load.
+
 ## FAB SSR crash
 
 - **Symptom:** `window is not defined` on first render.

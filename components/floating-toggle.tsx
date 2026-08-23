@@ -205,14 +205,6 @@ export function FloatingToggle({
 
   useEffect(() => {
     setPosition({ x: window.innerWidth - 100, y: window.innerHeight - 100 })
-
-    const isStandalone = window.matchMedia("(display-mode: standalone)").matches
-    const isInWebAppiOS = (window.navigator as any).standalone === true
-    const isInWebAppChrome = window.matchMedia("(display-mode: standalone)").matches
-
-    if (!isStandalone && !isInWebAppiOS && !isInWebAppChrome) {
-      setShowPermissionPrompt(true)
-    }
   }, [])
 
   useEffect(() => {

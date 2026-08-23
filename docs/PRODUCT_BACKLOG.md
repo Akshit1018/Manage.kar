@@ -12,6 +12,7 @@
 | P1-3 | Clipboard polling on by default | P1 | DONE | Settings flag default off |
 | P1-4 | Profile stats hardcoded | P1 | DONE | Live task/habit counts |
 | P1-5 | Empty lists had no empty state | P1 | DONE | EmptyState component |
+| P1-6 | Two permission modals on first visit | P1 | DONE | FAB no longer auto-prompts |
 | P2-1 | Goals / time / focus still session-only | P2 | PLANNED | Persist into workspace |
 | P2-2 | Two focus timers | P2 | PLANNED | One focus service |
 | P2-3 | Recurring tasks and reminders never fire | P2 | PLANNED | Deterministic scheduler |
