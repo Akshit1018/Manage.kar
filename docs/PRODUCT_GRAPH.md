@@ -6,7 +6,7 @@ User
      ├─ Profile (name, contact)
      ├─ Settings (theme, privacy, notifications)
      ├─ Tasks ── share payload ── shared page ── import → Tasks
-     ├─ Notes (optional voice data URL)
+     ├─ Notes (voice pointer `idb:voice:{id}` in IndexedDB)
      ├─ Habits ── schedule ── history[date] ── streak (scheduled days only)
      ├─ Goals
      ├─ Time entries

@@ -212,7 +212,10 @@ export function ProfileModal({ isOpen, onClose, stats, onProfileChange }: Profil
                 Achievements
               </h4>
               <div className="space-y-2">
-                {achievements.map((achievement, index) => (
+                {achievements.filter((achievement) => achievement.earned).length === 0 ? (
+                  <p className="text-sm text-muted-readable">No earned facts yet.</p>
+                ) : null}
+                {achievements.filter((achievement) => achievement.earned).map((achievement, index) => (
                   <div
                     key={index}
                     className={`flex items-center justify-between gap-3 p-3 rounded-xl transition-colors ${

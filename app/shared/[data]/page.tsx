@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { CheckCircle2, Circle, Calendar, ArrowLeft, Download } from "lucide-react"
-import { decodeSharePayload, type SharePayload } from "@/lib/share/codec"
+import { SHARE_EXPIRED_ERROR, decodeSharePayload, type SharePayload } from "@/lib/share/codec"
 import { decodeEncryptedSharePayload, isEncryptedShareToken } from "@/lib/share/secret"
 import { importSharedTasks } from "@/lib/share/import-tasks"
 import { recordBrowserEvent } from "@/lib/analytics/local-events"
@@ -119,9 +119,11 @@ export default function SharedTasksPage() {
     return (
       <div className="min-h-screen p-4 flex items-center justify-center">
         <Card className="glass-card p-8 rounded-2xl text-center max-w-md">
-          <h1 className="text-xl font-semibold font-sans mb-2">Invalid share link</h1>
+          <h1 className="text-xl font-semibold font-sans mb-2">
+            {error === SHARE_EXPIRED_ERROR ? "This share link has expired" : "Invalid share link"}
+          </h1>
           <p className="text-muted-foreground font-serif mb-6">
-            {error || "This share link is invalid. Share links do not expire, but they can be corrupted or truncated."}
+            {error || "This share link is invalid. It may be corrupted, truncated, or past its client-side expiry."}
           </p>
           <Button onClick={() => router.push("/")} className="rounded-xl">
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -148,7 +150,11 @@ export default function SharedTasksPage() {
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             {isEncryptedShareToken(encodedData)
-              ? "This list was unlocked with a password. Importing copies the tasks onto this device. The link does not expire."
+              ? `This list was unlocked with a password. Importing copies the tasks onto this device.${
+                  sharedData.expiresAt
+                    ? ` This page stops decoding after ${new Date(sharedData.expiresAt).toLocaleString()}.`
+                    : " This older link has no expiry."
+                }`
               : "Anyone with this URL can read these tasks. Importing copies them onto this device."}
           </p>
         </div>

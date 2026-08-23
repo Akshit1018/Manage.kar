@@ -20,6 +20,14 @@ Base: post-remediation + forensic pack. No backend. No IndexedDB rewrite. No fak
 | G014 | Search/view not in URL | VERIFIED | TESTED (`?view=habits`) |
 | G015 | Stale README / SECURITY_MODEL / PRODUCT_GRAPH | VERIFIED | IMPLEMENTED |
 | G016 | Checklist hidden on cards | VERIFIED | IMPLEMENTED |
-| — | IndexedDB this week | REJECTED | — |
+| G017 | Share links never expire | VERIFIED | IMPLEMENTED (client `expiresAt`; no remote revoke) |
+| G018 | Two-tab last full write wins | VERIFIED | IMPLEMENTED (entity merge + tombstones) |
+| G019 | Voice data URLs in localStorage | VERIFIED | IMPLEMENTED (IndexedDB pointer `idb:voice:`) |
+| G020 | Reminders die when the tab closes | PARTIAL | IMPLEMENTED (SW snapshot + periodicsync; no push) |
+| G021 | Task filters missing | VERIFIED | IMPLEMENTED |
+| G022 | Quota warning before save | VERIFIED | IMPLEMENTED (soft 3.5MB toast) |
+| G023 | Goal milestones have no create UI | VERIFIED | IMPLEMENTED |
+| G024 | Dead TTS / theme-provider; page god-view; mobile FAB hidden | VERIFIED | IMPLEMENTED |
+| — | Remote share revoke / second-device sync / Google Drive | REJECTED | Needs a server |
 | — | TickTick calendar clone | REJECTED | — |
 | — | Live Google OAuth | REJECTED | — |

@@ -3,11 +3,16 @@ import type { Task } from "@/lib/domain/types"
 
 export const MAX_SHARE_TOKEN_LENGTH = 6_000
 
+export const SHARE_EXPIRED_ERROR = "This share link has expired."
+
+export type ShareTtl = "1d" | "7d" | "30d" | "never"
+
 export interface SharePayload {
   userName: string
   tasks: Task[]
   sharedAt: string
   customMessage?: string
+  expiresAt?: string
 }
 
 const shareTaskSchema = z
@@ -35,7 +40,36 @@ const sharePayloadSchema = z.object({
   tasks: z.array(shareTaskSchema),
   sharedAt: z.string(),
   customMessage: z.string().optional(),
+  expiresAt: z.string().optional(),
 })
+
+export function shareExpiresAt(ttl: ShareTtl, now = new Date()): string | undefined {
+  switch (ttl) {
+    case "never":
+      return undefined
+    case "1d":
+      return new Date(now.getTime() + 1 * 86_400_000).toISOString()
+    case "7d":
+      return new Date(now.getTime() + 7 * 86_400_000).toISOString()
+    case "30d":
+      return new Date(now.getTime() + 30 * 86_400_000).toISOString()
+    default: {
+      const exhaustive: never = ttl
+      return exhaustive
+    }
+  }
+}
+
+export function isShareExpired(payload: SharePayload, now = new Date()): boolean {
+  if (!payload.expiresAt) {
+    return false
+  }
+  const expiry = Date.parse(payload.expiresAt)
+  if (Number.isNaN(expiry)) {
+    return false
+  }
+  return now.getTime() > expiry
+}
 
 function utf8ToBase64Url(value: string): string {
   const bytes = new TextEncoder().encode(value)
@@ -84,6 +118,7 @@ export function parseSharePayload(raw: unknown): SharePayload | null {
 
 export function decodeSharePayload(
   token: string,
+  now = new Date(),
 ): { ok: true; payload: SharePayload } | { ok: false; error: string } {
   if (!token || token.length > MAX_SHARE_TOKEN_LENGTH * 2) {
     return { ok: false, error: "Invalid or corrupted share link" }
@@ -101,6 +136,9 @@ export function decodeSharePayload(
     try {
       const payload = parseSharePayload(attempt())
       if (payload) {
+        if (isShareExpired(payload, now)) {
+          return { ok: false, error: SHARE_EXPIRED_ERROR }
+        }
         return { ok: true, payload }
       }
     } catch {

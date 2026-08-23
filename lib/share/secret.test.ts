@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { decodeSharePayload, encodeSharePayload } from "./codec"
+import { SHARE_EXPIRED_ERROR, decodeSharePayload, encodeSharePayload } from "./codec"
 import {
   decodeEncryptedSharePayload,
   encodeEncryptedSharePayload,
@@ -53,6 +53,25 @@ describe("password-protected share links", () => {
   it("refuses to mint an encrypted link without a password", async () => {
     const encoded = await encodeEncryptedSharePayload(sample, "   ")
     expect(encoded.ok).toBe(false)
+  })
+
+  it("rejects an unlocked payload after the client expiry", async () => {
+    const encoded = await encodeEncryptedSharePayload(
+      { ...sample, expiresAt: "2026-08-23T11:00:00.000Z" },
+      "correct horse",
+    )
+    expect(encoded.ok).toBe(true)
+    if (!encoded.ok) return
+
+    const unlocked = await decodeEncryptedSharePayload(
+      encoded.token,
+      "correct horse",
+      new Date("2026-08-23T12:00:00.000Z"),
+    )
+    expect(unlocked.ok).toBe(false)
+    if (!unlocked.ok) {
+      expect(unlocked.error).toBe(SHARE_EXPIRED_ERROR)
+    }
   })
 
   it("still round-trips plaintext tokens for older links", () => {

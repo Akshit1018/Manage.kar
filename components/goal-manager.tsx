@@ -13,6 +13,7 @@ import { toast } from "sonner"
 import { Target, Plus, Calendar, TrendingUp, Award, CheckCircle2, Trash2 } from "lucide-react"
 import type { Goal, Workspace } from "@/lib/domain/types"
 import { allocateEntityId } from "@/lib/store/workspace"
+import { addMilestone } from "@/lib/goals/milestones"
 
 interface GoalManagerProps {
   isOpen: boolean
@@ -26,6 +27,7 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
 
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [titleError, setTitleError] = useState("")
+  const [milestoneDrafts, setMilestoneDrafts] = useState<Record<number, { title: string; dueDate: string }>>({})
   const [newGoal, setNewGoal] = useState({
     title: "",
     description: "",
@@ -117,6 +119,27 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
     }
   }
 
+  const createMilestone = (goalId: number) => {
+    const draft = milestoneDrafts[goalId] ?? { title: "", dueDate: "" }
+    const title = draft.title.trim()
+    if (!title) {
+      toast.error("Add a milestone title before saving.")
+      return
+    }
+    persist((current) => {
+      const allocated = allocateEntityId(current)
+      return {
+        ...allocated.workspace,
+        goals: allocated.workspace.goals.map((goal) =>
+          goal.id === goalId
+            ? addMilestone(goal, title, draft.dueDate || goal.targetDate || new Date().toISOString().slice(0, 10), allocated.id)
+            : goal,
+        ),
+      }
+    })
+    setMilestoneDrafts((current) => ({ ...current, [goalId]: { title: "", dueDate: "" } }))
+  }
+
   const toggleMilestone = (goalId: number, milestoneId: number) => {
     persist((current) => ({
       ...current,
@@ -149,7 +172,7 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="glass-modal max-w-4xl mx-auto max-h-[90vh] overflow-y-auto">
+      <DialogContent className="glass-modal max-w-4xl mx-auto max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold font-sans flex items-center gap-2">
             <Target className="h-6 w-6 text-primary" />
@@ -381,39 +404,71 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
                     </div>
                   </div>
 
-                  {goal.milestones.length > 0 && (
-                    <div className="space-y-2">
-                      <h5 className="font-medium text-sm">Milestones</h5>
-                      <div className="space-y-2">
-                        {goal.milestones.map((milestone) => (
-                          <div key={milestone.id} className="flex items-center gap-3 p-2 bg-accent/20 rounded-lg">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 rounded-full"
-                              onClick={() => toggleMilestone(goal.id, milestone.id)}
-                            >
-                              {milestone.completed ? (
-                                <CheckCircle2 className="h-4 w-4 text-primary" />
-                              ) : (
-                                <div className="h-4 w-4 border-2 border-muted-foreground rounded-full" />
-                              )}
-                            </Button>
-                            <div className="flex-1">
-                              <p
-                                className={`text-sm ${milestone.completed ? "line-through text-muted-foreground" : ""}`}
-                              >
-                                {milestone.title}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                Due: {new Date(milestone.dueDate).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                  <div className="space-y-2">
+                    <h5 className="font-medium text-sm">Milestones</h5>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Input
+                        value={milestoneDrafts[goal.id]?.title ?? ""}
+                        onChange={(event) =>
+                          setMilestoneDrafts((current) => ({
+                            ...current,
+                            [goal.id]: {
+                              title: event.target.value,
+                              dueDate: current[goal.id]?.dueDate ?? "",
+                            },
+                          }))
+                        }
+                        placeholder="Add a milestone"
+                        aria-label={`Milestone title for ${goal.title}`}
+                      />
+                      <Input
+                        type="date"
+                        value={milestoneDrafts[goal.id]?.dueDate ?? ""}
+                        onChange={(event) =>
+                          setMilestoneDrafts((current) => ({
+                            ...current,
+                            [goal.id]: {
+                              title: current[goal.id]?.title ?? "",
+                              dueDate: event.target.value,
+                            },
+                          }))
+                        }
+                        aria-label={`Milestone due date for ${goal.title}`}
+                      />
+                      <Button type="button" variant="outline" onClick={() => createMilestone(goal.id)}>
+                        Add
+                      </Button>
                     </div>
-                  )}
+                    {goal.milestones.map((milestone) => (
+                      <div key={milestone.id} className="flex items-center gap-3 p-2 bg-accent/20 rounded-lg">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 rounded-full"
+                          onClick={() => toggleMilestone(goal.id, milestone.id)}
+                          aria-label={
+                            milestone.completed
+                              ? `Mark ${milestone.title} incomplete`
+                              : `Complete ${milestone.title}`
+                          }
+                        >
+                          {milestone.completed ? (
+                            <CheckCircle2 className="h-4 w-4 text-primary" />
+                          ) : (
+                            <div className="h-4 w-4 border-2 border-muted-foreground rounded-full" />
+                          )}
+                        </Button>
+                        <div className="flex-1">
+                          <p className={`text-sm ${milestone.completed ? "line-through text-muted-foreground" : ""}`}>
+                            {milestone.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Due: {milestone.dueDate ? new Date(milestone.dueDate).toLocaleDateString() : "No date"}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </Card>
             ))}

@@ -24,6 +24,7 @@ export interface Task {
   recurring?: RecurringRule
   reminders?: boolean
   checklist?: TaskChecklistItem[]
+  updatedAt?: string
 }
 
 export interface Note {
@@ -31,6 +32,7 @@ export interface Note {
   title: string
   content: string
   createdAt: string
+  updatedAt?: string
   voiceNote?: {
     audioUrl: string
     transcription: string
@@ -53,6 +55,7 @@ export interface Habit {
   reminders: boolean
   reminderTime?: string
   createdAt: string
+  updatedAt?: string
   history: { date: string; completed: boolean; value?: number }[]
 }
 
@@ -74,6 +77,7 @@ export interface Goal {
   milestones: GoalMilestone[]
   status: GoalStatus
   createdAt: string
+  updatedAt?: string
 }
 
 export interface TimeEntry {
@@ -84,6 +88,7 @@ export interface TimeEntry {
   endTime?: string
   duration: number
   isRunning: boolean
+  updatedAt?: string
 }
 
 export interface FocusSession {
@@ -93,6 +98,7 @@ export interface FocusSession {
   completed: boolean
   startTime: string
   endTime?: string
+  updatedAt?: string
 }
 
 export interface ActiveFocus {
@@ -136,6 +142,15 @@ export interface AppSettings {
   }
 }
 
+export interface DeletedIds {
+  tasks: number[]
+  notes: number[]
+  habits: number[]
+  goals: number[]
+  timeEntries: number[]
+  focusSessions: number[]
+}
+
 export interface Workspace {
   schemaVersion: 1
   updatedAt: string
@@ -149,6 +164,7 @@ export interface Workspace {
   activeFocus: ActiveFocus | null
   importedShareHashes: string[]
   firedReminderKeys: string[]
+  deletedIds: DeletedIds
   settings: AppSettings
   profile: UserProfile
 }

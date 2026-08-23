@@ -23,16 +23,16 @@ pnpm build
 - Goals, time entries, and focus sessions persist in the same workspace document
 - Settings theme, font size, animations, and date format
 - Export / import / clear the **same** workspace the UI uses
-- Password-protected share links (`enc1.`). Ciphertext sits in the URL and does not expire. WhatsApp send is **plain text**, not that link.
+- Password-protected share links (`enc1.`) with optional client-side expiry. Ciphertext still sits in the URL. WhatsApp send is **plain text**, not that link.
 - Optional clipboard suggestions (off by default)
-- Local reminders while this tab is open (they respect habit reminder time; they do not fire in the background)
+- Local reminders while this tab is open, plus a best-effort service-worker snapshot check (`periodicsync` / visibility). There is no push server.
 
 ## What is not here
 
 - Cloud backup / Google Drive
 - Team collaboration
-- Background notifications after you close the tab
-- Share-link revoke or expiry
+- Guaranteed background alarms after the browser process is killed
+- Remote share-link revoke (client expiry only)
 
 ## Docs
 

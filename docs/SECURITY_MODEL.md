@@ -15,8 +15,8 @@ All canonical data lives in the browser. There is no server-side authorization.
 ## Share links
 
 - New links are AES-GCM ciphertext (`enc1.`) plus a password the sender must share separately.
-- The ciphertext sits in the URL (history, referrer, logs). The link does not expire and cannot be revoked without a server.
-- Old plaintext tokens still decode.
+- New links may include a client-side `expiresAt`. This app refuses to decode after that instant. There is no server, so the link cannot be remotely revoked and the ciphertext can still appear in history or logs.
+- Old plaintext tokens still decode. Tokens without `expiresAt` do not expire.
 - WhatsApp and email share **task titles in the message**, not the encrypted token.
 
 ## Clipboard

@@ -1,6 +1,8 @@
 import {
   MAX_SHARE_TOKEN_LENGTH,
+  SHARE_EXPIRED_ERROR,
   encodeSharePayload,
+  isShareExpired,
   parseSharePayload,
   type SharePayload,
 } from "@/lib/share/codec"
@@ -86,6 +88,7 @@ export async function encodeEncryptedSharePayload(
 export async function decodeEncryptedSharePayload(
   token: string,
   password: string,
+  now = new Date(),
 ): Promise<{ ok: true; payload: SharePayload } | { ok: false; error: string }> {
   if (!isEncryptedShareToken(token)) {
     return { ok: false, error: "This is not a password-protected share link." }
@@ -106,6 +109,9 @@ export async function decodeEncryptedSharePayload(
     const payload = parseSharePayload(JSON.parse(new TextDecoder().decode(plaintext)))
     if (!payload) {
       return { ok: false, error: "Invalid or corrupted share link" }
+    }
+    if (isShareExpired(payload, now)) {
+      return { ok: false, error: SHARE_EXPIRED_ERROR }
     }
     return { ok: true, payload }
   } catch {
