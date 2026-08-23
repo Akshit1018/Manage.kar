@@ -4,17 +4,27 @@ import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { BarChart3, Clock, Target, Brain, Award, Zap } from "lucide-react"
+import { Award, BarChart3, Brain, Clock, Target, Zap } from "lucide-react"
+import type { Habit, Task } from "@/lib/domain/types"
 
 interface AnalyticsDashboardProps {
   isOpen: boolean
   onClose: () => void
-  tasks?: any[]
-  habits?: any[]
+  tasks?: Task[]
+  habits?: Habit[]
 }
 
 export function AnalyticsDashboard({ isOpen, onClose, tasks = [], habits = [] }: AnalyticsDashboardProps) {
-  const [insights, setInsights] = useState<any[]>([])
+  const [insights, setInsights] = useState<
+    Array<{
+      type: string
+      title: string
+      description: string
+      recommendation: string
+      impact: string
+      icon: typeof Target
+    }>
+  >([])
 
   useEffect(() => {
     const generateInsights = () => {
@@ -62,7 +72,7 @@ export function AnalyticsDashboard({ isOpen, onClose, tasks = [], habits = [] }:
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold font-sans flex items-center gap-2">
             <BarChart3 className="h-6 w-6 text-primary" />
-            Analytics & Insights
+            Counts
           </DialogTitle>
         </DialogHeader>
 

@@ -10,63 +10,21 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Target, Plus, Calendar, TrendingUp, Award, CheckCircle2 } from "lucide-react"
-
-interface Goal {
-  id: number
-  title: string
-  description: string
-  category: "personal" | "work" | "health" | "learning" | "financial"
-  priority: "high" | "medium" | "low"
-  targetDate: string
-  progress: number
-  milestones: { id: number; title: string; completed: boolean; dueDate: string }[]
-  status: "active" | "completed" | "paused"
-  createdAt: string
-}
+import type { Goal, Workspace } from "@/lib/domain/types"
+import { nextNumericId } from "@/lib/store/workspace"
 
 interface GoalManagerProps {
   isOpen: boolean
   onClose: () => void
+  workspace: Workspace
+  persist: (mutator: (current: Workspace) => Workspace) => Workspace
 }
 
-export function GoalManager({ isOpen, onClose }: GoalManagerProps) {
-  const [goals, setGoals] = useState<Goal[]>([
-    {
-      id: 1,
-      title: "Learn React Development",
-      description: "Master React and build 3 projects",
-      category: "learning",
-      priority: "high",
-      targetDate: "2024-06-30",
-      progress: 65,
-      milestones: [
-        { id: 1, title: "Complete React basics course", completed: true, dueDate: "2024-02-15" },
-        { id: 2, title: "Build first React project", completed: true, dueDate: "2024-03-15" },
-        { id: 3, title: "Learn React hooks", completed: false, dueDate: "2024-04-15" },
-        { id: 4, title: "Build portfolio website", completed: false, dueDate: "2024-05-15" },
-      ],
-      status: "active",
-      createdAt: "2024-01-01",
-    },
-    {
-      id: 2,
-      title: "Run a Marathon",
-      description: "Complete a full 26.2 mile marathon",
-      category: "health",
-      priority: "medium",
-      targetDate: "2024-10-15",
-      progress: 30,
-      milestones: [
-        { id: 1, title: "Run 5K consistently", completed: true, dueDate: "2024-03-01" },
-        { id: 2, title: "Complete 10K race", completed: false, dueDate: "2024-05-01" },
-        { id: 3, title: "Run half marathon", completed: false, dueDate: "2024-08-01" },
-      ],
-      status: "active",
-      createdAt: "2024-01-15",
-    },
-  ])
+export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManagerProps) {
+  const goals = workspace.goals
 
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [titleError, setTitleError] = useState("")
   const [newGoal, setNewGoal] = useState({
     title: "",
     description: "",
@@ -76,18 +34,27 @@ export function GoalManager({ isOpen, onClose }: GoalManagerProps) {
   })
 
   const createGoal = () => {
-    if (!newGoal.title.trim()) return
-
-    const goal: Goal = {
-      id: Date.now(),
-      ...newGoal,
-      progress: 0,
-      milestones: [],
-      status: "active",
-      createdAt: new Date().toISOString(),
+    const title = newGoal.title.trim()
+    if (!title) {
+      setTitleError("Add a goal title before saving.")
+      return
     }
 
-    setGoals([goal, ...goals])
+    persist((current) => ({
+      ...current,
+      goals: [
+        {
+          id: nextNumericId(current.goals),
+          ...newGoal,
+          title,
+          progress: 0,
+          milestones: [],
+          status: "active",
+          createdAt: new Date().toISOString(),
+        },
+        ...current.goals,
+      ],
+    }))
     setNewGoal({
       title: "",
       description: "",
@@ -95,30 +62,34 @@ export function GoalManager({ isOpen, onClose }: GoalManagerProps) {
       priority: "medium",
       targetDate: "",
     })
+    setTitleError("")
     setShowCreateForm(false)
   }
 
   const updateGoalProgress = (goalId: number, progress: number) => {
-    setGoals(
-      goals.map((goal) => (goal.id === goalId ? { ...goal, progress: Math.min(100, Math.max(0, progress)) } : goal)),
-    )
+    persist((current) => ({
+      ...current,
+      goals: current.goals.map((goal) =>
+        goal.id === goalId ? { ...goal, progress: Math.min(100, Math.max(0, progress)) } : goal,
+      ),
+    }))
   }
 
   const toggleMilestone = (goalId: number, milestoneId: number) => {
-    setGoals(
-      goals.map((goal) => {
-        if (goal.id === goalId) {
-          const updatedMilestones = goal.milestones.map((milestone) =>
-            milestone.id === milestoneId ? { ...milestone, completed: !milestone.completed } : milestone,
-          )
-          const completedCount = updatedMilestones.filter((m) => m.completed).length
-          const progress = updatedMilestones.length > 0 ? (completedCount / updatedMilestones.length) * 100 : 0
-
-          return { ...goal, milestones: updatedMilestones, progress }
+    persist((current) => ({
+      ...current,
+      goals: current.goals.map((goal) => {
+        if (goal.id !== goalId) {
+          return goal
         }
-        return goal
+        const updatedMilestones = goal.milestones.map((milestone) =>
+          milestone.id === milestoneId ? { ...milestone, completed: !milestone.completed } : milestone,
+        )
+        const completedCount = updatedMilestones.filter((milestone) => milestone.completed).length
+        const progress = updatedMilestones.length > 0 ? (completedCount / updatedMilestones.length) * 100 : 0
+        return { ...goal, milestones: updatedMilestones, progress }
       }),
-    )
+    }))
   }
 
   const getCategoryColor = (category: Goal["category"]) => {
@@ -221,6 +192,7 @@ export function GoalManager({ isOpen, onClose }: GoalManagerProps) {
                     onChange={(e) => setNewGoal({ ...newGoal, title: e.target.value })}
                     placeholder="What do you want to achieve?"
                   />
+                  {titleError ? <p className="text-sm text-destructive">{titleError}</p> : null}
                 </div>
                 <div className="space-y-1">
                   <Label className="text-sm">Target Date</Label>
@@ -287,6 +259,9 @@ export function GoalManager({ isOpen, onClose }: GoalManagerProps) {
 
           {/* Goals List */}
           <div className="space-y-4">
+            {goals.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No goals yet. Create one and it will stay on this device.</p>
+            ) : null}
             {goals.map((goal) => (
               <Card key={goal.id} className="glass-card p-6 rounded-2xl">
                 <div className="space-y-4">

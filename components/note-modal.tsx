@@ -6,18 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { X, Trash2, FileText, Volume2 } from "lucide-react"
-
-interface Note {
-  id: number
-  title: string
-  content: string
-  createdAt: string
-  voiceNote?: {
-    audioUrl: string
-    transcription: string
-    duration: number
-  }
-}
+import type { Note } from "@/lib/domain/types"
 
 interface NoteModalProps {
   isOpen: boolean
@@ -33,6 +22,7 @@ export function NoteModal({ isOpen, onClose, onSave, onDelete, note, mode }: Not
     title: "",
     content: "",
   })
+  const [titleError, setTitleError] = useState("")
 
   useEffect(() => {
     if (note && mode === "edit") {
@@ -46,24 +36,34 @@ export function NoteModal({ isOpen, onClose, onSave, onDelete, note, mode }: Not
         content: "",
       })
     }
+    setTitleError("")
   }, [note, mode, isOpen])
 
   const handleSave = () => {
-    if (!formData.title.trim()) return
+    const title = formData.title.trim()
+    if (!title) {
+      setTitleError("Add a title before saving.")
+      return
+    }
 
+    const payload = { ...formData, title }
     if (mode === "edit" && note) {
-      onSave({ ...note, ...formData })
+      onSave({ ...note, ...payload })
     } else {
-      onSave(formData)
+      onSave(payload)
     }
     onClose()
   }
 
   const handleDelete = () => {
-    if (note && onDelete) {
-      onDelete(note.id)
-      onClose()
+    if (!note || !onDelete) {
+      return
     }
+    if (!window.confirm("Delete this note? You can undo from the toast for a few seconds.")) {
+      return
+    }
+    onDelete(note.id)
+    onClose()
   }
 
   const handlePlayAudio = () => {
@@ -116,10 +116,17 @@ export function NoteModal({ isOpen, onClose, onSave, onDelete, note, mode }: Not
               <Input
                 id="note-title"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, title: e.target.value })
+                  if (titleError) {
+                    setTitleError("")
+                  }
+                }}
                 placeholder="Enter note title..."
                 className="bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl text-readable placeholder:text-muted-readable mobile-touch-target"
+                aria-invalid={Boolean(titleError)}
               />
+              {titleError ? <p className="text-sm text-destructive">{titleError}</p> : null}
             </div>
 
             <div className="space-y-2">

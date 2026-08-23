@@ -1,4 +1,4 @@
-import type { ThemePreference } from "@/lib/domain/types"
+import type { AppSettings, ThemePreference } from "@/lib/domain/types"
 
 export function resolveDarkMode(
   theme: ThemePreference,
@@ -23,4 +23,13 @@ export function applyThemePreference(theme: ThemePreference): boolean {
   }
 
   return shouldUseDark
+}
+
+export function applyAppearance(settings: AppSettings): void {
+  if (typeof document === "undefined") {
+    return
+  }
+  applyThemePreference(settings.appearance.theme)
+  document.documentElement.dataset.fontSize = settings.appearance.fontSize
+  document.documentElement.dataset.animations = settings.appearance.animations ? "on" : "off"
 }

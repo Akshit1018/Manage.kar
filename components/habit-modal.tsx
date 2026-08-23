@@ -9,24 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Card } from "@/components/ui/card"
 import { X, Trash2, Target, Bell } from "lucide-react"
-
-interface Habit {
-  id: number
-  name: string
-  description?: string
-  category: "health" | "productivity" | "learning" | "lifestyle" | "fitness" | "mindfulness"
-  frequency: "daily" | "weekly" | "custom"
-  customDays?: string[]
-  goal?: number
-  unit?: string
-  streak: number
-  completed: boolean
-  completedToday: boolean
-  reminders: boolean
-  reminderTime?: string
-  createdAt: string
-  history: { date: string; completed: boolean; value?: number }[]
-}
+import type { Habit } from "@/lib/domain/types"
 
 interface HabitModalProps {
   isOpen: boolean
@@ -53,6 +36,7 @@ export function HabitModal({ isOpen, onClose, onSave, onDelete, habit, mode }: H
     reminders: false,
     reminderTime: "09:00",
   })
+  const [nameError, setNameError] = useState("")
 
   const categoryOptions = [
     { value: "health", label: "Health", icon: "🏥" },
@@ -91,24 +75,34 @@ export function HabitModal({ isOpen, onClose, onSave, onDelete, habit, mode }: H
         reminderTime: "09:00",
       })
     }
+    setNameError("")
   }, [habit, mode, isOpen])
 
   const handleSave = () => {
-    if (!formData.name.trim()) return
+    const name = formData.name.trim()
+    if (!name) {
+      setNameError("Add a habit name before saving.")
+      return
+    }
 
+    const payload = { ...formData, name }
     if (mode === "edit" && habit) {
-      onSave({ ...habit, ...formData })
+      onSave({ ...habit, ...payload })
     } else {
-      onSave(formData)
+      onSave(payload)
     }
     onClose()
   }
 
   const handleDelete = () => {
-    if (habit && onDelete) {
-      onDelete(habit.id)
-      onClose()
+    if (!habit || !onDelete) {
+      return
     }
+    if (!window.confirm("Delete this habit? You can undo from the toast for a few seconds.")) {
+      return
+    }
+    onDelete(habit.id)
+    onClose()
   }
 
   const toggleCustomDay = (day: string) => {
@@ -157,10 +151,17 @@ export function HabitModal({ isOpen, onClose, onSave, onDelete, habit, mode }: H
               <Input
                 id="habit-name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value })
+                  if (nameError) {
+                    setNameError("")
+                  }
+                }}
                 placeholder="e.g., Morning Exercise, Read 30 minutes..."
                 className="glass rounded-xl"
+                aria-invalid={Boolean(nameError)}
               />
+              {nameError ? <p className="text-sm text-destructive">{nameError}</p> : null}
             </div>
 
             {/* Description */}

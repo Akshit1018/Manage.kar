@@ -2,6 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Geist } from "next/font/google"
 import { Manrope } from "next/font/google"
+import { Toaster } from "sonner"
 import "./globals.css"
 
 const geist = Geist({
@@ -17,11 +18,11 @@ const manrope = Manrope({
 })
 
 export const metadata: Metadata = {
-  title: "Manage.kar - Smart Task & Life Management",
+  title: "Manage.kar — local tasks, notes, and habits",
   description:
-    "Local-first task, note, and habit workspace. Your data stays in this browser unless you export it.",
-  keywords: ["task management", "productivity", "habits", "notes", "focus", "local-first"],
-  authors: [{ name: "Manage.kar Team" }],
+    "Personal local-first workspace. Your data stays in this browser unless you export it.",
+  keywords: ["task management", "habits", "notes", "local-first"],
+  authors: [{ name: "Manage.kar" }],
   creator: "Manage.kar",
   publisher: "Manage.kar",
   formatDetection: {
@@ -29,36 +30,10 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL("https://manage-kar.vercel.app"),
-  openGraph: {
-    title: "Manage.kar - Smart Task & Life Management",
-    description: "Local-first task, note, and habit workspace that persists on this device.",
-    url: "https://manage-kar.vercel.app",
-    siteName: "Manage.kar",
-    locale: "en_US",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Manage.kar - Smart Task & Life Management",
-    description: "Local-first task, note, and habit workspace that persists on this device.",
-    creator: "@managekar",
-  },
   robots: {
     index: true,
     follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-    },
   },
-  verification: {
-    google: "google-site-verification-code",
-  },
-    generator: 'v0.app'
 }
 
 export default function RootLayout({
@@ -69,16 +44,17 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geist.variable} ${manrope.variable} antialiased`}>
       <head>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" href="/icon.png" type="image/svg+xml" />
+        <link rel="icon" href="/icon.png" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#3b82f6" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="Manage.kar" />
       </head>
-      <body className="min-h-screen">{children}</body>
+      <body className="min-h-screen">
+        {children}
+        <Toaster position="bottom-center" />
+      </body>
     </html>
   )
 }

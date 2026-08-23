@@ -23,30 +23,7 @@ import {
   Bell,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-interface Task {
-  id: number
-  title: string
-  completed: boolean
-  priority: "high" | "medium" | "low"
-  dueDate: string
-  description?: string
-  recurring?: "none" | "daily" | "weekly" | "monthly"
-  reminders?: boolean
-  checklist?: { id: number; text: string; completed: boolean }[]
-}
-
-interface Note {
-  id: number
-  title: string
-  content: string
-  createdAt: string
-  voiceNote?: {
-    audioUrl: string
-    transcription: string
-    duration: number
-  }
-}
+import type { Note, Task } from "@/lib/domain/types"
 
 interface FloatingToggleProps {
   tasks?: Task[]
@@ -56,7 +33,7 @@ interface FloatingToggleProps {
   onAddNote?: () => void
   onEditTask?: (task: Task) => void
   onEditNote?: (note: Note) => void
-  onVoiceNote?: (audioBlob: Blob, transcription: string) => void
+  onVoiceNote?: (audioBlob: Blob, transcription: string, duration?: number) => void
   onSpeechToText?: (text: string) => void
   onCreateTaskFromVoice?: (text: string) => void
 }
@@ -240,12 +217,6 @@ export function FloatingToggle({
         return
       }
 
-      // Check if we have microphone permission
-      if (!permissionsGranted.microphone) {
-        setShowPermissionPrompt(true)
-        return
-      }
-
       if (speechSupported && recognitionRef.current) {
         try {
           recognitionRef.current.start()
@@ -294,7 +265,7 @@ export function FloatingToggle({
           })
         }
 
-        onVoiceNote?.(audioBlob, transcription)
+        onVoiceNote?.(audioBlob, transcription, recordingTime)
         stream.getTracks().forEach((track) => track.stop())
 
         // Auto-close after successful save
@@ -312,11 +283,7 @@ export function FloatingToggle({
       }, 1000)
     } catch (error) {
       console.error("[v0] Error starting recording:", error)
-      if (error instanceof DOMException && error.name === "NotAllowedError") {
-        setShowPermissionPrompt(true)
-      } else {
-        alert("Unable to access microphone. Please check your browser permissions and try again.")
-      }
+      window.alert("Microphone access is needed only for voice notes. Allow it in the browser prompt, or skip voice.")
     }
   }
 
@@ -596,67 +563,6 @@ export function FloatingToggle({
 
   return (
     <>
-      {showPermissionPrompt && (
-        <div className="modal-mobile bg-black/50 backdrop-blur-sm">
-          <Card className="modal-content-mobile bg-card/95 backdrop-blur-xl border border-border/50 rounded-3xl p-0 hover:shadow-xl transition-all duration-300">
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center">
-                  <Settings className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground">Permissions Required</h3>
-                  <p className="text-sm text-muted-foreground">Enable features for better experience</p>
-                </div>
-              </div>
-
-              <div className="space-y-4 mb-6">
-                <div className="flex items-center justify-between p-3 rounded-xl bg-accent/20">
-                  <div className="flex items-center gap-3">
-                    <Mic className="h-5 w-5 text-primary" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Microphone Access</p>
-                      <p className="text-xs text-muted-foreground">For voice notes and speech-to-text</p>
-                    </div>
-                  </div>
-                  <div
-                    className={cn(
-                      "h-2 w-2 rounded-full",
-                      permissionsGranted.microphone ? "bg-green-500" : "bg-red-500",
-                    )}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between p-3 rounded-xl bg-accent/20">
-                  <div className="flex items-center gap-3">
-                    <Bell className="h-5 w-5 text-primary" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Notifications</p>
-                      <p className="text-xs text-muted-foreground">For task reminders and confirmations</p>
-                    </div>
-                  </div>
-                  <div
-                    className={cn(
-                      "h-2 w-2 rounded-full",
-                      permissionsGranted.notifications ? "bg-green-500" : "bg-yellow-500",
-                    )}
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button onClick={() => setShowPermissionPrompt(false)} variant="outline" className="flex-1">
-                  Skip
-                </Button>
-                <Button onClick={requestPermissions} className="flex-1">
-                  Grant Permissions
-                </Button>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
-
       {showIconBar && !isOpen && !isActiveRecording && (
         <div
           className="fixed z-[9999] transition-all duration-300 ease-out animate-in slide-in-from-bottom-2 fade-in-0"
@@ -672,6 +578,7 @@ export function FloatingToggle({
               className="h-10 w-10 rounded-full hover:bg-primary/20"
               onClick={onAddTask}
               title="Quick Task"
+              aria-label="Add task"
             >
               <CheckSquare className="h-4 w-4 text-primary" />
             </Button>
@@ -681,17 +588,9 @@ export function FloatingToggle({
               className="h-10 w-10 rounded-full hover:bg-green-500/20"
               onClick={onAddNote}
               title="Quick Note"
+              aria-label="Add note"
             >
               <FileText className="h-4 w-4 text-green-500" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-10 w-10 rounded-full hover:bg-orange-500/20"
-              onClick={() => startFocusMode(25)}
-              title="Focus Mode (25min)"
-            >
-              <Clock className="h-4 w-4 text-orange-500" />
             </Button>
           </div>
         </div>
@@ -762,6 +661,7 @@ export function FloatingToggle({
       <Button
         ref={buttonRef}
         size="icon"
+        aria-label="Add task or note"
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
         onMouseEnter={() => {

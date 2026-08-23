@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { User, Edit, Camera, Mail, Phone, MapPin, Calendar, Trophy, TrendingUp } from "lucide-react"
 
 import type { UserProfile } from "@/lib/domain/types"
+import { sanitizeAvatarUrl } from "@/lib/profile/avatar"
 import { browserStorage, defaultProfile, loadWorkspace, notifyWorkspaceChanged, replaceWorkspace } from "@/lib/store/workspace"
 
 interface ProfileModalProps {
@@ -40,12 +41,13 @@ export function ProfileModal({ isOpen, onClose, stats, onProfileChange }: Profil
   }, [isOpen])
 
   const handleSave = () => {
-    setProfile(editedProfile)
+    const nextProfile = { ...editedProfile, name: editedProfile.name.trim() || "User", avatar: sanitizeAvatarUrl(editedProfile.avatar) }
+    setProfile(nextProfile)
+    setEditedProfile(nextProfile)
     const storage = browserStorage()
     const workspace = loadWorkspace(storage)
-    replaceWorkspace(storage, { ...workspace, profile: editedProfile })
-    localStorage.setItem("manageKarUserProfile", JSON.stringify(editedProfile))
-    onProfileChange?.(editedProfile)
+    replaceWorkspace(storage, { ...workspace, profile: nextProfile })
+    onProfileChange?.(nextProfile)
     notifyWorkspaceChanged()
     setIsEditing(false)
   }
@@ -56,10 +58,9 @@ export function ProfileModal({ isOpen, onClose, stats, onProfileChange }: Profil
   }
 
   const handleAvatarChange = () => {
-    // In a real app, this would open a file picker or camera
-    const avatarUrl = prompt("Enter avatar URL (or leave empty for default):")
+    const avatarUrl = window.prompt("Enter an https image URL, or leave empty:")
     if (avatarUrl !== null) {
-      setEditedProfile({ ...editedProfile, avatar: avatarUrl })
+      setEditedProfile({ ...editedProfile, avatar: avatarUrl.trim() })
     }
   }
 
