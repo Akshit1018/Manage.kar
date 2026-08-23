@@ -2,6 +2,7 @@ import { z } from "zod"
 import type {
   ActiveFocus,
   AppSettings,
+  DeletedIds,
   FocusSession,
   Goal,
   Habit,
@@ -11,6 +12,7 @@ import type {
   UserProfile,
   Workspace,
 } from "@/lib/domain/types"
+import { emptyDeletedIds, stampWorkspaceMutation } from "@/lib/store/merge"
 import { localDateKey, normalizeDueDate } from "@/lib/dates/due-date"
 import { hydrateHabit } from "@/lib/habits/streak"
 import { sanitizeAvatarUrl } from "@/lib/profile/avatar"
@@ -230,6 +232,7 @@ export function createEmptyWorkspace(): Workspace {
     activeFocus: null,
     importedShareHashes: [],
     firedReminderKeys: [],
+    deletedIds: emptyDeletedIds(),
     settings: defaultSettings(),
     profile: defaultProfile(),
   }
@@ -433,6 +436,25 @@ function asStringArray(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === "string")
 }
 
+function asIdArray(value: unknown): number[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+  return value.filter((item): item is number => typeof item === "number" && Number.isFinite(item))
+}
+
+function mergeDeletedIds(value: unknown): DeletedIds {
+  const record = isRecord(value) ? value : {}
+  return {
+    tasks: asIdArray(record.tasks),
+    notes: asIdArray(record.notes),
+    habits: asIdArray(record.habits),
+    goals: asIdArray(record.goals),
+    timeEntries: asIdArray(record.timeEntries),
+    focusSessions: asIdArray(record.focusSessions),
+  }
+}
+
 function mergeActiveFocus(value: unknown): ActiveFocus | null {
   const parsed = activeFocusSchema.safeParse(value)
   return parsed.success ? parsed.data : null
@@ -481,6 +503,7 @@ function normalizeWorkspaceDetailed(value: unknown): { workspace: Workspace | nu
     activeFocus: mergeActiveFocus(value.activeFocus),
     importedShareHashes: asStringArray(value.importedShareHashes),
     firedReminderKeys: asStringArray(value.firedReminderKeys),
+    deletedIds: mergeDeletedIds(value.deletedIds),
     settings,
     profile: mergeProfile(value.profile),
   }
@@ -609,7 +632,7 @@ export function mutateWorkspace(
     return createEmptyWorkspace()
   }
   const current = loadWorkspace(storage)
-  return saveWorkspace(storage, mutator(current))
+  return saveWorkspace(storage, stampWorkspaceMutation(current, mutator(current)))
 }
 
 export function resetCorruptWorkspace(storage: KeyValueStore): Workspace {

@@ -194,7 +194,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   </h4>
                   <div className="space-y-3 sm:space-y-4">
                     <p className="responsive-text-sm text-muted-readable">
-                      Reminders stay on this device. The browser must be open for them to fire.
+                      Reminders stay on this device. An open tab checks every minute. A service worker may also
+                      check from a snapshot if the browser allows it. There is no push server.
                     </p>
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-1">

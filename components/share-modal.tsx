@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { X, Share2, MessageCircle, Link, Copy, Check, Mail, Download } from "lucide-react"
 import { encodeEncryptedSharePayload } from "@/lib/share/secret"
+import { shareExpiresAt, type ShareTtl } from "@/lib/share/codec"
 import { recordBrowserEvent } from "@/lib/analytics/local-events"
 import { APP_VERSION } from "@/lib/store/workspace"
 import type { Task } from "@/lib/domain/types"
@@ -29,6 +30,7 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
   const [emailAddress, setEmailAddress] = useState("")
   const [linkPassword, setLinkPassword] = useState("")
   const [linkError, setLinkError] = useState("")
+  const [linkTtl, setLinkTtl] = useState<ShareTtl>("7d")
 
   useEffect(() => {
     if (!isOpen) {
@@ -89,6 +91,7 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
       tasks: filteredTasks,
       sharedAt: new Date().toISOString(),
       customMessage,
+      expiresAt: shareExpiresAt(linkTtl),
     }
 
     const encoded = await encodeEncryptedSharePayload(shareData, linkPassword)
@@ -193,7 +196,8 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
           <div className="space-y-4 sm:space-y-6 max-h-[60vh] overflow-y-auto">
             <p className="text-xs text-muted-readable">
               Export a JSON file to keep a private copy. Link sharing is password-protected. The ciphertext sits in
-              the URL and does not expire. Anyone with both the URL and the password can read the tasks.
+              the URL. This device can refuse an expired link, but it cannot remotely revoke one. Anyone with both
+              the URL and the password can read the tasks until expiry.
             </p>
             <div className="space-y-3">
               <Label className="responsive-text-sm font-medium text-readable">Share method</Label>
@@ -314,8 +318,23 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
                   placeholder="Required to encrypt the link"
                   className="bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl mobile-touch-target"
                 />
+                <div className="space-y-2">
+                  <Label className="responsive-text-sm font-medium text-readable">Link expires</Label>
+                  <select
+                    value={linkTtl}
+                    onChange={(event) => setLinkTtl(event.target.value as ShareTtl)}
+                    className="w-full rounded-xl border border-border/50 bg-card/95 px-3 py-2 text-sm mobile-touch-target"
+                    aria-label="Share link expiry"
+                  >
+                    <option value="1d">After 1 day</option>
+                    <option value="7d">After 7 days</option>
+                    <option value="30d">After 30 days</option>
+                    <option value="never">Never (ciphertext stays in the URL)</option>
+                  </select>
+                </div>
                 <p className="text-xs text-muted-readable">
-                  Share the password separately. We cannot recover it. The link still does not expire.
+                  Share the password separately. We cannot recover it. Expiry is checked on this page only. There is
+                  no server revoke.
                 </p>
                 {linkError ? <p className="text-xs text-destructive">{linkError}</p> : null}
               </div>

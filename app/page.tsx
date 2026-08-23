@@ -4,16 +4,11 @@ import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import {
-  CheckCircle2,
-  Circle,
-  Calendar,
   Target,
   Settings,
   User,
-  Edit,
   Share2,
   Zap,
   Plus,
@@ -40,18 +35,22 @@ import { AnalyticsDashboard } from "@/components/analytics-dashboard"
 import { TimeTracker } from "@/components/time-tracker"
 import { GoalManager } from "@/components/goal-manager"
 import { ClipboardMonitor } from "@/components/clipboard-monitor"
-import { EmptyState } from "@/components/empty-state"
+import { TodaySection } from "@/components/workspace/today-section"
+import { TaskList } from "@/components/workspace/task-list"
+import { NoteList } from "@/components/workspace/note-list"
+import { HabitList } from "@/components/workspace/habit-list"
 import type { Habit, Note, Task } from "@/lib/domain/types"
 import { useWorkspace } from "@/lib/store/use-workspace"
 import { allocateEntityId } from "@/lib/store/workspace"
 import { recordBrowserEvent } from "@/lib/analytics/local-events"
-import { formatDueDate, formatTimestamp, isTaskDueTodayOrOverdue, localDateKey, normalizeDueDate } from "@/lib/dates/due-date"
+import { isTaskDueTodayOrOverdue, localDateKey, normalizeDueDate } from "@/lib/dates/due-date"
 import { isHabitScheduledOn } from "@/lib/habits/schedule"
 import { hydrateHabit, toggleHabitOnDate } from "@/lib/habits/streak"
 import { completeRecurringTask } from "@/lib/reminders/due"
 import { useLocalReminders } from "@/lib/reminders/use-local-reminders"
-import { blobToDataUrl } from "@/lib/media/blob-to-data-url"
+import { createIndexedDbVoiceStore, deleteVoice, putVoice, voiceRef } from "@/lib/media/voice-store"
 import { parseWorkspaceSearch, serializeWorkspaceSearch, type WorkspaceView } from "@/lib/navigation/workspace-url"
+import { filterTasks, type TaskListFilter } from "@/lib/tasks/filter"
 
 export default function Dashboard() {
   const { workspace, persist, hydrated, loadStatus, quarantineKey, dropped, resetCorrupt } = useWorkspace()
@@ -64,9 +63,13 @@ export default function Dashboard() {
 
   useLocalReminders(workspace, persist, hydrated)
 
-  const initialSearch = typeof window === "undefined" ? { view: "overview" as const, q: "" } : parseWorkspaceSearch(window.location.search)
+  const initialSearch =
+    typeof window === "undefined"
+      ? { view: "overview" as const, q: "", filter: "all" as const }
+      : parseWorkspaceSearch(window.location.search)
   const [currentView, setCurrentView] = useState<WorkspaceView>(initialSearch.view)
   const [searchQuery, setSearchQuery] = useState(initialSearch.q)
+  const [taskFilter, setTaskFilter] = useState<TaskListFilter>(initialSearch.filter)
   const [selectedTasks, setSelectedTasks] = useState<number[]>([])
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [taskModal, setTaskModal] = useState<{ isOpen: boolean; mode: "create" | "edit"; task?: Task }>({
@@ -94,9 +97,9 @@ export default function Dashboard() {
   const todayKey = localDateKey()
 
   useEffect(() => {
-    const next = serializeWorkspaceSearch(currentView, searchQuery)
+    const next = serializeWorkspaceSearch(currentView, searchQuery, taskFilter)
     window.history.replaceState(null, "", `${window.location.pathname}${next}`)
-  }, [currentView, searchQuery])
+  }, [currentView, searchQuery, taskFilter])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -218,6 +221,9 @@ export default function Dashboard() {
     })
     if (removed) {
       const snapshot = removed
+      if (snapshot.voiceNote?.audioUrl) {
+        void deleteVoice(createIndexedDbVoiceStore(), snapshot.voiceNote.audioUrl)
+      }
       toast("Note deleted", {
         duration: 8000,
         action: {
@@ -348,32 +354,31 @@ export default function Dashboard() {
   }
 
   const handleVoiceNote = (audioBlob: Blob, transcription: string, duration = 0) => {
-    void blobToDataUrl(audioBlob)
-      .then((audioUrl) => {
-        persist((current) => {
-          const allocated = allocateEntityId(current)
-          return {
-            ...allocated.workspace,
-            notes: [
-              ...allocated.workspace.notes,
-              {
-                id: allocated.id,
-                title: clipTitle(transcription || "Voice note", 30),
-                content: transcription,
-                createdAt: new Date().toISOString(),
-                voiceNote: {
-                  audioUrl,
-                  transcription,
-                  duration,
-                },
-              },
-            ],
-          }
-        })
-      })
-      .catch(() => {
-        toast.error("Could not keep the recording on this device. The words were not saved as audio.")
-      })
+    let noteId = 0
+    persist((current) => {
+      const allocated = allocateEntityId(current)
+      noteId = allocated.id
+      return {
+        ...allocated.workspace,
+        notes: [
+          ...allocated.workspace.notes,
+          {
+            id: allocated.id,
+            title: clipTitle(transcription || "Voice note", 30),
+            content: transcription,
+            createdAt: new Date().toISOString(),
+            voiceNote: {
+              audioUrl: voiceRef(allocated.id),
+              transcription,
+              duration,
+            },
+          },
+        ],
+      }
+    })
+    void putVoice(createIndexedDbVoiceStore(), noteId, audioBlob).catch(() => {
+      toast.error("Could not keep the recording on this device. The words were saved without audio.")
+    })
   }
 
   const handleSpeechToText = (text: string) => {
@@ -422,10 +427,11 @@ export default function Dashboard() {
   const todayTasks = tasks.filter((task) => isTaskDueTodayOrOverdue(task.dueDate, task.completed))
   const todayHabits = habits.filter((habit) => isHabitScheduledOn(habit, todayKey, weekStartsOn))
   const query = searchQuery.toLowerCase()
-  const filteredTasks = tasks.filter(
+  const searchedTasks = tasks.filter(
     (task) =>
       task.title.toLowerCase().includes(query) || task.description?.toLowerCase().includes(query),
   )
+  const filteredTasks = filterTasks(searchedTasks, taskFilter)
   const filteredNotes = notes.filter(
     (note) => note.title.toLowerCase().includes(query) || note.content.toLowerCase().includes(query),
   )
@@ -599,235 +605,61 @@ export default function Dashboard() {
               </button>
             </div>
 
-            <div>
-              <h3 className="text-xl font-bold mb-4">Today</h3>
-              {todayTasks.length === 0 && todayHabits.length === 0 ? (
-                <EmptyState
-                  title={tasks.length === 0 ? "Nothing on your plate yet" : "Nothing due today"}
-                  description={
-                    tasks.length === 0
-                      ? "Add one task. It stays on this device after refresh. There is no cloud backup until you export."
-                      : "Overdue and today’s work will land here."
-                  }
-                  actionLabel="Add task"
-                  onAction={() => setTaskModal({ isOpen: true, mode: "create" })}
-                />
-              ) : (
-                <div className="space-y-3">
-                  {todayTasks.map((task) => (
-                    <Card key={`task-${task.id}`} className="modern-card p-4">
-                      <div className="flex items-center gap-3">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleTaskToggle(task.id)}
-                          aria-label={task.completed ? `Mark ${task.title} incomplete` : `Complete ${task.title}`}
-                        >
-                          {task.completed ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5" />}
-                        </Button>
-                        <div className="flex-1">
-                          <p>{task.title}</p>
-                          <p className="text-xs text-muted-readable">{formatDueDate(task.dueDate, dateFormat)}</p>
-                          {task.checklist && task.checklist.length > 0 ? (
-                            <p className="text-xs text-muted-readable">
-                              {task.checklist.filter((item) => item.completed).length}/{task.checklist.length} checklist
-                            </p>
-                          ) : null}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setTaskModal({ isOpen: true, mode: "edit", task })}
-                          aria-label={`Edit ${task.title}`}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </Card>
-                  ))}
-                  {todayHabits.map((habit) => (
-                    <Card key={`habit-${habit.id}`} className="modern-card p-4">
-                      <div className="flex items-center gap-3">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleHabitToggle(habit.id)}
-                          aria-label={habit.completedToday ? `Unmark ${habit.name} for today` : `Complete ${habit.name} today`}
-                        >
-                          {habit.completedToday ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5" />}
-                        </Button>
-                        <div className="flex-1">
-                          <p>{habit.name}</p>
-                          <p className="text-xs text-muted-readable">Habit · streak {habit.streak}</p>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
+            <TodaySection
+              tasks={tasks}
+              todayTasks={todayTasks}
+              todayHabits={todayHabits}
+              dateFormat={dateFormat}
+              onToggleTask={handleTaskToggle}
+              onEditTask={(task) => setTaskModal({ isOpen: true, mode: "edit", task })}
+              onToggleHabit={handleHabitToggle}
+              onAddTask={() => setTaskModal({ isOpen: true, mode: "create" })}
+            />
           </div>
         )}
 
         {currentView === "tasks" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl font-bold">Tasks</h3>
-              <div className="flex gap-2">
-                <Button variant="outline" className="bg-transparent" onClick={() => setIsSelectionMode((value) => !value)}>
-                  <CheckSquare className="h-4 w-4 mr-2" />
-                  {isSelectionMode ? "Done" : "Select"}
-                </Button>
-                <Button onClick={() => setTaskModal({ isOpen: true, mode: "create" })}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add task
-                </Button>
-              </div>
-            </div>
-            {isSelectionMode && selectedTasks.length > 0 && (
-              <Button onClick={() => setShareModal(true)}>Share selected ({selectedTasks.length})</Button>
-            )}
-            {filteredTasks.length === 0 ? (
-              <EmptyState
-                title={searchQuery ? "No matching tasks" : "No tasks yet"}
-                description={searchQuery ? "Try a different search." : "Create a task. It will still be here after refresh."}
-                actionLabel={searchQuery ? undefined : "Add task"}
-                onAction={searchQuery ? undefined : () => setTaskModal({ isOpen: true, mode: "create" })}
-              />
-            ) : (
-              filteredTasks.map((task) => (
-                <Card key={task.id} className="p-4">
-                  <div className="flex items-center gap-3">
-                    {isSelectionMode && (
-                      <input
-                        type="checkbox"
-                        checked={selectedTasks.includes(task.id)}
-                        onChange={() =>
-                          setSelectedTasks((current) =>
-                            current.includes(task.id) ? current.filter((id) => id !== task.id) : [...current, task.id],
-                          )
-                        }
-                        aria-label={`Select ${task.title}`}
-                      />
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleTaskToggle(task.id)}
-                      aria-label={task.completed ? `Mark ${task.title} incomplete` : `Complete ${task.title}`}
-                    >
-                      {task.completed ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5" />}
-                    </Button>
-                    <div className="flex-1">
-                      <p className={task.completed ? "line-through text-muted-foreground" : ""}>{task.title}</p>
-                      <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                        <Badge variant={task.priority === "high" ? "destructive" : "secondary"}>{task.priority}</Badge>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {formatDueDate(task.dueDate, dateFormat)}
-                        </span>
-                        {task.checklist && task.checklist.length > 0 ? (
-                          <span>
-                            {task.checklist.filter((item) => item.completed).length}/{task.checklist.length}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setTaskModal({ isOpen: true, mode: "edit", task })}
-                      aria-label={`Edit ${task.title}`}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </Card>
-              ))
-            )}
-          </div>
+          <TaskList
+            tasks={filteredTasks}
+            filter={taskFilter}
+            searchQuery={searchQuery}
+            dateFormat={dateFormat}
+            isSelectionMode={isSelectionMode}
+            selectedTasks={selectedTasks}
+            onFilterChange={setTaskFilter}
+            onToggleSelectionMode={() => setIsSelectionMode((value) => !value)}
+            onToggleSelected={(taskId) =>
+              setSelectedTasks((current) =>
+                current.includes(taskId) ? current.filter((id) => id !== taskId) : [...current, taskId],
+              )
+            }
+            onShareSelected={() => setShareModal(true)}
+            onAddTask={() => setTaskModal({ isOpen: true, mode: "create" })}
+            onToggleTask={handleTaskToggle}
+            onEditTask={(task) => setTaskModal({ isOpen: true, mode: "edit", task })}
+          />
         )}
 
         {currentView === "notes" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl font-bold">Notes</h3>
-              <Button onClick={() => setNoteModal({ isOpen: true, mode: "create" })}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add note
-              </Button>
-            </div>
-            {filteredNotes.length === 0 ? (
-              <EmptyState
-                title={searchQuery ? "No matching notes" : "No notes yet"}
-                description={searchQuery ? "Nothing matches that search." : "Capture a thought. It is saved locally."}
-                actionLabel={searchQuery ? undefined : "Add note"}
-                onAction={searchQuery ? undefined : () => setNoteModal({ isOpen: true, mode: "create" })}
-              />
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2">
-                {filteredNotes.map((note) => (
-                  <Card key={note.id} className="p-4 cursor-pointer" onClick={() => setNoteModal({ isOpen: true, mode: "edit", note })}>
-                    <h4 className="font-semibold truncate">{note.title}</h4>
-                    <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{note.content}</p>
-                    <p className="mt-2 text-xs text-muted-foreground">{formatTimestamp(note.createdAt, dateFormat)}</p>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
+          <NoteList
+            notes={filteredNotes}
+            searchQuery={searchQuery}
+            dateFormat={dateFormat}
+            onAddNote={() => setNoteModal({ isOpen: true, mode: "create" })}
+            onEditNote={(note) => setNoteModal({ isOpen: true, mode: "edit", note })}
+          />
         )}
 
         {currentView === "habits" && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xl font-bold">Habits</h3>
-              <Button onClick={() => setHabitModal({ isOpen: true, mode: "create" })}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add habit
-              </Button>
-            </div>
-            {filteredHabits.length === 0 ? (
-              <EmptyState
-                title={searchQuery ? "No matching habits" : "No habits yet"}
-                description={searchQuery ? "Nothing matches that search." : "Track one daily action. Completions reset at local midnight."}
-                actionLabel={searchQuery ? undefined : "Add habit"}
-                onAction={searchQuery ? undefined : () => setHabitModal({ isOpen: true, mode: "create" })}
-              />
-            ) : (
-              filteredHabits.map((habit) => (
-                <Card key={habit.id} className="p-4">
-                  <div className="flex items-center gap-3">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleHabitToggle(habit.id)}
-                      aria-label={habit.completedToday ? `Unmark ${habit.name} for today` : `Complete ${habit.name} today`}
-                    >
-                      {habit.completedToday ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5" />}
-                    </Button>
-                    <div className="flex-1">
-                      <p>{habit.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Streak {habit.streak}
-                        {isHabitScheduledOn(habit, todayKey, weekStartsOn) ? "" : " · off today"}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setHabitModal({ isOpen: true, mode: "edit", habit })}
-                      aria-label={`Edit ${habit.name}`}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </Card>
-              ))
-            )}
-          </div>
+          <HabitList
+            habits={filteredHabits}
+            searchQuery={searchQuery}
+            todayKey={todayKey}
+            weekStartsOn={weekStartsOn}
+            onAddHabit={() => setHabitModal({ isOpen: true, mode: "create" })}
+            onToggleHabit={handleHabitToggle}
+            onEditHabit={(habit) => setHabitModal({ isOpen: true, mode: "edit", habit })}
+          />
         )}
       </div>
 
@@ -854,7 +686,7 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      <div className="hidden sm:block fixed bottom-6 right-4 sm:bottom-8 sm:right-8 z-50">
+      <div className="fixed bottom-20 right-4 sm:bottom-8 sm:right-8 z-50">
         <FloatingToggle
           tasks={tasks}
           notes={notes}

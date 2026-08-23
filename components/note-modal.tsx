@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { X, Trash2, FileText, Volume2 } from "lucide-react"
 import type { Note } from "@/lib/domain/types"
+import { VoiceAudio } from "@/components/voice-audio"
 
 interface NoteModalProps {
   isOpen: boolean
@@ -162,13 +163,7 @@ export function NoteModal({ isOpen, onClose, onSave, onDelete, note, mode }: Not
                   <span className="responsive-text-sm font-medium text-readable">Voice Note</span>
                   <span className="responsive-text-xs text-muted-readable">{note.voiceNote.duration}s</span>
                 </div>
-                {note.voiceNote.audioUrl && (
-                  <audio controls className="w-full mb-3 rounded-lg">
-                    <source src={note.voiceNote.audioUrl} type="audio/webm" />
-                    <source src={note.voiceNote.audioUrl} type="audio/mp4" />
-                    Your browser does not support the audio element.
-                  </audio>
-                )}
+                {note.voiceNote.audioUrl ? <VoiceAudio audioUrl={note.voiceNote.audioUrl} /> : null}
                 <p className="responsive-text-sm text-muted-readable">
                   <span className="font-medium">Transcription:</span> {note.voiceNote.transcription}
                 </p>

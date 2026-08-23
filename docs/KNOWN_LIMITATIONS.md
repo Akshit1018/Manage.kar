@@ -1,13 +1,10 @@
 # Known limitations
 
-Honest leftover after Green Team repair. Do not call these done.
+Honest leftover after the leftover-close session. Do not call these done.
 
-- Reminders fire only while this tab is open. There is a 60s clock. There is no OS-level alarm after close.
-- Share links cannot expire or revoke. Passworded ciphertext still lives in the URL forever.
+- Reminder service-worker checks are best-effort. `periodicsync` can be delayed or denied. There is no push server and no guaranteed OS alarm after the browser process is killed.
+- Share links cannot be remotely revoked. Client-side `expiresAt` is checked when this app decodes the URL. The ciphertext can still sit in history, referrer logs, and other apps.
 - WhatsApp/email send titles in the clear. That is intentional and labeled.
-- Two tabs: last full document write wins. The losing tab reloads and is told another tab updated.
-- Voice audio is stored as a data URL in `localStorage`. Large recordings can hit quota.
 - No second-device sync. Export is the backup.
 - No Google Drive. Settings say so.
-- FAB is still a large desktop helper. Focus now opens the persisted Focus modal.
-- `app/page.tsx` and `floating-toggle.tsx` are still oversized.
+- `floating-toggle.tsx` is still a large desktop helper. It is now reachable on mobile above the tab bar.
