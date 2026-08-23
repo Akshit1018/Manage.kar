@@ -47,7 +47,10 @@ export function useWorkspace() {
   const [dropped, setDropped] = useState<DroppedCounts>(emptyDropped)
   const workspaceRef = useRef(workspace)
   const quotaWarnedRef = useRef(false)
-  workspaceRef.current = workspace
+
+  useEffect(() => {
+    workspaceRef.current = workspace
+  }, [workspace])
 
   const applyLoaded = useCallback((inspected: WorkspaceInspection) => {
     setWorkspace(inspected.workspace)

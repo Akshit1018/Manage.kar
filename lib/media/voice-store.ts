@@ -65,20 +65,19 @@ export async function deleteVoice(store: BinaryStore, ref: string): Promise<void
 }
 
 export async function migrateVoiceDataUrls(notes: Note[], store: BinaryStore): Promise<Note[]> {
-  const next: Note[] = []
-  for (const note of notes) {
-    const audioUrl = note.voiceNote?.audioUrl
-    if (!audioUrl || !isDataUrl(audioUrl)) {
-      next.push(note)
-      continue
-    }
-    const ref = await putVoice(store, note.id, dataUrlToBlob(audioUrl))
-    next.push({
-      ...note,
-      voiceNote: note.voiceNote ? { ...note.voiceNote, audioUrl: ref } : undefined,
-    })
-  }
-  return next
+  return Promise.all(
+    notes.map(async (note) => {
+      const audioUrl = note.voiceNote?.audioUrl
+      if (!audioUrl || !isDataUrl(audioUrl)) {
+        return note
+      }
+      const ref = await putVoice(store, note.id, dataUrlToBlob(audioUrl))
+      return {
+        ...note,
+        voiceNote: note.voiceNote ? { ...note.voiceNote, audioUrl: ref } : undefined,
+      }
+    }),
+  )
 }
 
 function openVoiceDb(): Promise<IDBDatabase> {

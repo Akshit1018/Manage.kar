@@ -38,6 +38,21 @@ function idsOf(items: Array<{ id: number }>): number[] {
   return items.map((item) => item.id)
 }
 
+function removedIds(previous: Array<{ id: number }>, next: Array<{ id: number }>): number[] {
+  const live = new Set(idsOf(next))
+  return idsOf(previous).filter((id) => !live.has(id))
+}
+
+function stampedDeletedIds(
+  previousDeleted: number[],
+  nextDeleted: number[],
+  previousItems: Array<{ id: number }>,
+  nextItems: Array<{ id: number }>,
+): number[] {
+  const live = new Set(idsOf(nextItems))
+  return unionIds(previousDeleted, nextDeleted, removedIds(previousItems, nextItems)).filter((id) => !live.has(id))
+}
+
 function mergeById<T extends Identified>(current: T[], incoming: T[], deleted: number[]): T[] {
   const deletedSet = new Set(deleted)
   const map = new Map<number, T>()
@@ -78,28 +93,17 @@ export function stampWorkspaceMutation(
   const nextDeleted = next.deletedIds ?? emptyDeletedIds()
 
   const deletedIds: DeletedIds = {
-    tasks: unionIds(previousDeleted.tasks, nextDeleted.tasks, idsOf(previous.tasks).filter((id) => !idsOf(next.tasks).includes(id))).filter(
-      (id) => !idsOf(next.tasks).includes(id),
-    ),
-    notes: unionIds(previousDeleted.notes, nextDeleted.notes, idsOf(previous.notes).filter((id) => !idsOf(next.notes).includes(id))).filter(
-      (id) => !idsOf(next.notes).includes(id),
-    ),
-    habits: unionIds(previousDeleted.habits, nextDeleted.habits, idsOf(previous.habits).filter((id) => !idsOf(next.habits).includes(id))).filter(
-      (id) => !idsOf(next.habits).includes(id),
-    ),
-    goals: unionIds(previousDeleted.goals, nextDeleted.goals, idsOf(previous.goals).filter((id) => !idsOf(next.goals).includes(id))).filter(
-      (id) => !idsOf(next.goals).includes(id),
-    ),
-    timeEntries: unionIds(
-      previousDeleted.timeEntries,
-      nextDeleted.timeEntries,
-      idsOf(previous.timeEntries).filter((id) => !idsOf(next.timeEntries).includes(id)),
-    ).filter((id) => !idsOf(next.timeEntries).includes(id)),
-    focusSessions: unionIds(
+    tasks: stampedDeletedIds(previousDeleted.tasks, nextDeleted.tasks, previous.tasks, next.tasks),
+    notes: stampedDeletedIds(previousDeleted.notes, nextDeleted.notes, previous.notes, next.notes),
+    habits: stampedDeletedIds(previousDeleted.habits, nextDeleted.habits, previous.habits, next.habits),
+    goals: stampedDeletedIds(previousDeleted.goals, nextDeleted.goals, previous.goals, next.goals),
+    timeEntries: stampedDeletedIds(previousDeleted.timeEntries, nextDeleted.timeEntries, previous.timeEntries, next.timeEntries),
+    focusSessions: stampedDeletedIds(
       previousDeleted.focusSessions,
       nextDeleted.focusSessions,
-      idsOf(previous.focusSessions).filter((id) => !idsOf(next.focusSessions).includes(id)),
-    ).filter((id) => !idsOf(next.focusSessions).includes(id)),
+      previous.focusSessions,
+      next.focusSessions,
+    ),
   }
 
   return {

@@ -52,6 +52,10 @@ import { createIndexedDbVoiceStore, deleteVoice, putVoice, voiceRef } from "@/li
 import { parseWorkspaceSearch, serializeWorkspaceSearch, type WorkspaceView } from "@/lib/navigation/workspace-url"
 import { filterTasks, type TaskListFilter } from "@/lib/tasks/filter"
 
+function clipTitle(content: string, limit: number) {
+  return content.length > limit ? `${content.slice(0, limit).trim()}…` : content.trim()
+}
+
 export default function Dashboard() {
   const { workspace, persist, hydrated, loadStatus, quarantineKey, dropped, resetCorrupt } = useWorkspace()
   const tasks = workspace.tasks
@@ -309,9 +313,6 @@ export default function Dashboard() {
       })
     }
   }
-
-  const clipTitle = (content: string, limit: number) =>
-    content.length > limit ? `${content.slice(0, limit).trim()}…` : content.trim()
 
   const handleClipboardTask = (content: string) => {
     persist((current) => {
