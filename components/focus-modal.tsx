@@ -18,6 +18,12 @@ interface FocusModalProps {
   persist: (mutator: (current: Workspace) => Workspace) => Workspace
 }
 
+function formatClock(seconds: number) {
+  const mins = Math.floor(seconds / 60)
+  const secs = seconds % 60
+  return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
+}
+
 function remainingSeconds(focus: ActiveFocus, now = Date.now()) {
   if (!focus.isRunning) {
     return focus.remainingSeconds
@@ -153,12 +159,6 @@ export function FocusModal({ isOpen, onClose, workspace, persist }: FocusModalPr
         activeFocus: null,
       }
     })
-  }
-
-  const formatClock = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
   const today = localDateKey()

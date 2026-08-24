@@ -24,6 +24,71 @@ function assertNever(value: never): never {
   throw new Error(`Unhandled clipboard type: ${String(value)}`)
 }
 
+function detectContentType(content: string): ClipboardSuggestion["type"] {
+  const urlRegex = /^https?:\/\/[^\s]+$/i
+  if (urlRegex.test(content.trim())) return "url"
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (emailRegex.test(content.trim())) return "email"
+
+  const phoneRegex = /^[+]?[1-9][\d]{0,15}$/
+  if (phoneRegex.test(content.replace(/[\s\-$$$$]/g, ""))) return "phone"
+
+  return "text"
+}
+
+function shouldSuggestContent(content: string): boolean {
+  if (content.length < 10 || content.length > 500) return false
+  if (/^\d+$/.test(content) || content.split(" ").length === 1) return false
+  if (/^[a-zA-Z0-9+/=]{20,}$/.test(content)) return false
+  return true
+}
+
+function getContentIcon(type: ClipboardSuggestion["type"]) {
+  switch (type) {
+    case "url":
+      return <Link className="h-4 w-4" />
+    case "email":
+      return <Mail className="h-4 w-4" />
+    case "phone":
+      return <Copy className="h-4 w-4" />
+    case "text":
+      return <FileText className="h-4 w-4" />
+    default:
+      return assertNever(type)
+  }
+}
+
+function getContentLabel(type: ClipboardSuggestion["type"]) {
+  switch (type) {
+    case "url":
+      return "Link"
+    case "email":
+      return "Email"
+    case "phone":
+      return "Phone"
+    case "text":
+      return "Text"
+    default:
+      return assertNever(type)
+  }
+}
+
+function getSuggestionTitle(type: ClipboardSuggestion["type"]) {
+  switch (type) {
+    case "url":
+      return "Save this link?"
+    case "email":
+      return "Save this email?"
+    case "phone":
+      return "Save this contact?"
+    case "text":
+      return "Save this text?"
+    default:
+      return assertNever(type)
+  }
+}
+
 export function ClipboardMonitor({ onCreateTask, onCreateNote, enabled = false }: ClipboardMonitorProps) {
   const [suggestions, setSuggestions] = useState<ClipboardSuggestion[]>([])
   const [showSuggestion, setShowSuggestion] = useState(false)
@@ -37,26 +102,6 @@ export function ClipboardMonitor({ onCreateTask, onCreateNote, enabled = false }
       setClipboardSupported(true)
     }
   }, [])
-
-  const detectContentType = (content: string): ClipboardSuggestion["type"] => {
-    const urlRegex = /^https?:\/\/[^\s]+$/i
-    if (urlRegex.test(content.trim())) return "url"
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (emailRegex.test(content.trim())) return "email"
-
-    const phoneRegex = /^[+]?[1-9][\d]{0,15}$/
-    if (phoneRegex.test(content.replace(/[\s\-$$$$]/g, ""))) return "phone"
-
-    return "text"
-  }
-
-  const shouldSuggestContent = (content: string): boolean => {
-    if (content.length < 10 || content.length > 500) return false
-    if (/^\d+$/.test(content) || content.split(" ").length === 1) return false
-    if (/^[a-zA-Z0-9+/=]{20,}$/.test(content)) return false
-    return true
-  }
 
   const checkClipboard = async () => {
     if (!clipboardSupported || !enabled) return
@@ -117,51 +162,6 @@ export function ClipboardMonitor({ onCreateTask, onCreateNote, enabled = false }
 
   const handleDismiss = () => {
     setShowSuggestion(false)
-  }
-
-  const getContentIcon = (type: ClipboardSuggestion["type"]) => {
-    switch (type) {
-      case "url":
-        return <Link className="h-4 w-4" />
-      case "email":
-        return <Mail className="h-4 w-4" />
-      case "phone":
-        return <Copy className="h-4 w-4" />
-      case "text":
-        return <FileText className="h-4 w-4" />
-      default:
-        return assertNever(type)
-    }
-  }
-
-  const getContentLabel = (type: ClipboardSuggestion["type"]) => {
-    switch (type) {
-      case "url":
-        return "Link"
-      case "email":
-        return "Email"
-      case "phone":
-        return "Phone"
-      case "text":
-        return "Text"
-      default:
-        return assertNever(type)
-    }
-  }
-
-  const getSuggestionTitle = (type: ClipboardSuggestion["type"]) => {
-    switch (type) {
-      case "url":
-        return "Save this link?"
-      case "email":
-        return "Save this email?"
-      case "phone":
-        return "Save this contact?"
-      case "text":
-        return "Save this text?"
-      default:
-        return assertNever(type)
-    }
   }
 
   if (!clipboardSupported || !enabled || !currentSuggestion) {

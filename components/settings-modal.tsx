@@ -31,6 +31,15 @@ interface SettingsModalProps {
   onClose: () => void
 }
 
+const SETTINGS_SECTIONS = [
+  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "appearance", label: "Appearance", icon: Palette },
+  { id: "integrations", label: "Backup", icon: Link2 },
+  { id: "privacy", label: "Privacy", icon: Shield },
+  { id: "data", label: "Data", icon: Database },
+  { id: "general", label: "General", icon: Globe },
+] as const
+
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [settings, setSettings] = useState<AppSettings>(defaultSettings)
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default")
@@ -202,22 +211,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setConfirmKind({ kind: "clear-1" })
   }
 
-  const sections = [
-    { id: "notifications", label: "Notifications", icon: Bell },
-    { id: "appearance", label: "Appearance", icon: Palette },
-    { id: "integrations", label: "Backup", icon: Link2 },
-    { id: "privacy", label: "Privacy", icon: Shield },
-    { id: "data", label: "Data", icon: Database },
-    { id: "general", label: "General", icon: Globe },
-  ]
-
   return (
     <>
     <MobileSheet open={isOpen} onClose={onClose} title="Settings" wide>
           <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 min-h-0">
             <div className="w-full sm:w-48 border-b sm:border-b-0 sm:border-r border-border/50 pb-4 sm:pb-0">
               <div className="flex sm:flex-col gap-2 sm:gap-1 overflow-x-auto sm:overflow-x-visible pb-2 sm:pb-0">
-                {sections.map((section) => {
+                {SETTINGS_SECTIONS.map((section) => {
                   const Icon = section.icon
                   return (
                     <button

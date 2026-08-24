@@ -46,12 +46,16 @@ export function MobileSheet({
       return
     }
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose()
+      if (event.key !== "Escape") {
+        return
       }
+      if (document.querySelector('[data-slot="select-content"], [role="listbox"]')) {
+        return
+      }
+      onClose()
     }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
+    window.addEventListener("keydown", onKey, true)
+    return () => window.removeEventListener("keydown", onKey, true)
   }, [open, onClose])
 
   if (!open || !mounted) {
