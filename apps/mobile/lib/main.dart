@@ -1,4 +1,6 @@
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
+import "package:flutter/semantics.dart";
 import "package:managekar/src/api/api_client.dart";
 import "package:managekar/src/notifications/local_reminders.dart";
 import "package:managekar/src/screens/auth_screen.dart";
@@ -9,14 +11,20 @@ import "package:managekar/src/theme/app_theme.dart";
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(ManageKarApp(api: ApiClient()));
+  runApp(
+    ManageKarApp(
+      api: ApiClient(),
+      webSemantics: kIsWeb ? SemanticsBinding.instance.ensureSemantics() : null,
+    ),
+  );
 }
 
 class ManageKarApp extends StatefulWidget {
-  const ManageKarApp({super.key, required this.api, this.reminders});
+  const ManageKarApp({super.key, required this.api, this.reminders, this.webSemantics});
 
   final ApiClient api;
   final LocalReminders? reminders;
+  final SemanticsHandle? webSemantics;
 
   @override
   State<ManageKarApp> createState() => _ManageKarAppState();
@@ -53,6 +61,7 @@ class _ManageKarAppState extends State<ManageKarApp> {
     workspace.removeListener(_onWorkspace);
     session.dispose();
     workspace.dispose();
+    widget.webSemantics?.dispose();
     super.dispose();
   }
 
