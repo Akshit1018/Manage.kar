@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: managekar
       POSTGRES_DB: managekar
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - managekar_pg:/var/lib/postgresql/data
     healthcheck:
@@ -24,13 +24,16 @@ services:
       JWT_SECRET: change-me-on-the-vps
       PORT: 4000
       HOST: 0.0.0.0
+      VOICE_DIR: /app/storage/voice
     ports:
       - "4000:4000"
     volumes:
       - ./apps/api:/app
+      - managekar_voice:/app/storage/voice
     depends_on:
       postgres:
         condition: service_healthy
 
 volumes:
   managekar_pg:
+  managekar_voice:

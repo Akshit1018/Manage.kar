@@ -1,11 +1,18 @@
 import Fastify, { type FastifyInstance, type FastifyRequest } from "fastify"
 import cors from "@fastify/cors"
 import jwt from "@fastify/jwt"
+import multipart from "@fastify/multipart"
 import bcrypt from "bcryptjs"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { z } from "zod"
 import { computeStreak, isHabitScheduledOn, type HabitFrequency } from "./domain/habits.js"
 import { localDateKey } from "./domain/dates.js"
+import { clearUserWorkspace, replaceUserWorkspace } from "./import-backup.js"
+import { defaultVoiceDir, readVoiceFile, saveVoiceFile, voiceMime } from "./voice.js"
+
+export type BuildAppOptions = {
+  voiceDir?: string
+}
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -112,12 +119,14 @@ function hydrateHabit(
   }
 }
 
-export async function buildApp(prisma: PrismaClient): Promise<FastifyInstance> {
+export async function buildApp(prisma: PrismaClient, options: BuildAppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({ logger: false })
   const secret = process.env.JWT_SECRET ?? "dev-secret-change-on-vps"
+  const voiceDir = options.voiceDir ?? defaultVoiceDir()
 
   await app.register(cors, { origin: true })
   await app.register(jwt, { secret })
+  await app.register(multipart, { limits: { fileSize: 25 * 1024 * 1024 } })
 
   app.decorate("authenticate", async (request: FastifyRequest) => {
     try {
@@ -290,6 +299,35 @@ export async function buildApp(prisma: PrismaClient): Promise<FastifyInstance> {
   })
 
   app.post("/api/notes/:id/voice", { preHandler: app.authenticate }, async (request) => {
+    const id = (request.params as { id: string }).id
+    const owner = userId(request)
+    await prisma.note.findFirstOrThrow({ where: { id, userId: owner } })
+    const contentType = String(request.headers["content-type"] ?? "")
+    if (contentType.includes("multipart/form-data")) {
+      let transcription = ""
+      let duration = 0
+      let bytes: Buffer | undefined
+      let filename = "note.m4a"
+      for await (const part of request.parts()) {
+        if (part.type === "file") {
+          filename = part.filename
+          bytes = await part.toBuffer()
+        } else if (part.fieldname === "transcription") {
+          transcription = String(part.value ?? "")
+        } else if (part.fieldname === "duration") {
+          duration = Number(part.value) || 0
+        }
+      }
+      if (!bytes) {
+        throw httpError(400, "Attach an audio file named audio.")
+      }
+      const relative = await saveVoiceFile(voiceDir, owner, id, bytes, filename)
+      const note = await prisma.note.update({
+        where: { id },
+        data: { transcription, voiceDuration: duration, voicePath: relative },
+      })
+      return serializeNote(note)
+    }
     const body = z
       .object({
         transcription: z.string().optional(),
@@ -297,17 +335,29 @@ export async function buildApp(prisma: PrismaClient): Promise<FastifyInstance> {
         stored: z.boolean().optional(),
       })
       .parse(request.body ?? {})
-    const id = (request.params as { id: string }).id
-    await prisma.note.findFirstOrThrow({ where: { id, userId: userId(request) } })
     const note = await prisma.note.update({
       where: { id },
       data: {
         transcription: body.transcription ?? "",
         voiceDuration: body.duration ?? 0,
-        voicePath: body.stored ? `voice/${userId(request)}/${(request.params as { id: string }).id}` : undefined,
+        voicePath: body.stored ? `${owner}/${id}` : undefined,
       },
     })
     return serializeNote(note)
+  })
+
+  app.get("/api/notes/:id/voice", { preHandler: app.authenticate }, async (request, reply) => {
+    const id = (request.params as { id: string }).id
+    const note = await prisma.note.findFirst({ where: { id, userId: userId(request) } })
+    if (!note?.voicePath) {
+      throw httpError(404, "Voice note not found.")
+    }
+    try {
+      const bytes = await readVoiceFile(voiceDir, note.voicePath)
+      return reply.type(voiceMime(note.voicePath)).send(bytes)
+    } catch {
+      throw httpError(404, "Voice note not found.")
+    }
   })
 
   app.get("/api/habits", { preHandler: app.authenticate }, async (request) => {
@@ -436,17 +486,22 @@ export async function buildApp(prisma: PrismaClient): Promise<FastifyInstance> {
     const goalId = (request.params as { id: string }).id
     await prisma.goal.findFirstOrThrow({ where: { id: goalId, userId: userId(request) } })
     await prisma.goalMilestone.create({ data: { goalId, title: body.title, dueDate: body.dueDate ?? "" } })
-    const goal = await prisma.goal.findFirstOrThrow({ where: { id: goalId }, include: { milestones: true } })
-    const progress =
-      goal.milestones.length > 0
-        ? Math.round((goal.milestones.filter((item) => item.completed).length / goal.milestones.length) * 100)
-        : goal.progress
-    const updated = await prisma.goal.update({
-      where: { id: goalId },
-      data: { progress },
-      include: { milestones: true },
+    return reply.code(201).send(serializeGoal(await refreshGoalProgress(prisma, goalId)))
+  })
+
+  app.patch("/api/goals/:id/milestones/:milestoneId", { preHandler: app.authenticate }, async (request) => {
+    const { id: goalId, milestoneId } = request.params as { id: string; milestoneId: string }
+    await prisma.goal.findFirstOrThrow({ where: { id: goalId, userId: userId(request) } })
+    const body = z.object({ completed: z.boolean(), title: z.string().optional(), dueDate: z.string().optional() }).parse(request.body ?? {})
+    const milestone = await prisma.goalMilestone.findFirst({ where: { id: milestoneId, goalId } })
+    if (!milestone) {
+      throw httpError(404, "Milestone not found.")
+    }
+    await prisma.goalMilestone.update({
+      where: { id: milestoneId },
+      data: { completed: body.completed, title: body.title, dueDate: body.dueDate },
     })
-    return reply.code(201).send(serializeGoal(updated))
+    return serializeGoal(await refreshGoalProgress(prisma, goalId))
   })
 
   app.get("/api/time-entries", { preHandler: app.authenticate }, async (request) => {
@@ -476,12 +531,40 @@ export async function buildApp(prisma: PrismaClient): Promise<FastifyInstance> {
     return reply.code(201).send(serializeTime(entry))
   })
 
+  app.post("/api/time-entries/:id/pause", { preHandler: app.authenticate }, async (request) => {
+    const existing = await prisma.timeEntry.findFirstOrThrow({
+      where: { id: (request.params as { id: string }).id, userId: userId(request) },
+    })
+    const duration = accumulatedDuration(existing, new Date())
+    const entry = await prisma.timeEntry.update({
+      where: { id: existing.id },
+      data: { isRunning: false, duration, endTime: null },
+    })
+    return serializeTime(entry)
+  })
+
+  app.post("/api/time-entries/:id/resume", { preHandler: app.authenticate }, async (request) => {
+    const existing = await prisma.timeEntry.findFirstOrThrow({
+      where: { id: (request.params as { id: string }).id, userId: userId(request) },
+    })
+    const id = userId(request)
+    await prisma.timeEntry.updateMany({
+      where: { userId: id, isRunning: true, NOT: { id: existing.id } },
+      data: { isRunning: false, endTime: new Date() },
+    })
+    const entry = await prisma.timeEntry.update({
+      where: { id: existing.id },
+      data: { isRunning: true, startTime: new Date(), endTime: null },
+    })
+    return serializeTime(entry)
+  })
+
   app.post("/api/time-entries/:id/stop", { preHandler: app.authenticate }, async (request) => {
     const existing = await prisma.timeEntry.findFirstOrThrow({
       where: { id: (request.params as { id: string }).id, userId: userId(request) },
     })
     const endTime = new Date()
-    const duration = existing.duration + Math.max(0, endTime.getTime() - existing.startTime.getTime())
+    const duration = accumulatedDuration(existing, endTime)
     const entry = await prisma.timeEntry.update({
       where: { id: existing.id },
       data: { isRunning: false, endTime, duration },
@@ -496,6 +579,33 @@ export async function buildApp(prisma: PrismaClient): Promise<FastifyInstance> {
       prisma.focusSession.findMany({ where: { userId: id }, orderBy: { createdAt: "desc" }, take: 20 }),
     ])
     return { active: active ? serializeActive(active) : null, sessions: sessions.map(serializeFocus) }
+  })
+
+  app.post("/api/focus/pause", { preHandler: app.authenticate }, async (request) => {
+    const id = userId(request)
+    const active = await prisma.activeFocus.findUnique({ where: { userId: id } })
+    if (!active) {
+      throw httpError(404, "No focus session is running.")
+    }
+    const remainingSeconds = liveRemaining(active)
+    const next = await prisma.activeFocus.update({
+      where: { userId: id },
+      data: { isRunning: false, remainingSeconds },
+    })
+    return serializeActive(next)
+  })
+
+  app.post("/api/focus/resume", { preHandler: app.authenticate }, async (request) => {
+    const id = userId(request)
+    const active = await prisma.activeFocus.findUnique({ where: { userId: id } })
+    if (!active) {
+      throw httpError(404, "No focus session is running.")
+    }
+    const next = await prisma.activeFocus.update({
+      where: { userId: id },
+      data: { isRunning: true, startedAt: new Date() },
+    })
+    return serializeActive(next)
   })
 
   app.post("/api/focus/start", { preHandler: app.authenticate }, async (request, reply) => {
@@ -555,7 +665,7 @@ export async function buildApp(prisma: PrismaClient): Promise<FastifyInstance> {
   app.get("/api/workspace", { preHandler: app.authenticate }, async (request) => {
     const id = userId(request)
     const start = await weekStart(id)
-    const [user, tasks, notes, habits, goals, timeEntries, focus] = await Promise.all([
+    const [user, tasks, notes, habits, goals, timeEntries, focus, sessions] = await Promise.all([
       prisma.user.findUniqueOrThrow({ where: { id }, include: { settings: true } }),
       prisma.task.findMany({ where: { userId: id }, orderBy: { createdAt: "desc" } }),
       prisma.note.findMany({ where: { userId: id }, orderBy: { createdAt: "desc" } }),
@@ -563,8 +673,9 @@ export async function buildApp(prisma: PrismaClient): Promise<FastifyInstance> {
       prisma.goal.findMany({ where: { userId: id }, include: { milestones: true } }),
       prisma.timeEntry.findMany({ where: { userId: id }, orderBy: { createdAt: "desc" } }),
       prisma.activeFocus.findUnique({ where: { userId: id } }),
+      prisma.focusSession.findMany({ where: { userId: id }, orderBy: { createdAt: "desc" }, take: 20 }),
     ])
-    return {
+    const snapshot = {
       user: serializeUser(user),
       settings: serializeSettings(user.settings),
       tasks: tasks.map(serializeTask),
@@ -572,17 +683,82 @@ export async function buildApp(prisma: PrismaClient): Promise<FastifyInstance> {
       habits: habits.map((habit) => hydrateHabit(habit, start)),
       goals: goals.map(serializeGoal),
       timeEntries: timeEntries.map(serializeTime),
+      focusSessions: sessions.map(serializeFocus),
       activeFocus: focus ? serializeActive(focus) : null,
+    }
+    return snapshot
+  })
+
+  app.get("/api/export", { preHandler: app.authenticate }, async (request) => {
+    const workspace = await app.inject({
+      method: "GET",
+      url: "/api/workspace",
+      headers: { authorization: request.headers.authorization ?? "" },
+    })
+    const snapshot = workspace.json() as Record<string, unknown>
+    return {
+      appName: "Manage.kar",
+      schemaVersion: 1,
+      exportDate: new Date().toISOString(),
+      ...snapshot,
     }
   })
 
+  app.post("/api/import", { preHandler: app.authenticate }, async (request) => {
+    await replaceUserWorkspace(prisma, userId(request), request.body)
+    return { ok: true }
+  })
+
+  app.delete("/api/workspace", { preHandler: app.authenticate }, async (request, reply) => {
+    await clearUserWorkspace(prisma, userId(request))
+    return reply.code(204).send()
+  })
+
   app.setErrorHandler((error, _request, reply) => {
-    const status = "statusCode" in error && typeof error.statusCode === "number" ? error.statusCode : 400
+    const err = error as Error & { statusCode?: number }
+    const status = typeof err.statusCode === "number" ? err.statusCode : 400
     const code = status >= 500 ? 500 : status
-    return reply.code(code).send({ error: error.message })
+    return reply.code(code).send({ error: err.message })
   })
 
   return app
+}
+
+function httpError(statusCode: number, message: string) {
+  const error = new Error(message)
+  ;(error as Error & { statusCode: number }).statusCode = statusCode
+  return error
+}
+
+function accumulatedDuration(
+  entry: { duration: number; isRunning: boolean; startTime: Date },
+  now: Date,
+) {
+  if (!entry.isRunning) {
+    return entry.duration
+  }
+  return entry.duration + Math.max(0, now.getTime() - entry.startTime.getTime())
+}
+
+function liveRemaining(active: { isRunning: boolean; remainingSeconds: number; startedAt: Date }) {
+  if (!active.isRunning) {
+    return active.remainingSeconds
+  }
+  const elapsed = Math.floor((Date.now() - active.startedAt.getTime()) / 1000)
+  return Math.max(0, active.remainingSeconds - elapsed)
+}
+
+async function refreshGoalProgress(prisma: PrismaClient, goalId: string) {
+  const goal = await prisma.goal.findFirstOrThrow({ where: { id: goalId }, include: { milestones: true } })
+  const progress =
+    goal.milestones.length > 0
+      ? Math.round((goal.milestones.filter((item) => item.completed).length / goal.milestones.length) * 100)
+      : goal.progress
+  return prisma.goal.update({
+    where: { id: goalId },
+    data: { progress },
+    include: { milestones: true },
+  })
 }
 
 function serializeUser(user: { id: string; email: string; name: string; phone: string; location: string; bio: string; avatar: string; createdAt: Date }) {
@@ -751,7 +927,7 @@ function serializeActive(active: {
     sessionId: active.sessionId,
     type: active.type,
     durationSeconds: active.durationSeconds,
-    remainingSeconds: active.remainingSeconds,
+    remainingSeconds: liveRemaining(active),
     isRunning: active.isRunning,
     startedAt: active.startedAt.toISOString(),
     accumulatedElapsed: active.accumulatedElapsed,

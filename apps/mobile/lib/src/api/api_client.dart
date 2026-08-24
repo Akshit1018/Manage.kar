@@ -8,7 +8,7 @@ class ApiClient {
             baseUrl: baseUrl ??
                 const String.fromEnvironment("API_BASE", defaultValue: "http://127.0.0.1:4000"),
             connectTimeout: const Duration(seconds: 12),
-            receiveTimeout: const Duration(seconds: 20),
+            receiveTimeout: const Duration(seconds: 30),
           ),
         );
 
@@ -60,10 +60,20 @@ class ApiClient {
     return response.data!;
   }
 
-  Future<List<dynamic>> list(String path) async {
+  Future<Map<String, dynamic>> exportBackup() async {
     await attachToken();
-    final response = await dio.get<List<dynamic>>(path);
-    return response.data ?? [];
+    final response = await dio.get<Map<String, dynamic>>("/api/export");
+    return response.data!;
+  }
+
+  Future<void> importBackup(Map<String, dynamic> backup) async {
+    await attachToken();
+    await dio.post<Map<String, dynamic>>("/api/import", data: backup);
+  }
+
+  Future<void> clearWorkspace() async {
+    await attachToken();
+    await dio.delete<void>("/api/workspace");
   }
 
   Future<Map<String, dynamic>> post(String path, Map<String, dynamic> data) async {
@@ -81,5 +91,30 @@ class ApiClient {
   Future<void> delete(String path) async {
     await attachToken();
     await dio.delete<void>(path);
+  }
+
+  Future<Map<String, dynamic>> uploadVoice(
+    String noteId,
+    String filePath, {
+    String transcription = "",
+    int duration = 0,
+  }) async {
+    await attachToken();
+    final form = FormData.fromMap({
+      "transcription": transcription,
+      "duration": duration,
+      "audio": await MultipartFile.fromFile(filePath, filename: "note.m4a"),
+    });
+    final response = await dio.post<Map<String, dynamic>>("/api/notes/$noteId/voice", data: form);
+    return response.data!;
+  }
+
+  Future<List<int>> downloadVoice(String noteId) async {
+    await attachToken();
+    final response = await dio.get<List<int>>(
+      "/api/notes/$noteId/voice",
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return response.data ?? [];
   }
 }

@@ -1,10 +1,37 @@
+import { mkdtempSync, rmSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest"
 import { PrismaClient } from "@prisma/client"
 import type { FastifyInstance } from "fastify"
 import { buildApp } from "./app.js"
 
 const prisma = new PrismaClient()
+const voiceDir = mkdtempSync(join(tmpdir(), "managekar-voice-"))
 let app: FastifyInstance
+
+function multipartBody(fields: Record<string, string>, file: { filename: string; content: Buffer; type: string }) {
+  const boundary = "----formdata-managekar"
+  const chunks: Buffer[] = []
+  for (const [name, value] of Object.entries(fields)) {
+    chunks.push(
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`,
+      ),
+    )
+  }
+  chunks.push(
+    Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="audio"; filename="${file.filename}"\r\nContent-Type: ${file.type}\r\n\r\n`,
+    ),
+  )
+  chunks.push(file.content)
+  chunks.push(Buffer.from(`\r\n--${boundary}--\r\n`))
+  return {
+    headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+    payload: Buffer.concat(chunks),
+  }
+}
 
 async function authToken() {
   const response = await app.inject({
@@ -18,7 +45,7 @@ async function authToken() {
 
 describe("Manage.kar API", () => {
   beforeAll(async () => {
-    app = await buildApp(prisma)
+    app = await buildApp(prisma, { voiceDir })
     await app.ready()
   })
 
@@ -39,6 +66,7 @@ describe("Manage.kar API", () => {
   afterAll(async () => {
     await app.close()
     await prisma.$disconnect()
+    rmSync(voiceDir, { recursive: true, force: true })
   })
 
   it("reports health", async () => {
@@ -173,5 +201,183 @@ describe("Manage.kar API", () => {
       headers: { authorization: `Bearer ${token}` },
     })
     expect(current.json().active.sessionId).toBe(focus.json().sessionId)
+  })
+
+  it("stores a multipart voice file and serves it only to the owner", async () => {
+    const first = await authToken()
+    const note = await app.inject({
+      method: "POST",
+      url: "/api/notes",
+      headers: { authorization: `Bearer ${first.token}` },
+      payload: { title: "Voice idea", content: "Record later" },
+    })
+    const id = note.json().id as string
+    const audio = Buffer.from("m4a-fixture-bytes")
+    const body = multipartBody({ transcription: "hello from the bowl", duration: "4" }, {
+      filename: "note.m4a",
+      content: audio,
+      type: "audio/mp4",
+    })
+    const uploaded = await app.inject({
+      method: "POST",
+      url: `/api/notes/${id}/voice`,
+      headers: { authorization: `Bearer ${first.token}`, ...body.headers },
+      payload: body.payload,
+    })
+    expect(uploaded.statusCode).toBe(200)
+    expect(uploaded.json().voiceDuration).toBe(4)
+    expect(uploaded.json().voicePath).toBeTruthy()
+
+    const download = await app.inject({
+      method: "GET",
+      url: `/api/notes/${id}/voice`,
+      headers: { authorization: `Bearer ${first.token}` },
+    })
+    expect(download.statusCode).toBe(200)
+    expect(download.rawPayload.equals(audio)).toBe(true)
+
+    const second = await authToken()
+    const leaked = await app.inject({
+      method: "GET",
+      url: `/api/notes/${id}/voice`,
+      headers: { authorization: `Bearer ${second.token}` },
+    })
+    expect(leaked.statusCode).toBe(404)
+  })
+
+  it("pauses a running timer without double-counting on stop", async () => {
+    const { token } = await authToken()
+    const started = await app.inject({
+      method: "POST",
+      url: "/api/time-entries",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { taskName: "Write API", project: "Work" },
+    })
+    const paused = await app.inject({
+      method: "POST",
+      url: `/api/time-entries/${started.json().id}/pause`,
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(paused.statusCode).toBe(200)
+    expect(paused.json().isRunning).toBe(false)
+    expect(paused.json().endTime).toBeNull()
+    const durationAfterPause = paused.json().duration as number
+
+    const stopped = await app.inject({
+      method: "POST",
+      url: `/api/time-entries/${started.json().id}/stop`,
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(stopped.json().isRunning).toBe(false)
+    expect(stopped.json().endTime).toBeTruthy()
+    expect(stopped.json().duration).toBe(durationAfterPause)
+  })
+
+  it("pauses focus and reports remaining time from the last resume", async () => {
+    const { token, user } = await authToken()
+    const focus = await app.inject({
+      method: "POST",
+      url: "/api/focus/start",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { type: "pomodoro", durationMinutes: 25 },
+    })
+    expect(focus.statusCode).toBe(201)
+    await prisma.activeFocus.update({
+      where: { userId: user.id },
+      data: { startedAt: new Date(Date.now() - 10_000), remainingSeconds: 60 },
+    })
+    const current = await app.inject({
+      method: "GET",
+      url: "/api/focus",
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(current.json().active.remainingSeconds).toBeLessThanOrEqual(50)
+    expect(current.json().active.remainingSeconds).toBeGreaterThanOrEqual(45)
+
+    const paused = await app.inject({
+      method: "POST",
+      url: "/api/focus/pause",
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(paused.json().isRunning).toBe(false)
+    const remaining = paused.json().remainingSeconds as number
+    const resumed = await app.inject({
+      method: "POST",
+      url: "/api/focus/resume",
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(resumed.json().isRunning).toBe(true)
+    expect(resumed.json().remainingSeconds).toBe(remaining)
+  })
+
+  it("toggles a goal milestone and updates progress", async () => {
+    const { token } = await authToken()
+    const goal = await app.inject({
+      method: "POST",
+      url: "/api/goals",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { title: "Ship", category: "work", targetDate: "2026-12-01" },
+    })
+    const withMilestone = await app.inject({
+      method: "POST",
+      url: `/api/goals/${goal.json().id}/milestones`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: { title: "API", dueDate: "2026-09-01" },
+    })
+    const milestoneId = withMilestone.json().milestones[0].id as string
+    const toggled = await app.inject({
+      method: "PATCH",
+      url: `/api/goals/${goal.json().id}/milestones/${milestoneId}`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: { completed: true },
+    })
+    expect(toggled.statusCode).toBe(200)
+    expect(toggled.json().milestones[0].completed).toBe(true)
+    expect(toggled.json().progress).toBe(100)
+  })
+
+  it("exports and imports a Manage.kar backup", async () => {
+    const { token } = await authToken()
+    await app.inject({
+      method: "POST",
+      url: "/api/tasks",
+      headers: { authorization: `Bearer ${token}` },
+      payload: { title: "Keep this", priority: "low", dueDate: "2026-08-24" },
+    })
+    const exported = await app.inject({
+      method: "GET",
+      url: "/api/export",
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(exported.statusCode).toBe(200)
+    expect(exported.json().appName).toBe("Manage.kar")
+    expect(exported.json().schemaVersion).toBe(1)
+    expect(exported.json().tasks).toHaveLength(1)
+
+    const imported = await app.inject({
+      method: "POST",
+      url: "/api/import",
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        appName: "Manage.kar",
+        schemaVersion: 1,
+        tasks: [{ title: "From web backup", completed: false, priority: "high", dueDate: "2026-09-01" }],
+        notes: [{ title: "Imported note", content: "hello" }],
+        habits: [{ name: "Walk", category: "health", frequency: "daily" }],
+        goals: [],
+        timeEntries: [],
+        settings: { notifications: { enabled: true, taskReminders: true, habitReminders: true, focusBreaks: true } },
+        profile: { name: "Imported", phone: "1", location: "Delhi", bio: "Hi" },
+      },
+    })
+    expect(imported.statusCode).toBe(200)
+    const workspace = await app.inject({
+      method: "GET",
+      url: "/api/workspace",
+      headers: { authorization: `Bearer ${token}` },
+    })
+    expect(workspace.json().tasks.map((item: { title: string }) => item.title)).toEqual(["From web backup"])
+    expect(workspace.json().notes).toHaveLength(1)
+    expect(workspace.json().user.name).toBe("Imported")
   })
 })

@@ -30,6 +30,13 @@
 	<string>Manage.kar can remind you about due tasks and habits on this iPhone. Reminders are created only after you allow notifications.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Manage.kar uses your photo library only if you pick a profile photo.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

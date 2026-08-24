@@ -10,3 +10,5 @@ pnpm dev
 ```
 
 Default URL: `http://127.0.0.1:4000`
+
+Voice files: `POST /api/notes/:id/voice` as multipart field `audio`, then `GET` the same path with a bearer token.

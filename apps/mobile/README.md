@@ -1,17 +1,21 @@
-# managekar
+# Manage.kar Flutter app
 
-A new Flutter project.
+iOS-first client that also compiles to Android. Talks to the PostgreSQL API in `apps/api`.
 
-## Getting Started
+```bash
+flutter pub get
+flutter run --dart-define=API_BASE=http://127.0.0.1:4000
+```
 
-This project is a starting point for a Flutter application.
+On an Android emulator use `http://10.0.2.2:4000`. After the VPS is up, rebuild with your HTTPS origin.
 
-A few resources to get you started if this is your first Flutter project:
+## Permission modules
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+| Capability | iOS | Android |
+| --- | --- | --- |
+| Microphone | `NSMicrophoneUsageDescription` | `RECORD_AUDIO` |
+| Notifications | `NSUserNotificationsUsageDescription` | `POST_NOTIFICATIONS` |
+| Photos | `NSPhotoLibraryUsageDescription` | optional |
+| HTTP during setup | `NSAppTransportSecurity` | `usesCleartextTraffic` |
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Recording is foreground-only. This is not Apple Voice Memos on the lock screen.

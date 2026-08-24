@@ -23,19 +23,19 @@
 **Files:** `apps/api/**`
 
 - [x] PostgreSQL databases `managekar` / `managekar_test`
-- [ ] Prisma models for user, settings, tasks, notes, habits, goals, time, focus
-- [ ] Vitest against a live test database
-- [ ] Fastify routes matching the design table
+- [x] Prisma models for user, settings, tasks, notes, habits, goals, time, focus
+- [x] Vitest against a live test database
+- [x] Fastify routes matching the design table
 
 ### Task 2: Flutter client + iOS permission modules
 
 **Files:** `apps/mobile/**`
 
-- [ ] Auth, shell, and every entity screen
-- [ ] Info.plist + AndroidManifest permission modules
-- [ ] `flutter analyze` clean
+- [x] Auth, shell, and every entity screen
+- [x] Info.plist + AndroidManifest permission modules
+- [x] `flutter analyze` clean
 
 ### Task 3: VPS compose + docs
 
-- [ ] `docker-compose.yml`
-- [ ] Deploy notes for later SSH
+- [x] `docker-compose.yml`
+- [x] Deploy notes for later SSH

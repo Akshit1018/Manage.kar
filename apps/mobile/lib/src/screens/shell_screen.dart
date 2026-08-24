@@ -1,13 +1,29 @@
 import "package:flutter/material.dart";
+import "package:managekar/src/notifications/local_reminders.dart";
+import "package:managekar/src/screens/counts_screen.dart";
 import "package:managekar/src/screens/editors.dart";
+import "package:managekar/src/screens/focus_screen.dart";
+import "package:managekar/src/screens/goals_screen.dart";
+import "package:managekar/src/screens/profile_screen.dart";
+import "package:managekar/src/screens/settings_screen.dart";
+import "package:managekar/src/screens/share_screen.dart";
+import "package:managekar/src/screens/time_screen.dart";
 import "package:managekar/src/state/session.dart";
 import "package:managekar/src/state/workspace.dart";
+import "package:managekar/src/util/format.dart";
+import "package:managekar/src/widgets/forms.dart";
 
 class ShellScreen extends StatefulWidget {
-  const ShellScreen({super.key, required this.session, required this.workspace});
+  const ShellScreen({
+    super.key,
+    required this.session,
+    required this.workspace,
+    required this.reminders,
+  });
 
   final SessionController session;
   final WorkspaceController workspace;
+  final LocalReminders reminders;
 
   @override
   State<ShellScreen> createState() => _ShellScreenState();
@@ -19,7 +35,7 @@ class _ShellScreenState extends State<ShellScreen> {
   @override
   void initState() {
     super.initState();
-    widget.workspace.refresh();
+    widget.workspace.refresh().then((_) => widget.reminders.sync(widget.workspace));
   }
 
   @override
@@ -28,24 +44,38 @@ class _ShellScreenState extends State<ShellScreen> {
       animation: widget.workspace,
       builder: (context, _) {
         final pages = [
-          _HomeTab(workspace: widget.workspace, session: widget.session),
+          _HomeTab(workspace: widget.workspace, session: widget.session, reminders: widget.reminders),
           _ListTab(
             title: "Tasks",
             empty: "Add one task. It is stored in PostgreSQL.",
             items: widget.workspace.tasks,
             subtitle: (item) => "${item["dueDate"]} · ${item["priority"]}",
+            completed: (item) => item["completed"] == true,
             onAdd: () => openTaskEditor(context, widget.workspace),
             onTap: (item) => openTaskEditor(context, widget.workspace, item),
-            onDelete: (item) => widget.workspace.deleteTask(item["id"] as String),
+            onToggle: widget.workspace.toggleTask,
+            onDelete: (item) async {
+              if (await confirmAction(context, title: "Delete task", message: "Remove this task from your account?")) {
+                await widget.workspace.deleteTask(item["id"] as String);
+              }
+            },
           ),
           _ListTab(
             title: "Notes",
             empty: "Write a note or record a voice note.",
             items: widget.workspace.notes,
-            subtitle: (item) => (item["content"] as String? ?? "").isEmpty ? "Empty" : item["content"] as String,
+            subtitle: (item) {
+              final content = item["content"] as String? ?? "";
+              final voice = item["voicePath"] != null ? " · voice" : "";
+              return (content.isEmpty ? "Empty" : content) + voice;
+            },
             onAdd: () => openNoteEditor(context, widget.workspace),
             onTap: (item) => openNoteEditor(context, widget.workspace, item),
-            onDelete: (item) => widget.workspace.deleteNote(item["id"] as String),
+            onDelete: (item) async {
+              if (await confirmAction(context, title: "Delete note", message: "Remove this note and its voice file?")) {
+                await widget.workspace.deleteNote(item["id"] as String);
+              }
+            },
           ),
           _HabitsTab(workspace: widget.workspace),
         ];
@@ -68,16 +98,18 @@ class _ShellScreenState extends State<ShellScreen> {
 }
 
 class _HomeTab extends StatelessWidget {
-  const _HomeTab({required this.workspace, required this.session});
+  const _HomeTab({required this.workspace, required this.session, required this.reminders});
 
   final WorkspaceController workspace;
   final SessionController session;
+  final LocalReminders reminders;
 
   @override
   Widget build(BuildContext context) {
-    final pending = workspace.tasks.where((item) => item["completed"] != true).length;
+    final pending = workspace.tasks.where((item) => asMap(item)["completed"] != true).length;
     final notes = workspace.notes.length;
-    final habitsDone = workspace.habits.where((item) => item["completedToday"] == true).length;
+    final habitsDone = workspace.habits.where((item) => asMap(item)["completedToday"] == true).length;
+    final due = workspace.dueToday();
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(20),
@@ -89,30 +121,22 @@ class _HomeTab extends StatelessWidget {
               ),
               IconButton(
                 tooltip: "Open profile",
-                onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
-                  builder: (_) => _SimpleFormScreen(
-                    title: "Profile",
-                    fields: {
-                      "name": workspace.user?["name"] as String? ?? "",
-                      "phone": workspace.user?["phone"] as String? ?? "",
-                      "location": workspace.user?["location"] as String? ?? "",
-                      "bio": workspace.user?["bio"] as String? ?? "",
-                    },
-                    onSave: (values) => workspace.saveProfile(values),
-                  ),
-                )),
+                onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => ProfileScreen(workspace: workspace))),
                 icon: const Icon(Icons.person_outline),
               ),
               IconButton(
                 tooltip: "Open settings",
-                onPressed: () => Navigator.push(context, MaterialPageRoute<void>(
-                  builder: (_) => _SettingsScreen(workspace: workspace, session: session),
-                )),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => SettingsScreen(workspace: workspace, session: session, reminders: reminders),
+                  ),
+                ),
                 icon: const Icon(Icons.settings_outlined),
               ),
             ],
           ),
-          const Text("Account workspace in PostgreSQL. Export is still the backup you control."),
+          Text("Signed in as ${workspace.user?["name"] ?? "you"}. Data lives in PostgreSQL."),
           const SizedBox(height: 16),
           Wrap(
             spacing: 8,
@@ -127,56 +151,45 @@ class _HomeTab extends StatelessWidget {
           Wrap(
             spacing: 8,
             children: [
-              ActionChip(label: const Text("Goals"), onPressed: () => _openList(context, "Goals", workspace.goals, (item) => item["title"] as String)),
-              ActionChip(label: const Text("Time"), onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => _TimeScreen(workspace: workspace)))),
-              ActionChip(label: const Text("Focus"), onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => _FocusScreen(workspace: workspace)))),
-              ActionChip(label: const Text("Counts"), onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => _CountsScreen(workspace: workspace)))),
+              ActionChip(
+                label: const Text("Goals"),
+                onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => GoalsScreen(workspace: workspace))),
+              ),
+              ActionChip(
+                label: const Text("Time"),
+                onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => TimeScreen(workspace: workspace))),
+              ),
+              ActionChip(
+                label: const Text("Focus"),
+                onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => FocusScreen(workspace: workspace))),
+              ),
+              ActionChip(
+                label: const Text("Counts"),
+                onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => CountsScreen(workspace: workspace))),
+              ),
+              ActionChip(
+                label: const Text("Share"),
+                onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => ShareScreen(workspace: workspace))),
+              ),
             ],
           ),
+          const SizedBox(height: 20),
+          Text("Due today", style: Theme.of(context).textTheme.titleMedium),
+          if (due.isEmpty)
+            const ListTile(contentPadding: EdgeInsets.zero, title: Text("Nothing due today."))
+          else
+            ...due.map((task) {
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(task["title"] as String? ?? ""),
+                subtitle: Text("${task["priority"]}"),
+                onTap: () => openTaskEditor(context, workspace, task),
+              );
+            }),
           if (workspace.error != null) Text(workspace.error!, style: const TextStyle(color: Colors.red)),
         ],
       ),
     );
-  }
-
-  void _openList(BuildContext context, String title, List<dynamic> items, String Function(Map<String, dynamic>) label) {
-    Navigator.push(context, MaterialPageRoute<void>(
-      builder: (_) => Scaffold(
-        appBar: AppBar(title: Text(title)),
-        floatingActionButton: title == "Goals"
-            ? FloatingActionButton(
-                onPressed: () async {
-                  final controller = TextEditingController();
-                  final ok = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text("New goal"),
-                      content: TextField(controller: controller, decoration: const InputDecoration(labelText: "Title")),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
-                        FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text("Save")),
-                      ],
-                    ),
-                  );
-                  if (ok == true) {
-                    await workspace.saveGoal({"title": controller.text.trim(), "category": "personal"});
-                  }
-                },
-                child: const Icon(Icons.add),
-              )
-            : null,
-        body: items.isEmpty
-            ? const Center(child: Text("Nothing here yet."))
-            : ListView(
-                children: items
-                    .map((raw) {
-                      final item = raw as Map<String, dynamic>;
-                      return ListTile(title: Text(label(item)), subtitle: Text("${item["status"] ?? item["progress"] ?? ""}"));
-                    })
-                    .toList(),
-              ),
-      ),
-    ));
   }
 }
 
@@ -205,6 +218,8 @@ class _ListTab extends StatelessWidget {
     required this.onAdd,
     required this.onTap,
     required this.onDelete,
+    this.onToggle,
+    this.completed,
   });
 
   final String title;
@@ -213,7 +228,9 @@ class _ListTab extends StatelessWidget {
   final String Function(Map<String, dynamic>) subtitle;
   final VoidCallback onAdd;
   final void Function(Map<String, dynamic>) onTap;
-  final void Function(Map<String, dynamic>) onDelete;
+  final Future<void> Function(Map<String, dynamic>) onDelete;
+  final Future<void> Function(Map<String, dynamic>)? onToggle;
+  final bool Function(Map<String, dynamic>)? completed;
 
   @override
   Widget build(BuildContext context) {
@@ -226,8 +243,14 @@ class _ListTab extends StatelessWidget {
             : ListView.builder(
                 itemCount: items.length,
                 itemBuilder: (context, index) {
-                  final item = items[index] as Map<String, dynamic>;
+                  final item = asMap(items[index]);
                   return ListTile(
+                    leading: onToggle == null
+                        ? null
+                        : Checkbox(
+                            value: completed?.call(item) ?? false,
+                            onChanged: (_) => onToggle!(item),
+                          ),
                     title: Text(item["title"] as String? ?? item["name"] as String? ?? ""),
                     subtitle: Text(subtitle(item)),
                     onTap: () => onTap(item),
@@ -254,180 +277,19 @@ class _HabitsTab extends StatelessWidget {
             ? const Center(child: Text("Add one habit you can keep."))
             : ListView(
                 children: workspace.habits.map((raw) {
-                  final habit = raw as Map<String, dynamic>;
+                  final habit = asMap(raw);
                   return SwitchListTile(
                     title: Text(habit["name"] as String? ?? ""),
-                    subtitle: Text("Streak ${habit["streak"] ?? 0}"),
+                    subtitle: Text("${habit["category"]} · streak ${habit["streak"] ?? 0}"),
                     value: habit["completedToday"] == true,
                     onChanged: (_) => workspace.toggleHabit(habit["id"] as String),
+                    secondary: IconButton(
+                      icon: const Icon(Icons.edit_outlined),
+                      onPressed: () => openHabitEditor(context, workspace, habit),
+                    ),
                   );
                 }).toList(),
               ),
-      ),
-    );
-  }
-}
-
-class _SimpleFormScreen extends StatefulWidget {
-  const _SimpleFormScreen({required this.title, required this.fields, required this.onSave});
-  final String title;
-  final Map<String, String> fields;
-  final Future<void> Function(Map<String, dynamic>) onSave;
-
-  @override
-  State<_SimpleFormScreen> createState() => _SimpleFormScreenState();
-}
-
-class _SimpleFormScreenState extends State<_SimpleFormScreen> {
-  late final Map<String, TextEditingController> controllers;
-
-  @override
-  void initState() {
-    super.initState();
-    controllers = {
-      for (final entry in widget.fields.entries) entry.key: TextEditingController(text: entry.value),
-    };
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          ...controllers.entries.map(
-            (entry) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: TextField(controller: entry.value, decoration: InputDecoration(labelText: entry.key)),
-            ),
-          ),
-          FilledButton(
-            onPressed: () async {
-              await widget.onSave({for (final entry in controllers.entries) entry.key: entry.value.text});
-              if (context.mounted) Navigator.pop(context);
-            },
-            child: const Text("Save"),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SettingsScreen extends StatelessWidget {
-  const _SettingsScreen({required this.workspace, required this.session});
-  final WorkspaceController workspace;
-  final SessionController session;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text("Settings")),
-      body: ListView(
-        children: [
-          ListTile(
-            title: const Text("Account"),
-            subtitle: Text(workspace.user?["email"] as String? ?? ""),
-          ),
-          SwitchListTile(
-            title: const Text("Clipboard suggestions"),
-            subtitle: const Text("Off by default. Reads clipboard only after you enable it."),
-            value: workspace.settings?["privacy"]?["clipboardMonitor"] == true,
-            onChanged: (value) => workspace.saveProfile({
-              "settings": {"clipboardMonitor": value},
-            }),
-          ),
-          ListTile(
-            title: const Text("Sign out"),
-            onTap: () async {
-              await session.logout();
-              if (context.mounted) Navigator.pop(context);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TimeScreen extends StatefulWidget {
-  const _TimeScreen({required this.workspace});
-  final WorkspaceController workspace;
-
-  @override
-  State<_TimeScreen> createState() => _TimeScreenState();
-}
-
-class _TimeScreenState extends State<_TimeScreen> {
-  final name = TextEditingController();
-
-  @override
-  Widget build(BuildContext context) {
-    final running = widget.workspace.timeEntries
-        .whereType<Map<String, dynamic>>()
-        .where((item) => item["isRunning"] == true);
-    return Scaffold(
-      appBar: AppBar(title: const Text("Time tracker")),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          TextField(controller: name, decoration: const InputDecoration(labelText: "What are you working on?")),
-          const SizedBox(height: 12),
-          FilledButton(onPressed: () => widget.workspace.startTimer(name.text.trim(), "Personal"), child: const Text("Start timer")),
-          if (running.isNotEmpty)
-            FilledButton.tonal(
-              onPressed: () => widget.workspace.stopTimer(running.first["id"] as String),
-              child: const Text("Stop"),
-            ),
-          ...widget.workspace.timeEntries.map((raw) {
-            final item = raw as Map<String, dynamic>;
-            return ListTile(title: Text(item["taskName"] as String? ?? ""), subtitle: Text(item["project"] as String? ?? ""));
-          }),
-        ],
-      ),
-    );
-  }
-}
-
-class _FocusScreen extends StatelessWidget {
-  const _FocusScreen({required this.workspace});
-  final WorkspaceController workspace;
-
-  @override
-  Widget build(BuildContext context) {
-    final active = workspace.activeFocus;
-    return Scaffold(
-      appBar: AppBar(title: const Text("Focus")),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            if (active != null) ...[
-              Text("${active["type"]}", style: Theme.of(context).textTheme.headlineSmall),
-              Text("${active["remainingSeconds"]}s left"),
-              FilledButton(onPressed: workspace.stopFocus, child: const Text("Stop")),
-            ] else
-              FilledButton(onPressed: () => workspace.startFocus("pomodoro", 25), child: const Text("Start pomodoro (25m)")),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CountsScreen extends StatelessWidget {
-  const _CountsScreen({required this.workspace});
-  final WorkspaceController workspace;
-
-  @override
-  Widget build(BuildContext context) {
-    final done = workspace.tasks.where((item) => item["completed"] == true).length;
-    return Scaffold(
-      appBar: AppBar(title: const Text("Counts")),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Text("$done of ${workspace.tasks.length} tasks complete. Counts come from this account, not a model."),
       ),
     );
   }
