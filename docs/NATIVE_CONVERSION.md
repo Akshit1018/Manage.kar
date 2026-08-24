@@ -61,6 +61,8 @@ On an Android emulator use `http://10.0.2.2:4000`.
 
 `AppPermissions` in Dart calls `permission_handler`. Recording is foreground-only.
 
+The floating bowl never auto-starts and never auto-opens Settings. Full research and App Store / Play rules: [`docs/VOICE_BOWL_PERMISSIONS.md`](VOICE_BOWL_PERMISSIONS.md). We do **not** declare `UIBackgroundModes: audio`; unused background audio is a Guideline 2.5.4 reject.
+
 ## VPS (when you give SSH)
 
 1. Copy the repo to the VPS.
