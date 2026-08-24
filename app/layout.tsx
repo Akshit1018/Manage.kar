@@ -1,5 +1,5 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Geist } from "next/font/google"
 import { Manrope } from "next/font/google"
 import { Toaster } from "sonner"
@@ -17,6 +17,13 @@ const manrope = Manrope({
   display: "swap",
   variable: "--font-manrope",
 })
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#3b82f6",
+}
 
 export const metadata: Metadata = {
   title: "Manage.kar — local tasks, notes, and habits",
@@ -48,7 +55,6 @@ export default function RootLayout({
         <link rel="icon" href="/icon.png" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#3b82f6" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="Manage.kar" />
       </head>

@@ -1,18 +1,26 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
+import { Trash2, FileText, Volume2, Mic } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { X, Trash2, FileText, Volume2 } from "lucide-react"
-import type { Note } from "@/lib/domain/types"
+import { MobileSheet } from "@/components/mobile-sheet"
 import { VoiceAudio } from "@/components/voice-audio"
+import { VoiceRecorder, type VoiceRecordingResult } from "@/components/voice-recorder"
+import type { Note } from "@/lib/domain/types"
+
+export interface NoteSaveExtras {
+  voiceBlob?: Blob
+  voiceTranscription?: string
+  voiceDuration?: number
+}
 
 interface NoteModalProps {
   isOpen: boolean
   onClose: () => void
-  onSave: (note: Omit<Note, "id" | "createdAt"> | Note) => void
+  onSave: (note: Omit<Note, "id" | "createdAt"> | Note, extras?: NoteSaveExtras) => void
   onDelete?: (noteId: number) => void
   note?: Note
   mode: "create" | "edit"
@@ -24,6 +32,8 @@ export function NoteModal({ isOpen, onClose, onSave, onDelete, note, mode }: Not
     content: "",
   })
   const [titleError, setTitleError] = useState("")
+  const [pendingVoice, setPendingVoice] = useState<VoiceRecordingResult | null>(null)
+  const [recorderOpen, setRecorderOpen] = useState(false)
 
   useEffect(() => {
     if (note && mode === "edit") {
@@ -38,6 +48,8 @@ export function NoteModal({ isOpen, onClose, onSave, onDelete, note, mode }: Not
       })
     }
     setTitleError("")
+    setPendingVoice(null)
+    setRecorderOpen(false)
   }, [note, mode, isOpen])
 
   const handleSave = () => {
@@ -47,11 +59,18 @@ export function NoteModal({ isOpen, onClose, onSave, onDelete, note, mode }: Not
       return
     }
 
+    const extras = pendingVoice
+      ? {
+          voiceBlob: pendingVoice.blob,
+          voiceTranscription: pendingVoice.transcription,
+          voiceDuration: pendingVoice.duration,
+        }
+      : undefined
     const payload = { ...formData, title }
     if (mode === "edit" && note) {
-      onSave({ ...note, ...payload })
+      onSave({ ...note, ...payload }, extras)
     } else {
-      onSave(payload)
+      onSave(payload, extras)
     }
     onClose()
   }
@@ -76,136 +95,129 @@ export function NoteModal({ isOpen, onClose, onSave, onDelete, note, mode }: Not
     }
   }
 
-  if (!isOpen) return null
+  const handleRecorded = (result: VoiceRecordingResult) => {
+    setPendingVoice(result)
+    setFormData((current) => ({
+      title: current.title || result.transcription.slice(0, 40),
+      content: current.content || result.transcription,
+    }))
+    setRecorderOpen(false)
+  }
 
   return (
-    <div className="modal-mobile bg-black/50 backdrop-blur-sm">
-      <div className="modal-content-mobile bg-card/95 backdrop-blur-xl border border-border/50 shadow-xl rounded-t-3xl sm:rounded-3xl max-w-2xl mx-auto overflow-hidden">
-        <div className="responsive-container">
-          <div className="flex items-center justify-between mb-4 sm:mb-6 border-b border-border/50 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-500/20 rounded-xl">
-                <FileText className="h-5 w-5 text-green-500" />
-              </div>
-              <div>
-                <h2 className="responsive-text-xl font-semibold text-readable font-sans">
-                  {mode === "create" ? "Create New Note" : "Edit Note"}
-                </h2>
-                {note?.voiceNote && (
-                  <p className="responsive-text-xs text-muted-readable flex items-center gap-1 mt-1">
-                    <Volume2 className="h-3 w-3" />
-                    Voice note included
-                  </p>
-                )}
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="rounded-full hover:bg-accent/50 mobile-touch-target"
-            >
-              <X className="h-5 w-5 text-readable" />
-            </Button>
-          </div>
-
-          <div className="space-y-4 sm:space-y-6 max-h-[60vh] overflow-y-auto">
-            <div className="space-y-2">
-              <Label htmlFor="note-title" className="responsive-text-sm font-medium text-readable">
-                Note Title
-              </Label>
-              <Input
-                id="note-title"
-                value={formData.title}
-                onChange={(e) => {
-                  setFormData({ ...formData, title: e.target.value })
-                  if (titleError) {
-                    setTitleError("")
-                  }
-                }}
-                placeholder="Enter note title..."
-                className="bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl text-readable placeholder:text-muted-readable mobile-touch-target"
-                aria-invalid={Boolean(titleError)}
-              />
-              {titleError ? <p className="text-sm text-destructive">{titleError}</p> : null}
-            </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="note-content" className="responsive-text-sm font-medium text-readable">
-                  Content
-                </Label>
-                {formData.content && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handlePlayAudio}
-                    className="responsive-text-xs text-muted-readable hover:text-readable responsive-button"
-                  >
-                    <Volume2 className="h-3 w-3 mr-1" />
-                    Listen
-                  </Button>
-                )}
-              </div>
-              <Textarea
-                id="note-content"
-                value={formData.content}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                placeholder="Write your note here..."
-                className="bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl min-h-[200px] sm:min-h-[250px] lg:min-h-[300px] resize-none text-readable placeholder:text-muted-readable mobile-touch-target"
-              />
-            </div>
-
-            {note?.voiceNote && (
-              <div className="p-4 rounded-xl bg-primary/10 border border-primary/20">
-                <div className="flex items-center gap-2 mb-3">
-                  <Volume2 className="h-4 w-4 text-primary" />
-                  <span className="responsive-text-sm font-medium text-readable">Voice Note</span>
-                  <span className="responsive-text-xs text-muted-readable">{note.voiceNote.duration}s</span>
-                </div>
-                {note.voiceNote.audioUrl ? <VoiceAudio audioUrl={note.voiceNote.audioUrl} /> : null}
-                <p className="responsive-text-sm text-muted-readable">
-                  <span className="font-medium">Transcription:</span> {note.voiceNote.transcription}
-                </p>
-              </div>
-            )}
-
-            <div className="flex justify-between items-center responsive-text-xs border-t border-border/50 pt-3">
-              <span className="text-muted-readable">{formData.content.length} characters</span>
-              {formData.content.length > 1000 && <span className="text-primary font-medium">Long note</span>}
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 mt-6 sm:mt-8 pt-4 border-t border-border/50">
-            {mode === "edit" && onDelete && (
-              <Button
-                variant="destructive"
-                onClick={handleDelete}
-                className="rounded-xl order-last sm:order-first responsive-button"
-              >
+    <>
+      <MobileSheet
+        open={isOpen}
+        onClose={onClose}
+        title={mode === "create" ? "Create note" : "Edit note"}
+        footer={
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
+            {mode === "edit" && onDelete ? (
+              <Button variant="destructive" onClick={handleDelete} className="mk-touch rounded-xl">
                 <Trash2 className="h-4 w-4 mr-2" />
-                Delete Note
+                Delete note
               </Button>
-            )}
+            ) : null}
             <div className="flex-1" />
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-              <Button
-                variant="outline"
-                onClick={onClose}
-                className="rounded-xl bg-card/95 backdrop-blur-xl border border-border/50 text-readable hover:bg-accent/50 responsive-button"
-              >
+            <div className="grid grid-cols-2 gap-2 sm:flex">
+              <Button variant="outline" onClick={onClose} className="mk-touch rounded-xl bg-transparent">
                 Cancel
               </Button>
-              <Button
-                onClick={handleSave}
-                className="rounded-xl bg-green-500 hover:bg-green-600 text-white responsive-button"
-              >
-                {mode === "create" ? "Create Note" : "Save Changes"}
+              <Button onClick={handleSave} className="mk-touch rounded-xl bg-green-500 hover:bg-green-600 text-white">
+                {mode === "create" ? "Create note" : "Save changes"}
               </Button>
             </div>
           </div>
+        }
+      >
+        <div className="space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-500/20 rounded-xl">
+              <FileText className="h-5 w-5 text-green-500" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">
+                {note?.voiceNote || pendingVoice ? "Voice note included" : "Typed or spoken. Saved on this phone."}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="note-title">Note title</Label>
+            <Input
+              id="note-title"
+              value={formData.title}
+              onChange={(event) => {
+                setFormData({ ...formData, title: event.target.value })
+                if (titleError) {
+                  setTitleError("")
+                }
+              }}
+              placeholder="Enter note title..."
+              className="mk-touch rounded-xl"
+              aria-invalid={Boolean(titleError)}
+            />
+            {titleError ? <p className="text-sm text-destructive">{titleError}</p> : null}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="note-content">Content</Label>
+              {formData.content ? (
+                <Button variant="ghost" size="sm" onClick={handlePlayAudio} className="mk-touch">
+                  <Volume2 className="h-3 w-3 mr-1" />
+                  Listen
+                </Button>
+              ) : null}
+            </div>
+            <Textarea
+              id="note-content"
+              value={formData.content}
+              onChange={(event) => setFormData({ ...formData, content: event.target.value })}
+              placeholder="Write your note here..."
+              className="min-h-[160px] rounded-xl resize-none"
+            />
+          </div>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="mk-touch w-full rounded-xl bg-transparent"
+            onClick={() => setRecorderOpen(true)}
+          >
+            <Mic className="h-4 w-4 mr-2" />
+            {pendingVoice || note?.voiceNote ? "Replace voice note" : "Record a voice note"}
+          </Button>
+
+          {pendingVoice ? (
+            <div className="rounded-xl border border-primary/20 bg-primary/10 p-4">
+              <div className="mb-2 flex items-center gap-2">
+                <Volume2 className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">New recording · {pendingVoice.duration}s</span>
+              </div>
+              <p className="text-sm text-muted-foreground">{pendingVoice.transcription}</p>
+            </div>
+          ) : note?.voiceNote ? (
+            <div className="rounded-xl border border-primary/20 bg-primary/10 p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <Volume2 className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Voice note</span>
+                <span className="text-xs text-muted-foreground">{note.voiceNote.duration}s</span>
+              </div>
+              {note.voiceNote.audioUrl ? <VoiceAudio audioUrl={note.voiceNote.audioUrl} /> : null}
+              <p className="text-sm text-muted-foreground">
+                <span className="font-medium">Transcription:</span> {note.voiceNote.transcription}
+              </p>
+            </div>
+          ) : null}
+
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>{formData.content.length} characters</span>
+            {formData.content.length > 1000 ? <span>Long note</span> : null}
+          </div>
         </div>
-      </div>
-    </div>
+      </MobileSheet>
+      <VoiceRecorder open={recorderOpen} onClose={() => setRecorderOpen(false)} onSave={handleRecorded} />
+    </>
   )
 }

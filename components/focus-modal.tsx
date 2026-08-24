@@ -169,7 +169,7 @@ export function FocusModal({ isOpen, onClose, workspace, persist }: FocusModalPr
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="glass-modal max-w-md mx-auto">
+      <DialogContent className="sm:max-w-md overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold font-sans flex items-center gap-2">
             <Zap className="h-6 w-6 text-primary" />

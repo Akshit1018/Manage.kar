@@ -8,3 +8,5 @@ Honest leftover after the leftover-close session. Do not call these done.
 - No second-device sync. Export is the backup.
 - No Google Drive. Settings say so.
 - `floating-toggle.tsx` is still a large desktop helper. It is now reachable on mobile above the tab bar.
+- Voice notes use the browser microphone (`getUserMedia` + `MediaRecorder`). There is no iOS `NSMicrophoneUsageDescription` and no Android `RECORD_AUDIO` manifest because this is not a native wrapper. Recording stops if you leave the page. iOS Safari does not provide lock-screen Voice Memos or background capture.
+- Live transcription is best-effort Web Speech. It is often missing on iPhone Safari; the audio file still saves.

@@ -7,10 +7,10 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Card } from "@/components/ui/card"
-import { X, Trash2, Target, Bell } from "lucide-react"
+import { Trash2, Bell } from "lucide-react"
 import type { Habit, HabitCategory } from "@/lib/domain/types"
 import { weekdayOrder } from "@/lib/dates/week"
+import { MobileSheet } from "@/components/mobile-sheet"
 
 interface HabitModalProps {
   isOpen: boolean
@@ -130,29 +130,32 @@ export function HabitModal({
     }
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="bg-card/95 backdrop-blur-xl border border-border/50 shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl">
-        <div className="p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500/20 rounded-xl">
-                <Target className="h-5 w-5 text-blue-500" />
-              </div>
-              <h2 className="text-xl font-semibold font-sans">
-                {mode === "create" ? "Create New Habit" : "Edit Habit"}
-              </h2>
-            </div>
-            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
-              <X className="h-5 w-5" />
+    <MobileSheet
+      open={isOpen}
+      onClose={onClose}
+      title={mode === "create" ? "Create habit" : "Edit habit"}
+      footer={
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
+          {mode === "edit" && onDelete ? (
+            <Button variant="destructive" onClick={handleDelete} className="mk-touch rounded-xl">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
+          ) : null}
+          <div className="flex-1" />
+          <div className="grid grid-cols-2 gap-2 sm:flex">
+            <Button variant="outline" onClick={onClose} className="mk-touch rounded-xl bg-transparent">
+              Cancel
+            </Button>
+            <Button onClick={handleSave} className="mk-touch rounded-xl">
+              {mode === "create" ? "Create habit" : "Save changes"}
             </Button>
           </div>
-
-          {/* Form */}
-          <div className="space-y-6">
+        </div>
+      }
+    >
+      <div className="space-y-6">
             {/* Name */}
             <div className="space-y-2">
               <Label htmlFor="habit-name" className="text-sm font-medium">
@@ -307,26 +310,7 @@ export function HabitModal({
                 </div>
               )}
             </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-3 mt-8">
-            {mode === "edit" && onDelete && (
-              <Button variant="destructive" onClick={handleDelete} className="rounded-xl">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </Button>
-            )}
-            <div className="flex-1" />
-            <Button variant="outline" onClick={onClose} className="rounded-xl glass bg-transparent">
-              Cancel
-            </Button>
-            <Button onClick={handleSave} className="rounded-xl">
-              {mode === "create" ? "Create Habit" : "Save Changes"}
-            </Button>
-          </div>
-        </div>
-      </Card>
-    </div>
+      </div>
+    </MobileSheet>
   )
 }

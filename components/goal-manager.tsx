@@ -172,7 +172,7 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="glass-modal max-w-4xl mx-auto max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
+      <DialogContent className="sm:max-w-4xl overflow-y-auto" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold font-sans flex items-center gap-2">
             <Target className="h-6 w-6 text-primary" />

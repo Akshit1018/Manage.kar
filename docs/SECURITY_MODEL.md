@@ -24,6 +24,10 @@ All canonical data lives in the browser. There is no server-side authorization.
 - Off by default.
 - When enabled, may read clipboard text. Do not treat this as safe for passwords.
 
+## Microphone
+
+Voice notes call `getUserMedia` only after a tap on Record. Audio stays in IndexedDB on this device. The site cannot read the mic in the background. Denied permission is a browser setting, not an app entitlement.
+
 ## External actions
 
 No payments, no outbound Google API, no email send except `mailto:` / WhatsApp deep links the user triggers.

@@ -152,8 +152,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="modal-mobile">
-        <div className="modal-content-mobile bg-card/95 backdrop-blur-xl border border-border/50 rounded-t-3xl sm:rounded-3xl max-w-4xl mx-auto overflow-hidden">
+      <DialogContent className="sm:max-w-4xl">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden bg-card p-4 sm:p-0 sm:rounded-lg">
           <DialogHeader className="responsive-container border-b border-border/50">
             <DialogTitle className="responsive-text-2xl font-bold font-sans flex items-center gap-2 text-readable">
               <Settings className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />

@@ -11,6 +11,7 @@ import { Repeat, Bell, Plus, X, Trash2, ChevronDown, ChevronUp, Settings } from 
 import { cn } from "@/lib/utils"
 import type { RecurringRule, Task } from "@/lib/domain/types"
 import { localDateKey, normalizeDueDate } from "@/lib/dates/due-date"
+import { MobileSheet } from "@/components/mobile-sheet"
 
 interface TaskModalProps {
   isOpen: boolean
@@ -127,22 +128,32 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode }: Tas
     })
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="modal-mobile bg-black/50 backdrop-blur-sm">
-      <div className="modal-content-mobile bg-card/95 backdrop-blur-xl border border-border/50 shadow-xl rounded-t-3xl sm:rounded-3xl max-w-lg mx-auto overflow-hidden">
-        <div className="responsive-container">
-          <div className="flex items-center justify-between mb-4 sm:mb-6 border-b border-border/50 pb-4">
-            <h2 className="responsive-text-xl font-semibold font-sans text-readable">
-              {mode === "create" ? "Create Task" : "Edit Task"}
-            </h2>
-            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full" aria-label="Close task form">
-              <X className="h-5 w-5" />
+    <MobileSheet
+      open={isOpen}
+      onClose={onClose}
+      title={mode === "create" ? "Create task" : "Edit task"}
+      footer={
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
+          {mode === "edit" && onDelete ? (
+            <Button variant="destructive" onClick={handleDelete} className="mk-touch rounded-xl">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete task
+            </Button>
+          ) : null}
+          <div className="flex-1" />
+          <div className="grid grid-cols-2 gap-2 sm:flex">
+            <Button variant="outline" onClick={onClose} className="mk-touch rounded-xl bg-transparent">
+              Cancel
+            </Button>
+            <Button onClick={handleSave} className="mk-touch rounded-xl">
+              {mode === "create" ? "Create task" : "Save changes"}
             </Button>
           </div>
-
-          <div className="space-y-4 sm:space-y-6 max-h-[60vh] overflow-y-auto">
+        </div>
+      }
+    >
+      <div className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="task-title" className="responsive-text-sm font-medium text-readable">
                 Title
@@ -310,27 +321,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode }: Tas
                 </div>
               )}
             </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 mt-6 pt-4 border-t border-border/50">
-            {mode === "edit" && onDelete && (
-              <Button variant="destructive" onClick={handleDelete} className="rounded-xl order-last sm:order-first">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete task
-              </Button>
-            )}
-            <div className="flex-1" />
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={onClose} className="rounded-xl bg-transparent">
-                Cancel
-              </Button>
-              <Button onClick={handleSave} className="rounded-xl">
-                {mode === "create" ? "Create task" : "Save changes"}
-              </Button>
-            </div>
-          </div>
-        </div>
       </div>
-    </div>
+    </MobileSheet>
   )
 }

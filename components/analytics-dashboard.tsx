@@ -68,7 +68,7 @@ export function AnalyticsDashboard({ isOpen, onClose, tasks = [], habits = [] }:
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="glass-modal max-w-4xl mx-auto max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-4xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold font-sans flex items-center gap-2">
             <BarChart3 className="h-6 w-6 text-primary" />

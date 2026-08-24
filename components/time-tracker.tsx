@@ -151,7 +151,7 @@ export function TimeTracker({ isOpen, onClose, workspace, persist }: TimeTracker
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="glass-modal max-w-4xl mx-auto max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-4xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold font-sans flex items-center gap-2">
             <Clock className="h-6 w-6 text-primary" />

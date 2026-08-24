@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { X, Plus, Search, Target, TrendingUp, Calendar, CheckCircle2, Circle, Edit, BarChart3 } from "lucide-react"
+import { Plus, Search, Target, TrendingUp, Calendar, CheckCircle2, Circle, Edit, BarChart3 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { MobileSheet } from "@/components/mobile-sheet"
 
 interface Habit {
   id: number
@@ -83,26 +84,25 @@ export function HabitDashboard({
     return option?.icon || "📋"
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="glass-card w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-2xl">
-        <div className="p-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500/20 rounded-xl">
-                <Target className="h-5 w-5 text-blue-500" />
-              </div>
-              <h2 className="text-xl font-semibold font-sans">Habit Tracker</h2>
-            </div>
-            <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-
-          {/* Tab Navigation */}
+    <MobileSheet
+      open={isOpen}
+      onClose={onClose}
+      title="Habit tracker"
+      wide
+      footer={
+        <div className="flex w-full gap-2">
+          <Button variant="outline" onClick={onClose} className="mk-touch flex-1 rounded-xl bg-transparent">
+            Close
+          </Button>
+          <Button onClick={onAddHabit} className="mk-touch rounded-xl">
+            <Plus className="h-4 w-4 mr-2" />
+            Add habit
+          </Button>
+        </div>
+      }
+    >
+      <div>
           <div className="flex border-b border-border/20 mb-6">
             <button
               onClick={() => setActiveTab("overview")}
@@ -410,19 +410,7 @@ export function HabitDashboard({
               </div>
             )}
           </div>
-
-          {/* Footer */}
-          <div className="flex gap-3 mt-6 pt-4 border-t border-border/20">
-            <Button variant="outline" onClick={onClose} className="flex-1 rounded-xl glass bg-transparent">
-              Close
-            </Button>
-            <Button onClick={onAddHabit} className="rounded-xl">
-              <Plus className="h-4 w-4 mr-2" />
-              Add New Habit
-            </Button>
-          </div>
-        </div>
-      </Card>
-    </div>
+      </div>
+    </MobileSheet>
   )
 }
