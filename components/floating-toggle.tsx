@@ -55,6 +55,8 @@ export function FloatingToggle({
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const longPressTimer = useRef<number | null>(null)
+  const movedRef = useRef(false)
+  const recorderRef = useRef(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -87,10 +89,13 @@ export function FloatingToggle({
   const handleStart = (clientX: number, clientY: number) => {
     setIsDragging(true)
     setHasMoved(false)
+    movedRef.current = false
+    recorderRef.current = false
     const origin = position ?? { x: clientX - 28, y: clientY - 28 }
     setDragStart({ x: clientX - origin.x, y: clientY - origin.y })
     longPressTimer.current = window.setTimeout(() => {
-      if (!hasMoved) {
+      if (!movedRef.current) {
+        recorderRef.current = true
         setRecorderOpen(true)
       }
     }, 450)
@@ -101,6 +106,7 @@ export function FloatingToggle({
       return
     }
     setHasMoved(true)
+    movedRef.current = true
     clearLongPress()
     setPosition({
       x: Math.max(8, Math.min(window.innerWidth - 64, clientX - dragStart.x)),
@@ -110,9 +116,6 @@ export function FloatingToggle({
 
   const handleEnd = () => {
     clearLongPress()
-    if (!hasMoved && !recorderOpen) {
-      setIsOpen((value) => !value)
-    }
     setIsDragging(false)
     setHasMoved(false)
   }
@@ -150,8 +153,13 @@ export function FloatingToggle({
         ref={buttonRef}
         size="icon"
         aria-label="Add task, note, or voice"
+        onClick={() => {
+          if (movedRef.current || recorderRef.current) {
+            return
+          }
+          setIsOpen((value) => !value)
+        }}
         onMouseDown={(event) => {
-          event.preventDefault()
           handleStart(event.clientX, event.clientY)
         }}
         onTouchStart={(event) => {

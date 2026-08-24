@@ -27,17 +27,16 @@ export interface ScrollLockHandle {
 }
 
 const LOCK_FLAG = "mkScrollLock"
+const LOCK_COUNT = "mkScrollLockCount"
+
+const firstHandle = new WeakMap<ScrollLockDocument, ScrollLockHandle>()
 
 export function lockBodyScroll(doc: ScrollLockDocument, scrollY: number): ScrollLockHandle {
-  if (doc.body.dataset[LOCK_FLAG] === "1") {
-    return {
-      scrollY: Number.parseInt(doc.body.style.top?.replace("-", "") || "0", 10) || scrollY,
-      bodyOverflow: "",
-      bodyPosition: "",
-      bodyTop: "",
-      bodyWidth: "",
-      rootOverflow: "",
-    }
+  const existing = firstHandle.get(doc)
+  if (existing && doc.body.dataset[LOCK_FLAG] === "1") {
+    const next = Number(doc.body.dataset[LOCK_COUNT] ?? "1") + 1
+    doc.body.dataset[LOCK_COUNT] = String(next)
+    return existing
   }
 
   const handle: ScrollLockHandle = {
@@ -55,6 +54,8 @@ export function lockBodyScroll(doc: ScrollLockDocument, scrollY: number): Scroll
   doc.body.style.width = "100%"
   doc.documentElement.style.overflow = "hidden"
   doc.body.dataset[LOCK_FLAG] = "1"
+  doc.body.dataset[LOCK_COUNT] = "1"
+  firstHandle.set(doc, handle)
   return handle
 }
 
@@ -63,11 +64,20 @@ export function unlockBodyScroll(doc: ScrollLockDocument, handle: ScrollLockHand
     return handle.scrollY
   }
 
-  doc.body.style.overflow = handle.bodyOverflow
-  doc.body.style.position = handle.bodyPosition
-  doc.body.style.top = handle.bodyTop
-  doc.body.style.width = handle.bodyWidth
-  doc.documentElement.style.overflow = handle.rootOverflow
+  const remaining = Number(doc.body.dataset[LOCK_COUNT] ?? "1") - 1
+  if (remaining > 0) {
+    doc.body.dataset[LOCK_COUNT] = String(remaining)
+    return firstHandle.get(doc)?.scrollY ?? handle.scrollY
+  }
+
+  const original = firstHandle.get(doc) ?? handle
+  doc.body.style.overflow = original.bodyOverflow
+  doc.body.style.position = original.bodyPosition
+  doc.body.style.top = original.bodyTop
+  doc.body.style.width = original.bodyWidth
+  doc.documentElement.style.overflow = original.rootOverflow
   delete doc.body.dataset[LOCK_FLAG]
-  return handle.scrollY
+  delete doc.body.dataset[LOCK_COUNT]
+  firstHandle.delete(doc)
+  return original.scrollY
 }

@@ -40,12 +40,17 @@ describe("body scroll lock", () => {
     expect(doc.body.dataset.mkScrollLock).toBeUndefined()
   })
 
-  it("is idempotent when a lock is already held", () => {
+  it("keeps the lock until the last nested sheet closes", () => {
     const doc = mockDocument()
     const first = lockBodyScroll(doc, 80)
     const second = lockBodyScroll(doc, 200)
     expect(second.scrollY).toBe(80)
+    expect(doc.body.style.position).toBe("fixed")
+    unlockBodyScroll(doc, second)
+    expect(doc.body.style.position).toBe("fixed")
+    expect(doc.body.dataset.mkScrollLock).toBe("1")
     unlockBodyScroll(doc, first)
     expect(doc.body.style.position).toBe("")
+    expect(doc.body.dataset.mkScrollLock).toBeUndefined()
   })
 })

@@ -388,11 +388,21 @@
     }
   }
 
+  .mk-overlay-full {
+    z-index: 90;
+  }
+
   .mk-overlay-backdrop {
     position: absolute;
     inset: 0;
     border: 0;
     background: rgb(0 0 0 / 0.55);
+  }
+
+  @media (max-width: 639px) {
+    .mk-overlay-backdrop {
+      pointer-events: none;
+    }
   }
 
   .mk-sheet {
