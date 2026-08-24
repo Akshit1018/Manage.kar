@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/empty-state"
 import type { Note } from "@/lib/domain/types"
 import type { DateFormat } from "@/lib/dates/due-date"
 import { formatTimestamp } from "@/lib/dates/due-date"
-import { Plus } from "lucide-react"
+import { Mic, Plus } from "lucide-react"
 
 interface NoteListProps {
   notes: Note[]
@@ -14,17 +14,26 @@ interface NoteListProps {
   dateFormat: DateFormat
   onAddNote: () => void
   onEditNote: (note: Note) => void
+  onRecordVoice?: () => void
 }
 
-export function NoteList({ notes, searchQuery, dateFormat, onAddNote, onEditNote }: NoteListProps) {
+export function NoteList({ notes, searchQuery, dateFormat, onAddNote, onEditNote, onRecordVoice }: NoteListProps) {
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h3 className="text-xl font-bold">Notes</h3>
-        <Button onClick={onAddNote}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add note
-        </Button>
+        <div className="flex gap-2">
+          {onRecordVoice ? (
+            <Button variant="outline" className="mk-touch bg-transparent" onClick={onRecordVoice}>
+              <Mic className="h-4 w-4 mr-2" />
+              Record
+            </Button>
+          ) : null}
+          <Button className="mk-touch" onClick={onAddNote}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add note
+          </Button>
+        </div>
       </div>
       {notes.length === 0 ? (
         <EmptyState

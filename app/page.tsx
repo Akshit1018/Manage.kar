@@ -24,7 +24,8 @@ import {
 } from "lucide-react"
 import { FloatingToggle } from "@/components/floating-toggle"
 import { TaskModal } from "@/components/task-modal"
-import { NoteModal } from "@/components/note-modal"
+import { NoteModal, type NoteSaveExtras } from "@/components/note-modal"
+import { VoiceRecorder } from "@/components/voice-recorder"
 import { ShareModal } from "@/components/share-modal"
 import { HabitModal } from "@/components/habit-modal"
 import { HabitDashboard } from "@/components/habit-dashboard"
@@ -96,6 +97,7 @@ export default function Dashboard() {
   const [analyticsModal, setAnalyticsModal] = useState(false)
   const [timeTrackerModal, setTimeTrackerModal] = useState(false)
   const [goalManagerModal, setGoalManagerModal] = useState(false)
+  const [voiceRecorderOpen, setVoiceRecorderOpen] = useState(false)
 
   const weekStartsOn = workspace.settings.general.weekStartsOn
   const todayKey = localDateKey()
@@ -192,16 +194,32 @@ export default function Dashboard() {
     }
   }
 
-  const handleSaveNote = (noteData: Omit<Note, "id" | "createdAt"> | Note) => {
+  const handleSaveNote = (noteData: Omit<Note, "id" | "createdAt"> | Note, extras?: NoteSaveExtras) => {
+    let noteId = "id" in noteData ? noteData.id : 0
     persist((current) => {
       const title = noteData.title.trim()
       if ("id" in noteData) {
+        const voiceNote = extras?.voiceBlob
+          ? {
+              audioUrl: voiceRef(noteData.id),
+              transcription: extras.voiceTranscription ?? noteData.voiceNote?.transcription ?? "",
+              duration: extras.voiceDuration ?? noteData.voiceNote?.duration ?? 0,
+            }
+          : noteData.voiceNote
         return {
           ...current,
-          notes: current.notes.map((note) => (note.id === noteData.id ? { ...noteData, title } : note)),
+          notes: current.notes.map((note) => (note.id === noteData.id ? { ...noteData, title, voiceNote } : note)),
         }
       }
       const allocated = allocateEntityId(current)
+      noteId = allocated.id
+      const voiceNote = extras?.voiceBlob
+        ? {
+            audioUrl: voiceRef(allocated.id),
+            transcription: extras.voiceTranscription ?? "",
+            duration: extras.voiceDuration ?? 0,
+          }
+        : noteData.voiceNote
       return {
         ...allocated.workspace,
         notes: [
@@ -211,10 +229,16 @@ export default function Dashboard() {
             id: allocated.id,
             title,
             createdAt: new Date().toISOString(),
+            voiceNote,
           },
         ],
       }
     })
+    if (extras?.voiceBlob && noteId) {
+      void putVoice(createIndexedDbVoiceStore(), noteId, extras.voiceBlob).catch(() => {
+        toast.error("Could not keep the recording on this device. The words were saved without audio.")
+      })
+    }
   }
 
   const handleDeleteNote = (noteId: number) => {
@@ -449,7 +473,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 pb-28">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))]">
       <ClipboardMonitor
         onCreateTask={handleClipboardTask}
         onCreateNote={handleClipboardNote}
@@ -648,6 +672,7 @@ export default function Dashboard() {
             dateFormat={dateFormat}
             onAddNote={() => setNoteModal({ isOpen: true, mode: "create" })}
             onEditNote={(note) => setNoteModal({ isOpen: true, mode: "edit", note })}
+            onRecordVoice={() => setVoiceRecorderOpen(true)}
           />
         )}
 
@@ -664,7 +689,7 @@ export default function Dashboard() {
         )}
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background/95 backdrop-blur sm:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background/95 pb-[env(safe-area-inset-bottom,0px)] sm:hidden">
         <div className="grid grid-cols-4">
           {(
             [
@@ -677,7 +702,7 @@ export default function Dashboard() {
             <button
               key={view}
               type="button"
-              className={`flex flex-col items-center gap-1 py-3 text-xs ${currentView === view ? "text-primary" : "text-muted-foreground"}`}
+              className={`flex min-h-11 flex-col items-center gap-1 py-3 text-xs ${currentView === view ? "text-primary" : "text-muted-foreground"}`}
               onClick={() => setCurrentView(view)}
             >
               <Icon className="h-4 w-4" />
@@ -687,21 +712,19 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      <div className="fixed bottom-20 right-4 sm:bottom-8 sm:right-8 z-50">
-        <FloatingToggle
-          tasks={tasks}
-          notes={notes}
-          onTaskToggle={handleTaskToggle}
-          onAddTask={() => setTaskModal({ isOpen: true, mode: "create" })}
-          onAddNote={() => setNoteModal({ isOpen: true, mode: "create" })}
-          onEditTask={(task) => setTaskModal({ isOpen: true, mode: "edit", task })}
-          onEditNote={(note) => setNoteModal({ isOpen: true, mode: "edit", note })}
-          onVoiceNote={handleVoiceNote}
-          onSpeechToText={handleSpeechToText}
-          onCreateTaskFromVoice={handleVoiceTask}
-          onStartFocus={() => setFocusModal(true)}
-        />
-      </div>
+      <FloatingToggle
+        tasks={tasks}
+        notes={notes}
+        onTaskToggle={handleTaskToggle}
+        onAddTask={() => setTaskModal({ isOpen: true, mode: "create" })}
+        onAddNote={() => setNoteModal({ isOpen: true, mode: "create" })}
+        onEditTask={(task) => setTaskModal({ isOpen: true, mode: "edit", task })}
+        onEditNote={(note) => setNoteModal({ isOpen: true, mode: "edit", note })}
+        onVoiceNote={handleVoiceNote}
+        onSpeechToText={handleSpeechToText}
+        onCreateTaskFromVoice={handleVoiceTask}
+        onStartFocus={() => setFocusModal(true)}
+      />
 
       <TaskModal
         isOpen={taskModal.isOpen}
@@ -718,6 +741,18 @@ export default function Dashboard() {
         onDelete={handleDeleteNote}
         note={noteModal.note}
         mode={noteModal.mode}
+      />
+      <VoiceRecorder
+        open={voiceRecorderOpen}
+        onClose={() => setVoiceRecorderOpen(false)}
+        onSave={(result) => {
+          handleVoiceNote(result.blob, result.transcription, result.duration)
+          setVoiceRecorderOpen(false)
+        }}
+        onSaveAsTask={(text) => {
+          handleVoiceTask(text)
+          setVoiceRecorderOpen(false)
+        }}
       />
       <HabitModal
         isOpen={habitModal.isOpen}

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { localDateKey } from "@/lib/dates/due-date"
 import {
   WORKSPACE_CORRUPT_PREFIX,
   WORKSPACE_KEY,
@@ -80,7 +81,7 @@ describe("workspace store", () => {
       completedToday: true,
       reminders: false,
       createdAt: "2026-08-23T00:00:00.000Z",
-      history: [{ date: "2026-08-23", completed: true }],
+      history: [{ date: localDateKey(), completed: true }],
     })
 
     saveWorkspace(storage, workspace)

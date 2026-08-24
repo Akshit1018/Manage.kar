@@ -7,4 +7,7 @@ Honest leftover after the leftover-close session. Do not call these done.
 - WhatsApp/email send titles in the clear. That is intentional and labeled.
 - No second-device sync. Export is the backup.
 - No Google Drive. Settings say so.
-- `floating-toggle.tsx` is still a large desktop helper. It is now reachable on mobile above the tab bar.
+- The FAB is a compact control above the tab bar. It still opens extra sheets (quick add, voice). It is not a second app.
+- iOS keyboard inset uses `visualViewport`. Some browsers report it a frame late, so a sheet footer can sit under the keyboard briefly.
+- Voice notes use the browser microphone (`getUserMedia` + `MediaRecorder`). There is no iOS `NSMicrophoneUsageDescription` and no Android `RECORD_AUDIO` manifest because this is not a native wrapper. Recording stops if you leave the page. iOS Safari does not provide lock-screen Voice Memos or background capture.
+- Live transcription is best-effort Web Speech. It is often missing on iPhone Safari; the audio file still saves.

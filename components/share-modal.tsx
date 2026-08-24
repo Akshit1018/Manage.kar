@@ -1,18 +1,20 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
-import { X, Share2, MessageCircle, Link, Copy, Check, Mail, Download } from "lucide-react"
+import { MessageCircle, Link, Copy, Check, Mail, Download } from "lucide-react"
 import { encodeEncryptedSharePayload } from "@/lib/share/secret"
 import { shareExpiresAt, type ShareTtl } from "@/lib/share/codec"
 import { recordBrowserEvent } from "@/lib/analytics/local-events"
 import { APP_VERSION } from "@/lib/store/workspace"
 import type { Task } from "@/lib/domain/types"
+import { ConfirmSheet } from "@/components/confirm-sheet"
+import { MobileSheet } from "@/components/mobile-sheet"
 
 interface ShareModalProps {
   isOpen: boolean
@@ -31,19 +33,7 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
   const [linkPassword, setLinkPassword] = useState("")
   const [linkError, setLinkError] = useState("")
   const [linkTtl, setLinkTtl] = useState<ShareTtl>("7d")
-
-  useEffect(() => {
-    if (!isOpen) {
-      return
-    }
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose()
-      }
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [isOpen, onClose])
+  const [confirmWhatsApp, setConfirmWhatsApp] = useState(false)
 
   const filteredTasks = includeCompleted ? tasks : tasks.filter((task) => !task.completed)
 
@@ -130,15 +120,13 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
   }
 
   const handleWhatsAppShare = () => {
-    if (
-      !window.confirm(
-        "WhatsApp will receive these task titles in plain text. This is not the password-protected link.",
-      )
-    ) {
-      return
-    }
+    setConfirmWhatsApp(true)
+  }
+
+  const sendWhatsAppShare = () => {
     const message = generateWhatsAppMessage()
     window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer")
+    setConfirmWhatsApp(false)
   }
 
   const handleLinkShare = async () => {
@@ -169,31 +157,69 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
     })
   }
 
-  if (!isOpen) return null
+  const handleShareAction = () => {
+    switch (shareMethod) {
+      case "whatsapp":
+        handleWhatsAppShare()
+        return
+      case "link":
+        void handleLinkShare()
+        return
+      case "email":
+        handleEmailShare()
+        return
+      case "export":
+        exportTasksAsJSON()
+        return
+      default: {
+        const _never: never = shareMethod
+        return _never
+      }
+    }
+  }
 
   return (
-    <div className="modal-mobile bg-black/50 backdrop-blur-sm">
-      <div className="modal-content-mobile bg-card/95 backdrop-blur-xl border border-border/50 shadow-xl rounded-t-3xl sm:rounded-3xl max-w-lg mx-auto overflow-hidden">
-        <div className="responsive-container">
-          <div className="flex items-center justify-between mb-4 sm:mb-6 border-b border-border/50 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/20 rounded-xl">
-                <Share2 className="h-5 w-5 text-primary" />
-              </div>
-              <h2 className="responsive-text-xl font-semibold font-sans text-readable">Share Tasks</h2>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="rounded-full mobile-touch-target"
-              aria-label="Close share"
-            >
-              <X className="h-5 w-5 text-readable" />
-            </Button>
-          </div>
-
-          <div className="space-y-4 sm:space-y-6 max-h-[60vh] overflow-y-auto">
+    <>
+    <MobileSheet
+      open={isOpen}
+      onClose={onClose}
+      title="Share tasks"
+      footer={
+        <div className="flex w-full flex-col gap-2 sm:flex-row">
+          <Button variant="outline" onClick={onClose} className="mk-touch rounded-xl bg-transparent">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleShareAction}
+            className="mk-touch flex-1 rounded-xl"
+            disabled={filteredTasks.length === 0}
+          >
+            {shareMethod === "whatsapp" ? (
+              <>
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Send titles to WhatsApp
+              </>
+            ) : shareMethod === "link" ? (
+              <>
+                <Link className="h-4 w-4 mr-2" />
+                {linkCopied ? "Link copied" : "Generate and copy link"}
+              </>
+            ) : shareMethod === "email" ? (
+              <>
+                <Mail className="h-4 w-4 mr-2" />
+                Send email
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4 mr-2" />
+                Export tasks
+              </>
+            )}
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-5">
             <p className="text-xs text-muted-readable">
               Export a JSON file to keep a private copy. Link sharing is password-protected. The ciphertext sits in
               the URL. This device can refuse an expired link, but it cannot remotely revoke one. Anyone with both
@@ -359,51 +385,23 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
                 </div>
               </div>
             )}
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 mt-6 sm:mt-8 pt-4 border-t border-border/50">
-            <Button variant="outline" onClick={onClose} className="rounded-xl bg-transparent responsive-button">
-              Cancel
-            </Button>
-            <Button
-              onClick={
-                shareMethod === "whatsapp"
-                  ? handleWhatsAppShare
-                  : shareMethod === "link"
-                    ? handleLinkShare
-                    : shareMethod === "email"
-                      ? handleEmailShare
-                      : exportTasksAsJSON
-              }
-              className="rounded-xl hover:scale-105 transition-all duration-200 responsive-button"
-              disabled={filteredTasks.length === 0}
-            >
-              {shareMethod === "whatsapp" ? (
-                <>
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  Send titles to WhatsApp
-                </>
-              ) : shareMethod === "link" ? (
-                <>
-                  <Link className="h-4 w-4 mr-2" />
-                  {linkCopied ? "Link Copied!" : "Generate & Copy Link"}
-                </>
-              ) : shareMethod === "email" ? (
-                <>
-                  <Mail className="h-4 w-4 mr-2" />
-                  Send Email
-                </>
-              ) : (
-                <>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export Tasks
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
       </div>
-    </div>
+    </MobileSheet>
+    <ConfirmSheet
+      request={
+        confirmWhatsApp
+          ? {
+              title: "Send titles to WhatsApp?",
+              message: "WhatsApp will receive these task titles in plain text. This is not the password-protected link.",
+              confirmLabel: "Send",
+              tone: "neutral",
+            }
+          : null
+      }
+      onCancel={() => setConfirmWhatsApp(false)}
+      onConfirm={sendWhatsAppShare}
+    />
+    </>
   )
 }
 

@@ -1,15 +1,17 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Settings, Bell, Shield, Database, Palette, Globe, Download, Upload, Trash2, Link2 } from "lucide-react"
+import { Bell, Shield, Database, Palette, Globe, Download, Upload, Trash2, Link2 } from "lucide-react"
+import { toast } from "sonner"
 import { GoogleIntegration } from "./google-integration"
-import type { AppSettings } from "@/lib/domain/types"
+import { ConfirmSheet, type ConfirmRequest } from "@/components/confirm-sheet"
+import { MobileSheet } from "@/components/mobile-sheet"
+import type { AppSettings, Workspace } from "@/lib/domain/types"
 import { applyAppearance } from "@/lib/theme/apply-theme"
 import {
   APP_VERSION,
@@ -29,11 +31,23 @@ interface SettingsModalProps {
   onClose: () => void
 }
 
+const SETTINGS_SECTIONS = [
+  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "appearance", label: "Appearance", icon: Palette },
+  { id: "integrations", label: "Backup", icon: Link2 },
+  { id: "privacy", label: "Privacy", icon: Shield },
+  { id: "data", label: "Data", icon: Database },
+  { id: "general", label: "General", icon: Globe },
+] as const
+
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [settings, setSettings] = useState<AppSettings>(defaultSettings)
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default")
   const [activeSection, setActiveSection] = useState<string>("notifications")
   const [localEvents, setLocalEvents] = useState<LocalEvent[]>([])
+  const [confirmKind, setConfirmKind] = useState<
+    { kind: "import"; workspace: Workspace } | { kind: "clear-1" } | { kind: "clear-2" } | null
+  >(null)
 
   useEffect(() => {
     if (!isOpen) {
@@ -105,31 +119,28 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       reader.onload = () => {
         const parsed = parseBackup(String(reader.result ?? ""))
         if (!parsed.ok) {
-          window.alert(parsed.error)
+          toast.error(parsed.error)
           return
         }
-        if (window.confirm("This will replace all your current Manage.kar data. Continue?")) {
-          const storage = browserStorage()
-          replaceWorkspace(storage, parsed.workspace)
-          setSettings(parsed.workspace.settings)
-          applyAppearance(parsed.workspace.settings)
-          recordEvent(storage, "import", { kind: "backup" })
-          setLocalEvents(listEvents(storage))
-          notifyWorkspaceChanged()
-        }
+        setConfirmKind({ kind: "import", workspace: parsed.workspace })
       }
       reader.readAsText(file)
     }
     input.click()
   }
 
-  const clearAllData = () => {
-    if (!window.confirm("This will permanently delete all Manage.kar data on this device.")) {
-      return
-    }
-    if (!window.confirm("Are you absolutely sure? Tasks, notes, habits, goals, and settings will be removed.")) {
-      return
-    }
+  const applyImportedWorkspace = (workspace: Workspace) => {
+    const storage = browserStorage()
+    replaceWorkspace(storage, workspace)
+    setSettings(workspace.settings)
+    applyAppearance(workspace.settings)
+    recordEvent(storage, "import", { kind: "backup" })
+    setLocalEvents(listEvents(storage))
+    notifyWorkspaceChanged()
+    toast.success("Workspace replaced from backup.")
+  }
+
+  const wipeWorkspace = () => {
     const storage = browserStorage()
     const empty = clearWorkspace(storage)
     recordEvent(storage, "workspace_cleared")
@@ -137,34 +148,76 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     applyAppearance(empty.settings)
     setLocalEvents(listEvents(storage))
     notifyWorkspaceChanged()
+    toast.success("This device's workspace was cleared.")
   }
 
-  if (!isOpen) return null
+  const confirmRequest = ((): ConfirmRequest | null => {
+    if (!confirmKind) {
+      return null
+    }
+    switch (confirmKind.kind) {
+      case "import":
+        return {
+          title: "Replace this workspace?",
+          message: "This will replace all your current Manage.kar data on this device.",
+          confirmLabel: "Replace",
+          tone: "danger",
+        }
+      case "clear-1":
+        return {
+          title: "Clear this device?",
+          message: "This will permanently delete all Manage.kar data on this device.",
+          confirmLabel: "Continue",
+          tone: "danger",
+        }
+      case "clear-2":
+        return {
+          title: "Are you absolutely sure?",
+          message: "Tasks, notes, habits, goals, and settings will be removed.",
+          confirmLabel: "Clear everything",
+          tone: "danger",
+        }
+      default: {
+        const _never: never = confirmKind
+        return _never
+      }
+    }
+  })()
 
-  const sections = [
-    { id: "notifications", label: "Notifications", icon: Bell },
-    { id: "appearance", label: "Appearance", icon: Palette },
-    { id: "integrations", label: "Backup", icon: Link2 },
-    { id: "privacy", label: "Privacy", icon: Shield },
-    { id: "data", label: "Data", icon: Database },
-    { id: "general", label: "General", icon: Globe },
-  ]
+  const handleConfirm = () => {
+    if (!confirmKind) {
+      return
+    }
+    switch (confirmKind.kind) {
+      case "import":
+        applyImportedWorkspace(confirmKind.workspace)
+        setConfirmKind(null)
+        return
+      case "clear-1":
+        setConfirmKind({ kind: "clear-2" })
+        return
+      case "clear-2":
+        wipeWorkspace()
+        setConfirmKind(null)
+        return
+      default: {
+        const _never: never = confirmKind
+        return _never
+      }
+    }
+  }
+
+  const clearAllData = () => {
+    setConfirmKind({ kind: "clear-1" })
+  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="modal-mobile">
-        <div className="modal-content-mobile bg-card/95 backdrop-blur-xl border border-border/50 rounded-t-3xl sm:rounded-3xl max-w-4xl mx-auto overflow-hidden">
-          <DialogHeader className="responsive-container border-b border-border/50">
-            <DialogTitle className="responsive-text-2xl font-bold font-sans flex items-center gap-2 text-readable">
-              <Settings className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-              Settings
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 h-[70vh] sm:h-[60vh]">
+    <>
+    <MobileSheet open={isOpen} onClose={onClose} title="Settings" wide>
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 min-h-0">
             <div className="w-full sm:w-48 border-b sm:border-b-0 sm:border-r border-border/50 pb-4 sm:pb-0">
               <div className="flex sm:flex-col gap-2 sm:gap-1 overflow-x-auto sm:overflow-x-visible pb-2 sm:pb-0">
-                {sections.map((section) => {
+                {SETTINGS_SECTIONS.map((section) => {
                   const Icon = section.icon
                   return (
                     <button
@@ -475,8 +528,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               </Card>
             </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+    </MobileSheet>
+    <ConfirmSheet request={confirmRequest} onCancel={() => setConfirmKind(null)} onConfirm={handleConfirm} />
+    </>
   )
 }

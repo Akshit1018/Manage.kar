@@ -119,10 +119,17 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html,
   body {
     @apply bg-background text-foreground;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    overflow-x: hidden;
+  }
+
+  body {
+    transform: none;
+    filter: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   /* Enhanced mobile-first responsive design with comprehensive device support */
@@ -354,38 +361,283 @@
     }
   }
 
-  /* Enhanced modal and popup mobile optimization */
+  .mk-touch {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .mk-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    padding: 0;
+    padding-bottom: var(--mk-keyboard, 0px);
+    transform: none;
+    transition: padding-bottom 0.12s ease;
+  }
+
+  @supports (height: 100svh) {
+    .mk-overlay {
+      height: 100svh;
+      max-height: 100svh;
+    }
+  }
+
+  .mk-overlay-full {
+    z-index: 90;
+  }
+
+  .mk-overlay-backdrop {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: rgb(0 0 0 / 0.55);
+  }
+
+  @media (max-width: 639px) {
+    .mk-overlay-backdrop {
+      pointer-events: none;
+    }
+  }
+
+  .mk-sheet {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+    background: var(--card);
+    color: var(--card-foreground);
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .mk-sheet-full {
+    background: #0b0b10;
+    color: white;
+  }
+
+  .mk-sheet-header,
+  .mk-sheet-footer {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .mk-sheet-header {
+    min-height: 56px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .mk-sheet-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 1rem;
+  }
+
+  .mk-sheet-footer {
+    border-top: 1px solid var(--border);
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  .mk-voice {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    color: white;
+  }
+
+  .mk-voice-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .mk-voice-stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 1rem;
+    padding: 1.5rem 0;
+  }
+
+  .mk-voice-clock {
+    font-size: clamp(2.5rem, 12vw, 4rem);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  .mk-voice-bowl {
+    position: relative;
+    width: min(56vw, 220px);
+    height: min(56vw, 220px);
+    border-radius: 9999px;
+    background: radial-gradient(circle at 35% 30%, #fb7185, #ef4444 55%, #991b1b);
+    box-shadow: 0 0 48px rgb(239 68 68 / 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mk-voice-bowl-live {
+    animation: mk-bowl-pulse 1.2s ease-in-out infinite;
+  }
+
+  .mk-voice-bowl-paused {
+    filter: grayscale(0.3);
+  }
+
+  .mk-voice-bowl-ring {
+    position: absolute;
+    inset: -18px;
+    border: 2px solid rgb(248 113 113 / 0.45);
+    border-radius: 9999px;
+  }
+
+  .mk-voice-wave {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 48px;
+  }
+
+  .mk-voice-bar {
+    width: 5px;
+    height: 10px;
+    border-radius: 9999px;
+    background: rgb(255 255 255 / 0.35);
+  }
+
+  .mk-voice-bar-live {
+    animation: mk-wave 0.8s ease-in-out infinite;
+  }
+
+  .mk-voice-bar-live:nth-child(odd) {
+    animation-delay: 0.1s;
+  }
+
+  .mk-voice-bar-live:nth-child(3n) {
+    animation-delay: 0.2s;
+  }
+
+  .mk-voice-status,
+  .mk-voice-help,
+  .mk-voice-transcript {
+    max-width: 36rem;
+    color: rgb(255 255 255 / 0.78);
+    font-size: 0.95rem;
+  }
+
+  .mk-voice-audio {
+    width: min(100%, 24rem);
+  }
+
+  .mk-voice-actions {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  @keyframes mk-bowl-pulse {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.06);
+    }
+  }
+
+  @keyframes mk-wave {
+    0%,
+    100% {
+      height: 10px;
+    }
+    50% {
+      height: 40px;
+    }
+  }
+
+  @media (min-width: 640px) {
+    .mk-overlay {
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem;
+    }
+
+    .mk-sheet {
+      height: auto;
+      max-height: min(90dvh, 880px);
+      max-width: 32rem;
+      border-radius: 1.5rem;
+      border: 1px solid var(--border);
+    }
+
+    .mk-sheet-wide {
+      max-width: 56rem;
+    }
+
+    .mk-overlay-full .mk-sheet {
+      max-width: 28rem;
+      min-height: min(80dvh, 720px);
+    }
+  }
+
+  @media (min-width: 402px) {
+    .iphone-17-touch {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+
+  @media (min-width: 440px) {
+    .iphone-17-pro-max-touch {
+      min-height: 48px;
+      min-width: 48px;
+    }
+  }
+
+  /* Legacy class names now lock to the visual viewport */
   .modal-mobile {
-    @apply fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    padding: 0;
+    transform: none;
   }
 
   .modal-content-mobile {
-    @apply w-full sm:w-auto sm:max-w-lg rounded-t-3xl sm:rounded-3xl;
-    max-height: 85vh;
-    overflow-y: auto;
-    margin-bottom: env(safe-area-inset-bottom, 0px);
-  }
-
-  /* Device-specific modal adjustments */
-  @media (max-width: 320px) {
-    .modal-content-mobile {
-      max-height: 80vh;
-      @apply p-3;
-    }
-  }
-
-  @media (min-width: 321px) and (max-width: 390px) {
-    .modal-content-mobile {
-      max-height: 82vh;
-      @apply p-4;
-    }
-  }
-
-  @media (min-width: 391px) and (max-width: 430px) {
-    .modal-content-mobile {
-      max-height: 85vh;
-      @apply p-5;
-    }
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
   }
 
   /* Enhanced grid layouts for different screen sizes */

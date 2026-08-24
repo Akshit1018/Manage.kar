@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import { Target, Plus, Calendar, TrendingUp, Award, CheckCircle2, Trash2 } from "lucide-react"
+import { ConfirmSheet } from "@/components/confirm-sheet"
+import { MobileSheet } from "@/components/mobile-sheet"
 import type { Goal, Workspace } from "@/lib/domain/types"
 import { allocateEntityId } from "@/lib/store/workspace"
 import { addMilestone } from "@/lib/goals/milestones"
@@ -26,6 +27,7 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
   const goals = workspace.goals
 
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null)
   const [titleError, setTitleError] = useState("")
   const [milestoneDrafts, setMilestoneDrafts] = useState<Record<number, { title: string; dueDate: string }>>({})
   const [newGoal, setNewGoal] = useState({
@@ -98,10 +100,11 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
     }))
   }
 
+  const requestDeleteGoal = (goalId: number) => {
+    setPendingDeleteId(goalId)
+  }
+
   const deleteGoal = (goalId: number) => {
-    if (!window.confirm("Delete this goal? You can undo from the toast for a few seconds.")) {
-      return
-    }
     let removed: Goal | undefined
     persist((current) => {
       removed = current.goals.find((goal) => goal.id === goalId)
@@ -168,18 +171,9 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
     return colors[category]
   }
 
-  if (!isOpen) return null
-
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="glass-modal max-w-4xl mx-auto max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold font-sans flex items-center gap-2">
-            <Target className="h-6 w-6 text-primary" />
-            Goal Manager
-          </DialogTitle>
-        </DialogHeader>
-
+    <>
+    <MobileSheet open={isOpen} onClose={onClose} title="Goals" wide>
         <div className="space-y-6">
           {/* Stats Overview */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -366,7 +360,7 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
                             Reopen
                           </Button>
                         )}
-                        <Button size="sm" variant="destructive" onClick={() => deleteGoal(goal.id)}>
+                        <Button size="sm" variant="destructive" onClick={() => requestDeleteGoal(goal.id)}>
                           <Trash2 className="h-4 w-4" />
                           <span className="sr-only">Delete {goal.title}</span>
                         </Button>
@@ -474,7 +468,26 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
             ))}
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+    </MobileSheet>
+    <ConfirmSheet
+      request={
+        pendingDeleteId === null
+          ? null
+          : {
+              title: "Delete this goal?",
+              message: "You can undo from the toast for a few seconds.",
+              confirmLabel: "Delete",
+              tone: "danger",
+            }
+      }
+      onCancel={() => setPendingDeleteId(null)}
+      onConfirm={() => {
+        if (pendingDeleteId !== null) {
+          deleteGoal(pendingDeleteId)
+        }
+        setPendingDeleteId(null)
+      }}
+    />
+    </>
   )
 }

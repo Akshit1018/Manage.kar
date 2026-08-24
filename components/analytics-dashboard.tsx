@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Award, BarChart3, Brain, Clock, Target, Zap } from "lucide-react"
+import { MobileSheet } from "@/components/mobile-sheet"
 import type { Habit, Task } from "@/lib/domain/types"
 
 interface AnalyticsDashboardProps {
@@ -64,18 +64,8 @@ export function AnalyticsDashboard({ isOpen, onClose, tasks = [], habits = [] }:
       (habits.filter((h) => h.completedToday).length / Math.max(habits.length, 1)) * 50,
   )
 
-  if (!isOpen) return null
-
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="glass-modal max-w-4xl mx-auto max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold font-sans flex items-center gap-2">
-            <BarChart3 className="h-6 w-6 text-primary" />
-            Counts
-          </DialogTitle>
-        </DialogHeader>
-
+    <MobileSheet open={isOpen} onClose={onClose} title="Counts" wide>
         <div className="space-y-6">
           <p className="text-sm text-muted-foreground">
             Counts come from this device&apos;s workspace. Recommendations are heuristics, not a model.
@@ -230,7 +220,6 @@ export function AnalyticsDashboard({ isOpen, onClose, tasks = [], habits = [] }:
             Task completion is all stored tasks, not a calendar week. Habit consistency is today only.
           </p>
         </div>
-      </DialogContent>
-    </Dialog>
+    </MobileSheet>
   )
 }
