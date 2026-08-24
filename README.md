@@ -4,7 +4,7 @@ Personal workspace for **tasks, notes, and habits**.
 
 There are two clients:
 
-- **Flutter (iOS first, Android too)** in `apps/mobile` — this is the native product. It talks to PostgreSQL through `apps/api`.
+- **Flutter (iOS first, Android too, plus web)** in `apps/mobile` — this is the native product. It talks to PostgreSQL through `apps/api`. Run `flutter run -d web-server` to test that same client in a browser.
 - **Next.js PWA** at the repo root — the original local-first web app. It still uses `localStorage` and is the web reference.
 
 Native setup, permission modules, and VPS compose: [`docs/NATIVE_CONVERSION.md`](docs/NATIVE_CONVERSION.md).
@@ -28,6 +28,7 @@ pnpm build
 - Email/password account, JWT, every row scoped by user
 - Tasks, notes, habits, goals, time, focus, profile, settings
 - Real microphone permission + multipart voice files
+- Flutter **web** for browser testing (`flutter run -d web-server`) against the same API
 - Local iOS/Android notification permission (not a push server)
 - Export / import a Manage.kar JSON backup against the account
 - Plain-text share through the system share sheet

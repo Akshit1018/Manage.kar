@@ -1,4 +1,5 @@
 import "package:dio/dio.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 
 class ApiClient {
@@ -13,7 +14,7 @@ class ApiClient {
         );
 
   final Dio dio;
-  final FlutterSecureStorage storage = const FlutterSecureStorage();
+  final FlutterSecureStorage storage = const FlutterSecureStorage(webOptions: WebOptions());
 
   Future<void> attachToken() async {
     try {
@@ -100,13 +101,24 @@ class ApiClient {
     int duration = 0,
   }) async {
     await attachToken();
+    final audio = kIsWeb
+        ? MultipartFile.fromBytes(await _bytesFromPath(filePath), filename: "note.webm")
+        : await MultipartFile.fromFile(filePath, filename: "note.m4a");
     final form = FormData.fromMap({
       "transcription": transcription,
       "duration": duration,
-      "audio": await MultipartFile.fromFile(filePath, filename: "note.m4a"),
+      "audio": audio,
     });
     final response = await dio.post<Map<String, dynamic>>("/api/notes/$noteId/voice", data: form);
     return response.data!;
+  }
+
+  Future<List<int>> _bytesFromPath(String filePath) async {
+    final response = await Dio().get<List<int>>(
+      filePath,
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return response.data ?? [];
   }
 
   Future<List<int>> downloadVoice(String noteId) async {

@@ -1,6 +1,6 @@
 # Native conversion
 
-Manage.kar is a Flutter iOS/Android client plus a PostgreSQL API.
+Manage.kar is a Flutter iOS/Android client plus a PostgreSQL API. The same Flutter client also compiles to **web** so you can test auth, tasks, notes, and habits in a browser without a device.
 
 ## Why Flutter, not Swift-only
 
@@ -45,9 +45,12 @@ pnpm dev
 cd apps/mobile
 flutter pub get
 flutter run --dart-define=API_BASE=http://127.0.0.1:4000
+
+# Flutter web (browser test against the same API)
+flutter run -d web-server --web-hostname 0.0.0.0 --web-port 5173 --dart-define=API_BASE=http://127.0.0.1:4000
 ```
 
-On an Android emulator use `http://10.0.2.2:4000`.
+Open [http://127.0.0.1:5173](http://127.0.0.1:5173) after the API is up. On an Android emulator use `http://10.0.2.2:4000`.
 
 ## iOS permission modules
 

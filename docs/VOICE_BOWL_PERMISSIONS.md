@@ -22,6 +22,7 @@ This is not Apple Voice Memos. Leaving the app stops the take. There is no lock-
 | --- | --- | --- |
 | Flutter iPhone | `record` → AVAudioSession | `NSMicrophoneUsageDescription` + `permission_handler` |
 | Flutter Android | `record` → MediaRecorder | Manifest `RECORD_AUDIO` + runtime request |
+| Flutter web (browser test) | `record` → `getUserMedia` / MediaRecorder | **No** Info.plist. Chrome or Safari site setting after a tap |
 | Next.js PWA in Safari/Chrome | `navigator.mediaDevices.getUserMedia` | **No** Info.plist / no Play permission. Browser site setting only |
 
 The PWA help copy in `lib/media/microphone.ts` is still honest: a Home Screen website is not Voice Memos and cannot keep recording after you leave the page.

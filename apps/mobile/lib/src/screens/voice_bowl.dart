@@ -1,7 +1,7 @@
 import "dart:async";
-import "dart:io";
 
 import "package:audioplayers/audioplayers.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/material.dart";
 import "package:managekar/src/permissions/app_permissions.dart";
 import "package:managekar/src/permissions/voice_policy.dart";
@@ -79,11 +79,20 @@ class _VoiceBowlState extends State<VoiceBowl> {
   }
 
   Future<void> startFromTap() async {
-    if (!usesDevicePermissions) {
+    if (!usesDevicePermissions && !usesBrowserMicrophone) {
       status(VoicePhase.unsupported);
       return;
     }
     status(VoicePhase.requesting);
+    if (kIsWeb) {
+      final allowed = await recorder.hasPermission();
+      if (!allowed) {
+        status(VoicePhase.denied);
+        return;
+      }
+      await beginRecording();
+      return;
+    }
     final current = permissions.mapMicrophone(await permissions.microphoneStatus());
     final gate = decideVoiceMicAction(nativeDevice: true, permission: current);
     switch (gate) {
@@ -114,9 +123,11 @@ class _VoiceBowlState extends State<VoiceBowl> {
   }
 
   Future<void> beginRecording() async {
-    final dir = await getTemporaryDirectory();
-    final file = "${dir.path}/managekar-${DateTime.now().millisecondsSinceEpoch}.m4a";
-    await recorder.start(const RecordConfig(encoder: AudioEncoder.aacLc), path: file);
+    final file = kIsWeb
+        ? "managekar.webm"
+        : "${(await getTemporaryDirectory()).path}/managekar-${DateTime.now().millisecondsSinceEpoch}.m4a";
+    final config = RecordConfig(encoder: kIsWeb ? AudioEncoder.opus : AudioEncoder.aacLc);
+    await recorder.start(config, path: file);
     ticker?.cancel();
     ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) {
@@ -161,6 +172,10 @@ class _VoiceBowlState extends State<VoiceBowl> {
     if (path == null) {
       return;
     }
+    if (kIsWeb) {
+      await player.play(UrlSource(path!));
+      return;
+    }
     await player.play(DeviceFileSource(path!));
   }
 
@@ -171,17 +186,27 @@ class _VoiceBowlState extends State<VoiceBowl> {
   String copyFor(VoicePhase current) {
     switch (current) {
       case VoicePhase.idle:
-        return "Tap the bowl to record. iPhone and Android will ask for the microphone only after this tap. Recording stays in the foreground.";
+        return kIsWeb
+            ? "Tap the bowl to record. Chrome or Safari will ask for the microphone after this tap. This is a website, not Voice Memos."
+            : "Tap the bowl to record. iPhone and Android will ask for the microphone only after this tap. Recording stays in the foreground.";
       case VoicePhase.requesting:
-        return "Waiting for the system microphone prompt…";
+        return kIsWeb
+            ? "Waiting for the browser microphone prompt…"
+            : "Waiting for the system microphone prompt…";
       case VoicePhase.recording:
-        return "Recording. This is not Apple Voice Memos. Leaving the app stops the take.";
+        return kIsWeb
+            ? "Recording in this tab. Closing or refreshing the page stops the take."
+            : "Recording. This is not Apple Voice Memos. Leaving the app stops the take.";
       case VoicePhase.paused:
         return "Paused. Tap resume or stop.";
       case VoicePhase.review:
-        return "Preview, then attach it to the note. Audio stays on this phone until you save.";
+        return kIsWeb
+            ? "Preview, then attach it to the note. Audio stays in this browser until you save."
+            : "Preview, then attach it to the note. Audio stays on this phone until you save.";
       case VoicePhase.denied:
-        return "Microphone is blocked. You can still type the note. Manage.kar will not bounce you into Settings by itself.";
+        return kIsWeb
+            ? "The browser blocked the microphone. You can still type the note. Allow the mic in the site settings if you want to record."
+            : "Microphone is blocked. You can still type the note. Manage.kar will not bounce you into Settings by itself.";
       case VoicePhase.offerSettings:
         return "This phone will not show the microphone prompt again. If you want to record, tap Open Settings, then return here.";
       case VoicePhase.unsupported:
@@ -305,9 +330,6 @@ Future<void> playVoiceBytes(List<int> bytes) async {
   if (bytes.isEmpty) {
     return;
   }
-  final dir = await getTemporaryDirectory();
-  final file = File("${dir.path}/managekar-play-${DateTime.now().millisecondsSinceEpoch}.m4a");
-  await file.writeAsBytes(bytes, flush: true);
   final player = AudioPlayer();
-  await player.play(DeviceFileSource(file.path));
+  await player.play(BytesSource(Uint8List.fromList(bytes)));
 }

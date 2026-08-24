@@ -132,7 +132,11 @@ class SettingsScreen extends StatelessWidget {
                 title: const Text("Import backup"),
                 subtitle: const Text("Replaces this account's workspace from a Manage.kar JSON file."),
                 onTap: () async {
-                  final picked = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ["json"]);
+                  final picked = await FilePicker.platform.pickFiles(
+                    type: FileType.custom,
+                    allowedExtensions: ["json"],
+                    withData: true,
+                  );
                   final file = picked?.files.single;
                   final bytes = file?.bytes;
                   final path = file?.path;
