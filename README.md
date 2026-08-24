@@ -1,8 +1,13 @@
 # Manage.kar
 
-Local-first personal workspace for **tasks, notes, and habits**.
+Personal workspace for **tasks, notes, and habits**.
 
-Your data lives in this browser (`managekar.workspace.v1`) unless you export it. There is no account and no live team backend.
+There are two clients:
+
+- **Flutter (iOS first, Android too)** in `apps/mobile` — this is the native product. It talks to PostgreSQL through `apps/api`.
+- **Next.js PWA** at the repo root — the original local-first web app. It still uses `localStorage` and is the web reference.
+
+Native setup, permission modules, and VPS compose: [`docs/NATIVE_CONVERSION.md`](docs/NATIVE_CONVERSION.md).
 
 ## Run
 

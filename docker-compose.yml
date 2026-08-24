@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: managekar
+      POSTGRES_PASSWORD: managekar
+      POSTGRES_DB: managekar
+    ports:
+      - "5432:5432"
+    volumes:
+      - managekar_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U managekar"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    image: node:22-bookworm
+    working_dir: /app
+    command: bash -lc "corepack enable && pnpm install && pnpm exec prisma generate && pnpm exec prisma db push && pnpm start"
+    environment:
+      DATABASE_URL: postgresql://managekar:managekar@postgres:5432/managekar
+      JWT_SECRET: change-me-on-the-vps
+      PORT: 4000
+      HOST: 0.0.0.0
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./apps/api:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  managekar_pg:
