@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -9,7 +8,8 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { User, Edit, Mail, Phone, MapPin, Calendar, Trophy, TrendingUp } from "lucide-react"
+import { Edit, Mail, Phone, MapPin, Calendar, Trophy, TrendingUp } from "lucide-react"
+import { MobileSheet } from "@/components/mobile-sheet"
 
 import type { UserProfile } from "@/lib/domain/types"
 import { sanitizeAvatarUrl } from "@/lib/profile/avatar"
@@ -67,20 +67,33 @@ export function ProfileModal({ isOpen, onClose, stats, onProfileChange }: Profil
     { name: "Habit starter", description: "Add a habit", earned: (stats?.habitsTracked ?? 0) > 0 },
   ]
 
-  if (!isOpen) return null
-
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <div className="flex h-full min-h-0 flex-col overflow-hidden bg-card p-4 sm:p-0 sm:rounded-lg">
-          <DialogHeader className="responsive-container border-b border-border/50">
-            <DialogTitle className="responsive-text-2xl font-bold font-sans flex items-center gap-2 text-readable">
-              <User className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-              Profile
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-4 sm:space-y-6 responsive-container max-h-[70vh] overflow-y-auto">
+    <MobileSheet
+      open={isOpen}
+      onClose={() => {
+        handleCancel()
+        onClose()
+      }}
+      title="Profile"
+      footer={
+        isEditing ? (
+          <div className="flex w-full gap-2">
+            <Button variant="outline" className="mk-touch flex-1 rounded-xl bg-transparent" onClick={handleCancel}>
+              Cancel
+            </Button>
+            <Button className="mk-touch flex-1 rounded-xl" onClick={handleSave}>
+              Save changes
+            </Button>
+          </div>
+        ) : (
+          <Button className="mk-touch w-full rounded-xl" onClick={() => setIsEditing(true)}>
+            <Edit className="h-4 w-4 mr-2" />
+            Edit profile
+          </Button>
+        )
+      }
+    >
+          <div className="space-y-4 sm:space-y-6">
             <Card className="bg-card/95 backdrop-blur-xl border border-border/50 responsive-card text-center">
               <div className="relative inline-block mb-4">
                 <Avatar className="w-16 h-16 sm:w-20 sm:h-20 mx-auto">
@@ -245,36 +258,7 @@ export function ProfileModal({ isOpen, onClose, stats, onProfileChange }: Profil
               </div>
             </Card>
 
-            <div className="flex flex-col sm:flex-row gap-2 pb-4">
-              {isEditing ? (
-                <>
-                  <Button
-                    variant="outline"
-                    className="flex-1 rounded-2xl bg-transparent responsive-button"
-                    onClick={handleCancel}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    className="flex-1 rounded-2xl hover:scale-105 transition-all duration-200 responsive-button"
-                    onClick={handleSave}
-                  >
-                    Save Changes
-                  </Button>
-                </>
-              ) : (
-                <Button
-                  className="w-full rounded-2xl hover:scale-105 transition-all duration-200 responsive-button"
-                  onClick={() => setIsEditing(true)}
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Profile
-                </Button>
-              )}
-            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+    </MobileSheet>
   )
 }

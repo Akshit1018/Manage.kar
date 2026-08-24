@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { ConfirmSheet } from "@/components/confirm-sheet"
 import { MobileSheet } from "@/components/mobile-sheet"
 import { VoiceAudio } from "@/components/voice-audio"
 import { VoiceRecorder, type VoiceRecordingResult } from "@/components/voice-recorder"
@@ -33,7 +34,9 @@ export function NoteModal({ isOpen, onClose, onSave, onDelete, note, mode }: Not
   })
   const [titleError, setTitleError] = useState("")
   const [pendingVoice, setPendingVoice] = useState<VoiceRecordingResult | null>(null)
+  const [pendingVoiceUrl, setPendingVoiceUrl] = useState<string | null>(null)
   const [recorderOpen, setRecorderOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
     if (note && mode === "edit") {
@@ -50,7 +53,18 @@ export function NoteModal({ isOpen, onClose, onSave, onDelete, note, mode }: Not
     setTitleError("")
     setPendingVoice(null)
     setRecorderOpen(false)
+    setConfirmDelete(false)
   }, [note, mode, isOpen])
+
+  useEffect(() => {
+    if (!pendingVoice) {
+      setPendingVoiceUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(pendingVoice.blob)
+    setPendingVoiceUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [pendingVoice])
 
   const handleSave = () => {
     const title = formData.title.trim()
@@ -79,10 +93,15 @@ export function NoteModal({ isOpen, onClose, onSave, onDelete, note, mode }: Not
     if (!note || !onDelete) {
       return
     }
-    if (!window.confirm("Delete this note? You can undo from the toast for a few seconds.")) {
+    setConfirmDelete(true)
+  }
+
+  const confirmDeleteNote = () => {
+    if (!note || !onDelete) {
       return
     }
     onDelete(note.id)
+    setConfirmDelete(false)
     onClose()
   }
 
@@ -195,6 +214,7 @@ export function NoteModal({ isOpen, onClose, onSave, onDelete, note, mode }: Not
                 <Volume2 className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium">New recording · {pendingVoice.duration}s</span>
               </div>
+              {pendingVoiceUrl ? <audio className="mb-2 w-full" controls src={pendingVoiceUrl} /> : null}
               <p className="text-sm text-muted-foreground">{pendingVoice.transcription}</p>
             </div>
           ) : note?.voiceNote ? (
@@ -218,6 +238,20 @@ export function NoteModal({ isOpen, onClose, onSave, onDelete, note, mode }: Not
         </div>
       </MobileSheet>
       <VoiceRecorder open={recorderOpen} onClose={() => setRecorderOpen(false)} onSave={handleRecorded} />
+      <ConfirmSheet
+        request={
+          confirmDelete
+            ? {
+                title: "Delete this note?",
+                message: "You can undo from the toast for a few seconds.",
+                confirmLabel: "Delete",
+                tone: "danger",
+              }
+            : null
+        }
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={confirmDeleteNote}
+      />
     </>
   )
 }

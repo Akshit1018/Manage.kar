@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch"
 import { Trash2, Bell } from "lucide-react"
 import type { Habit, HabitCategory } from "@/lib/domain/types"
 import { weekdayOrder } from "@/lib/dates/week"
+import { ConfirmSheet } from "@/components/confirm-sheet"
 import { MobileSheet } from "@/components/mobile-sheet"
 
 interface HabitModalProps {
@@ -47,6 +48,7 @@ export function HabitModal({
     reminderTime: "09:00",
   })
   const [nameError, setNameError] = useState("")
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const categoryOptions = [
     { value: "health", label: "Health", icon: "🏥" },
@@ -86,6 +88,7 @@ export function HabitModal({
       })
     }
     setNameError("")
+    setConfirmDelete(false)
   }, [habit, mode, isOpen])
 
   const handleSave = () => {
@@ -108,10 +111,15 @@ export function HabitModal({
     if (!habit || !onDelete) {
       return
     }
-    if (!window.confirm("Delete this habit? You can undo from the toast for a few seconds.")) {
+    setConfirmDelete(true)
+  }
+
+  const confirmDeleteHabit = () => {
+    if (!habit || !onDelete) {
       return
     }
     onDelete(habit.id)
+    setConfirmDelete(false)
     onClose()
   }
 
@@ -131,6 +139,7 @@ export function HabitModal({
   }
 
   return (
+    <>
     <MobileSheet
       open={isOpen}
       onClose={onClose}
@@ -312,5 +321,20 @@ export function HabitModal({
             </div>
       </div>
     </MobileSheet>
+    <ConfirmSheet
+      request={
+        confirmDelete
+          ? {
+              title: "Delete this habit?",
+              message: "You can undo from the toast for a few seconds.",
+              confirmLabel: "Delete",
+              tone: "danger",
+            }
+          : null
+      }
+      onCancel={() => setConfirmDelete(false)}
+      onConfirm={confirmDeleteHabit}
+    />
+    </>
   )
 }

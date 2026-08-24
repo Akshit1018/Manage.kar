@@ -6,6 +6,7 @@ import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useBodyScrollLock } from "@/lib/ui/use-body-scroll-lock"
+import { useVisualViewportInset } from "@/lib/ui/use-visual-viewport"
 
 interface MobileSheetProps {
   open: boolean
@@ -34,6 +35,7 @@ export function MobileSheet({
   const descriptionId = useId()
   const [mounted, setMounted] = useState(false)
   useBodyScrollLock(open)
+  useVisualViewportInset(open)
 
   useEffect(() => {
     setMounted(true)

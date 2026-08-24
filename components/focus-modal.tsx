@@ -1,12 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Play, Pause, Square, Timer, Brain, Coffee, Target, TrendingUp, Clock, Zap } from "lucide-react"
+import { Play, Pause, Square, Timer, Brain, Coffee, Target, TrendingUp, Clock } from "lucide-react"
+import { MobileSheet } from "@/components/mobile-sheet"
 import type { ActiveFocus, FocusType, Workspace } from "@/lib/domain/types"
 import { allocateEntityId } from "@/lib/store/workspace"
 import { localDateKey } from "@/lib/dates/due-date"
@@ -165,18 +165,8 @@ export function FocusModal({ isOpen, onClose, workspace, persist }: FocusModalPr
   const todaysSessions = sessions.filter((session) => localDateKey(new Date(session.startTime)) === today)
   const left = active ? remainingSeconds(active, now) : 0
 
-  if (!isOpen) return null
-
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold font-sans flex items-center gap-2">
-            <Zap className="h-6 w-6 text-primary" />
-            Focus
-          </DialogTitle>
-        </DialogHeader>
-
+    <MobileSheet open={isOpen} onClose={onClose} title="Focus">
         <div className="space-y-6">
           <div className="grid grid-cols-3 gap-3">
             <Card className="glass-card p-3 rounded-xl text-center">
@@ -282,7 +272,6 @@ export function FocusModal({ isOpen, onClose, workspace, persist }: FocusModalPr
             </div>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+    </MobileSheet>
   )
 }

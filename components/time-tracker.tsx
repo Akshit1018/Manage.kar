@@ -1,14 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Clock, Play, Pause, Square, Timer, BarChart3, Calendar } from "lucide-react"
+import { Play, Pause, Square, Timer, BarChart3, Calendar } from "lucide-react"
+import { MobileSheet } from "@/components/mobile-sheet"
 import type { TimeEntry, Workspace } from "@/lib/domain/types"
 import { allocateEntityId } from "@/lib/store/workspace"
 import { localDateKey } from "@/lib/dates/due-date"
@@ -147,18 +147,8 @@ export function TimeTracker({ isOpen, onClose, workspace, persist }: TimeTracker
       .sort((a, b) => b.time - a.time)
   }
 
-  if (!isOpen) return null
-
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-4xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-bold font-sans flex items-center gap-2">
-            <Clock className="h-6 w-6 text-primary" />
-            Time Tracker
-          </DialogTitle>
-        </DialogHeader>
-
+    <MobileSheet open={isOpen} onClose={onClose} title="Time tracker" wide>
         <div className="space-y-6">
           <Card className="glass-card p-6 rounded-2xl">
             <div className="text-center space-y-4">
@@ -280,7 +270,6 @@ export function TimeTracker({ isOpen, onClose, workspace, persist }: TimeTracker
             </div>
           </Card>
         </div>
-      </DialogContent>
-    </Dialog>
+    </MobileSheet>
   )
 }

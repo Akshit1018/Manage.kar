@@ -378,7 +378,9 @@
     max-height: 100dvh;
     overflow: hidden;
     padding: 0;
+    padding-bottom: var(--mk-keyboard, 0px);
     transform: none;
+    transition: padding-bottom 0.12s ease;
   }
 
   @supports (height: 100svh) {

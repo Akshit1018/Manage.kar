@@ -11,6 +11,7 @@ import { Repeat, Bell, Plus, X, Trash2, ChevronDown, ChevronUp, Settings } from 
 import { cn } from "@/lib/utils"
 import type { RecurringRule, Task } from "@/lib/domain/types"
 import { localDateKey, normalizeDueDate } from "@/lib/dates/due-date"
+import { ConfirmSheet } from "@/components/confirm-sheet"
 import { MobileSheet } from "@/components/mobile-sheet"
 
 interface TaskModalProps {
@@ -36,6 +37,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode }: Tas
   const [titleError, setTitleError] = useState("")
   const [newChecklistItem, setNewChecklistItem] = useState("")
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
     if (task && mode === "edit") {
@@ -62,6 +64,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode }: Tas
       })
     }
     setTitleError("")
+    setConfirmDelete(false)
   }, [task, mode, isOpen])
 
   const handleSave = () => {
@@ -89,10 +92,15 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode }: Tas
     if (!task || !onDelete) {
       return
     }
-    if (!window.confirm("Delete this task? You can undo from the toast for a few seconds.")) {
+    setConfirmDelete(true)
+  }
+
+  const confirmDeleteTask = () => {
+    if (!task || !onDelete) {
       return
     }
     onDelete(task.id)
+    setConfirmDelete(false)
     onClose()
   }
 
@@ -129,6 +137,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode }: Tas
   }
 
   return (
+    <>
     <MobileSheet
       open={isOpen}
       onClose={onClose}
@@ -323,5 +332,20 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode }: Tas
             </div>
       </div>
     </MobileSheet>
+    <ConfirmSheet
+      request={
+        confirmDelete
+          ? {
+              title: "Delete this task?",
+              message: "You can undo from the toast for a few seconds.",
+              confirmLabel: "Delete",
+              tone: "danger",
+            }
+          : null
+      }
+      onCancel={() => setConfirmDelete(false)}
+      onConfirm={confirmDeleteTask}
+    />
+    </>
   )
 }

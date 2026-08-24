@@ -13,6 +13,8 @@ Every overlay now:
 - Fills the visual viewport on widths under 640px (iPhone 17 family included)
 - Respects `viewport-fit=cover` and `env(safe-area-inset-*)`
 - Uses 44px minimum touch targets
+- Lifts with `--mk-keyboard` from `visualViewport` so the footer stays above the iOS keyboard
+- Settings, profile, focus, goals, time, counts, clipboard, and confirms use the same sheet — not `window.confirm` and not a 70vh Radix card
 
 ## iPhone 17 family CSS viewports
 

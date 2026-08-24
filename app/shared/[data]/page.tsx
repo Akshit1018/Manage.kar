@@ -12,6 +12,7 @@ import { SHARE_EXPIRED_ERROR, decodeSharePayload, type SharePayload } from "@/li
 import { decodeEncryptedSharePayload, isEncryptedShareToken } from "@/lib/share/secret"
 import { importSharedTasks } from "@/lib/share/import-tasks"
 import { recordBrowserEvent } from "@/lib/analytics/local-events"
+import { ConfirmSheet } from "@/components/confirm-sheet"
 import { browserStorage, loadWorkspace, notifyWorkspaceChanged, replaceWorkspace } from "@/lib/store/workspace"
 
 export default function SharedTasksPage() {
@@ -23,6 +24,7 @@ export default function SharedTasksPage() {
   const [needsPassword, setNeedsPassword] = useState(false)
   const [password, setPassword] = useState("")
   const [unlocking, setUnlocking] = useState(false)
+  const [confirmImport, setConfirmImport] = useState(false)
   const encodedData = decodeURIComponent(String(params.data ?? ""))
 
   useEffect(() => {
@@ -57,11 +59,11 @@ export default function SharedTasksPage() {
     if (!sharedData) {
       return
     }
-    if (
-      !window.confirm(
-        `Import ${sharedData.tasks.length} task(s) from ${sharedData.userName} into this device's workspace?`,
-      )
-    ) {
+    setConfirmImport(true)
+  }
+
+  const confirmImportTasks = () => {
+    if (!sharedData) {
       return
     }
     const storage = browserStorage()
@@ -74,6 +76,7 @@ export default function SharedTasksPage() {
     } else {
       toast(`Imported ${result.imported} task${result.imported === 1 ? "" : "s"}.`)
     }
+    setConfirmImport(false)
     router.push("/")
   }
 
@@ -211,6 +214,20 @@ export default function SharedTasksPage() {
           </div>
         </div>
       )}
+      <ConfirmSheet
+        request={
+          confirmImport
+            ? {
+                title: "Import these tasks?",
+                message: `Import ${sharedData.tasks.length} task(s) from ${sharedData.userName} into this device's workspace?`,
+                confirmLabel: "Import",
+                tone: "neutral",
+              }
+            : null
+        }
+        onCancel={() => setConfirmImport(false)}
+        onConfirm={confirmImportTasks}
+      />
     </div>
   )
 }
