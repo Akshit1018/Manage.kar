@@ -16,6 +16,7 @@ class GoalsScreen extends StatelessWidget {
         return Scaffold(
           appBar: AppBar(title: const Text("Goals")),
           floatingActionButton: FloatingActionButton(
+            tooltip: "Add goal",
             onPressed: () => openGoalEditor(context, workspace),
             child: const Icon(Icons.add),
           ),

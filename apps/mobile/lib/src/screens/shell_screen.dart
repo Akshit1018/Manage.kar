@@ -237,7 +237,11 @@ class _ListTab extends StatelessWidget {
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(title: Text(title)),
-        floatingActionButton: FloatingActionButton(onPressed: onAdd, child: const Icon(Icons.add)),
+        floatingActionButton: FloatingActionButton(
+          tooltip: "Add $title",
+          onPressed: onAdd,
+          child: const Icon(Icons.add),
+        ),
         body: items.isEmpty
             ? Center(child: Text(empty))
             : ListView.builder(
@@ -272,7 +276,11 @@ class _HabitsTab extends StatelessWidget {
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(title: const Text("Habits")),
-        floatingActionButton: FloatingActionButton(onPressed: () => openHabitEditor(context, workspace), child: const Icon(Icons.add)),
+        floatingActionButton: FloatingActionButton(
+          tooltip: "Add habit",
+          onPressed: () => openHabitEditor(context, workspace),
+          child: const Icon(Icons.add),
+        ),
         body: workspace.habits.isEmpty
             ? const Center(child: Text("Add one habit you can keep."))
             : ListView(
