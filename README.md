@@ -1,8 +1,13 @@
 # Manage.kar
 
-Local-first personal workspace for **tasks, notes, and habits**.
+Personal workspace for **tasks, notes, and habits**.
 
-Your data lives in this browser (`managekar.workspace.v1`) unless you export it. There is no account and no live team backend.
+There are two clients:
+
+- **Flutter (iOS first, Android too, plus web)** in `apps/mobile` — this is the native product. It talks to PostgreSQL through `apps/api`. Run `flutter run -d web-server` to test that same client in a browser.
+- **Next.js PWA** at the repo root — the original local-first web app. It still uses `localStorage` and is the web reference.
+
+Native setup, permission modules, and VPS compose: [`docs/NATIVE_CONVERSION.md`](docs/NATIVE_CONVERSION.md).
 
 ## Run
 
@@ -17,6 +22,18 @@ pnpm build
 ```
 
 ## What works
+
+**Flutter + PostgreSQL (native product)**
+
+- Email/password account, JWT, every row scoped by user
+- Tasks, notes, habits, goals, time, focus, profile, settings
+- Real microphone permission + multipart voice files
+- Flutter **web** for browser testing (`flutter run -d web-server`) against the same API
+- Local iOS/Android notification permission (not a push server)
+- Export / import a Manage.kar JSON backup against the account
+- Plain-text share through the system share sheet
+
+**Next.js PWA (web reference)**
 
 - Create / edit / complete / delete tasks and notes
 - Habits with a written history entry; frequency and custom days are enforced
