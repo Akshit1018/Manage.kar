@@ -392,4 +392,44 @@ describe("workspace store", () => {
       expect(parsed.workspace.profile.name).toBe("Imported User")
     }
   })
+
+  it("seeds place labels on a new workspace", () => {
+    const workspace = createEmptyWorkspace()
+    expect(workspace.labels.map((label) => `${label.kind}:${label.name}`)).toEqual([
+      "place:errand",
+      "place:home",
+      "place:office",
+      "place:phone",
+    ])
+  })
+
+  it("seeds places and turns leftover mentions into person labels on load", () => {
+    const storage = new MemoryStore()
+    storage.setItem(
+      WORKSPACE_KEY,
+      JSON.stringify({
+        schemaVersion: 1,
+        tasks: [
+          {
+            id: 1,
+            title: "Call",
+            completed: false,
+            priority: "medium",
+            dueDate: "2026-08-27",
+            mentions: ["john"],
+            assignedTo: ["sarah"],
+          },
+        ],
+        notes: [],
+        habits: [],
+      }),
+    )
+
+    const loaded = loadWorkspace(storage)
+    expect(loaded.labels.some((label) => label.name === "home" && label.kind === "place")).toBe(true)
+    expect(loaded.labels.some((label) => label.name === "john" && label.kind === "person")).toBe(true)
+    expect(loaded.labels.some((label) => label.name === "sarah" && label.kind === "person")).toBe(true)
+    const people = loaded.labels.filter((label) => label.kind === "person")
+    expect(loaded.tasks[0]?.labelIds).toEqual(expect.arrayContaining(people.map((label) => label.id)))
+  })
 })

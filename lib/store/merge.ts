@@ -137,6 +137,7 @@ export function mergeWorkspaces(current: Workspace, incoming: Workspace): Worksp
     schemaVersion: 1,
     updatedAt: newer.updatedAt,
     nextEntityId: Math.max(current.nextEntityId || 1, incoming.nextEntityId || 1),
+    labels: mergeById(current.labels ?? [], incoming.labels ?? [], []),
     tasks: mergeById(current.tasks, incoming.tasks, deletedIds.tasks),
     notes: mergeById(current.notes, incoming.notes, deletedIds.notes),
     habits: mergeById(current.habits, incoming.habits, deletedIds.habits),
@@ -156,6 +157,7 @@ export function sameWorkspaceEntities(left: Workspace, right: Workspace): boolea
   const pick = (workspace: Workspace) =>
     JSON.stringify({
       nextEntityId: workspace.nextEntityId,
+      labels: sortById(workspace.labels ?? []),
       tasks: sortById(workspace.tasks),
       notes: sortById(workspace.notes),
       habits: sortById(workspace.habits),

@@ -40,7 +40,9 @@ import { TodaySection } from "@/components/workspace/today-section"
 import { TaskList } from "@/components/workspace/task-list"
 import { NoteList } from "@/components/workspace/note-list"
 import { HabitList } from "@/components/workspace/habit-list"
-import type { Habit, Note, Task } from "@/lib/domain/types"
+import type { Habit, LabelKind, Note, Task, WorkspaceLabel } from "@/lib/domain/types"
+import { attachUnknownTokensAsTags, parseAtTokens, uniqueLabelIds, upsertLabel } from "@/lib/labels/book"
+import { matchesLabelSearch } from "@/lib/labels/query"
 import { useWorkspace } from "@/lib/store/use-workspace"
 import { allocateEntityId } from "@/lib/store/workspace"
 import { recordBrowserEvent } from "@/lib/analytics/local-events"
@@ -148,27 +150,48 @@ export default function Dashboard() {
     })
   }
 
+  const upsertWorkspaceLabel = (name: string, kind: LabelKind): WorkspaceLabel => {
+    let created: WorkspaceLabel | undefined
+    persist((current) => {
+      let nextId = current.nextEntityId
+      const result = upsertLabel(current.labels ?? [], name, kind, () => nextId++)
+      created = result.label
+      return { ...current, labels: result.labels, nextEntityId: Math.max(nextId, current.nextEntityId) }
+    })
+    return created as WorkspaceLabel
+  }
+
   const handleSaveTask = (taskData: Omit<Task, "id"> | Task) => {
     persist((current) => {
       const title = taskData.title.trim()
       const dueDate = normalizeDueDate(taskData.dueDate, new Date(), weekStartsOn)
+      const allocated = "id" in taskData ? { workspace: current, id: taskData.id } : allocateEntityId(current)
+      let nextId = allocated.workspace.nextEntityId
+      const tagged = attachUnknownTokensAsTags(
+        allocated.workspace.labels ?? [],
+        parseAtTokens(`${title} ${taskData.description ?? ""}`),
+        () => nextId++,
+      )
+      const labelIds = uniqueLabelIds(taskData.labelIds, tagged.ids)
+      const nextTask = { ...taskData, title, dueDate, labelIds }
       if ("id" in taskData) {
         return {
-          ...current,
-          tasks: current.tasks.map((task) => (task.id === taskData.id ? { ...taskData, title, dueDate } : task)),
+          ...allocated.workspace,
+          labels: tagged.labels,
+          nextEntityId: Math.max(nextId, allocated.workspace.nextEntityId),
+          tasks: allocated.workspace.tasks.map((task) => (task.id === taskData.id ? { ...task, ...nextTask } : task)),
         }
       }
-      const allocated = allocateEntityId(current)
       recordBrowserEvent("task_created")
       return {
         ...allocated.workspace,
+        labels: tagged.labels,
+        nextEntityId: Math.max(nextId, allocated.workspace.nextEntityId),
         tasks: [
           ...allocated.workspace.tasks,
           {
-            ...taskData,
+            ...nextTask,
             id: allocated.id,
-            title,
-            dueDate,
           },
         ],
       }
@@ -198,6 +221,14 @@ export default function Dashboard() {
     let noteId = "id" in noteData ? noteData.id : 0
     persist((current) => {
       const title = noteData.title.trim()
+      const allocated = "id" in noteData ? { workspace: current, id: noteData.id } : allocateEntityId(current)
+      let nextId = allocated.workspace.nextEntityId
+      const tagged = attachUnknownTokensAsTags(
+        allocated.workspace.labels ?? [],
+        parseAtTokens(`${title} ${noteData.content}`),
+        () => nextId++,
+      )
+      const labelIds = uniqueLabelIds(noteData.labelIds, tagged.ids)
       if ("id" in noteData) {
         const voiceNote = extras?.voiceBlob
           ? {
@@ -206,12 +237,16 @@ export default function Dashboard() {
               duration: extras.voiceDuration ?? noteData.voiceNote?.duration ?? 0,
             }
           : noteData.voiceNote
+        noteId = noteData.id
         return {
-          ...current,
-          notes: current.notes.map((note) => (note.id === noteData.id ? { ...noteData, title, voiceNote } : note)),
+          ...allocated.workspace,
+          labels: tagged.labels,
+          nextEntityId: Math.max(nextId, allocated.workspace.nextEntityId),
+          notes: allocated.workspace.notes.map((note) =>
+            note.id === noteData.id ? { ...noteData, title, voiceNote, labelIds } : note,
+          ),
         }
       }
-      const allocated = allocateEntityId(current)
       noteId = allocated.id
       const voiceNote = extras?.voiceBlob
         ? {
@@ -222,6 +257,8 @@ export default function Dashboard() {
         : noteData.voiceNote
       return {
         ...allocated.workspace,
+        labels: tagged.labels,
+        nextEntityId: Math.max(nextId, allocated.workspace.nextEntityId),
         notes: [
           ...allocated.workspace.notes,
           {
@@ -230,6 +267,7 @@ export default function Dashboard() {
             title,
             createdAt: new Date().toISOString(),
             voiceNote,
+            labelIds,
           },
         ],
       }
@@ -454,11 +492,16 @@ export default function Dashboard() {
   const query = searchQuery.toLowerCase()
   const searchedTasks = tasks.filter(
     (task) =>
-      task.title.toLowerCase().includes(query) || task.description?.toLowerCase().includes(query),
+      task.title.toLowerCase().includes(query) ||
+      task.description?.toLowerCase().includes(query) ||
+      matchesLabelSearch(searchQuery, workspace.labels, task.labelIds),
   )
   const filteredTasks = filterTasks(searchedTasks, taskFilter)
   const filteredNotes = notes.filter(
-    (note) => note.title.toLowerCase().includes(query) || note.content.toLowerCase().includes(query),
+    (note) =>
+      note.title.toLowerCase().includes(query) ||
+      note.content.toLowerCase().includes(query) ||
+      matchesLabelSearch(searchQuery, workspace.labels, note.labelIds),
   )
   const filteredHabits = habits.filter(
     (habit) => habit.name.toLowerCase().includes(query) || habit.description?.toLowerCase().includes(query),
@@ -626,6 +669,7 @@ export default function Dashboard() {
               tasks={tasks}
               todayTasks={todayTasks}
               todayHabits={todayHabits}
+              labels={workspace.labels}
               dateFormat={dateFormat}
               onToggleTask={handleTaskToggle}
               onEditTask={(task) => setTaskModal({ isOpen: true, mode: "edit", task })}
@@ -640,6 +684,7 @@ export default function Dashboard() {
             tasks={filteredTasks}
             filter={taskFilter}
             searchQuery={searchQuery}
+            labels={workspace.labels}
             dateFormat={dateFormat}
             isSelectionMode={isSelectionMode}
             selectedTasks={selectedTasks}
@@ -661,6 +706,7 @@ export default function Dashboard() {
           <NoteList
             notes={filteredNotes}
             searchQuery={searchQuery}
+            labels={workspace.labels}
             dateFormat={dateFormat}
             onAddNote={() => setNoteModal({ isOpen: true, mode: "create" })}
             onEditNote={(note) => setNoteModal({ isOpen: true, mode: "edit", note })}
@@ -725,6 +771,8 @@ export default function Dashboard() {
         onDelete={handleDeleteTask}
         task={taskModal.task}
         mode={taskModal.mode}
+        labels={workspace.labels}
+        onUpsertLabel={upsertWorkspaceLabel}
       />
       <NoteModal
         isOpen={noteModal.isOpen}
@@ -733,6 +781,8 @@ export default function Dashboard() {
         onDelete={handleDeleteNote}
         note={noteModal.note}
         mode={noteModal.mode}
+        labels={workspace.labels}
+        onUpsertLabel={upsertWorkspaceLabel}
       />
       <VoiceRecorder
         open={voiceRecorderOpen}

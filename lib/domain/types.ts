@@ -7,6 +7,13 @@ export type GoalCategory = "personal" | "work" | "health" | "learning" | "financ
 export type GoalStatus = "active" | "completed" | "paused"
 export type FocusType = "pomodoro" | "deep-work" | "break" | "custom"
 export type DateFormat = "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD"
+export type LabelKind = "place" | "tag" | "person"
+
+export interface WorkspaceLabel {
+  id: number
+  name: string
+  kind: LabelKind
+}
 
 export interface TaskChecklistItem {
   id: number
@@ -24,6 +31,7 @@ export interface Task {
   recurring?: RecurringRule
   reminders?: boolean
   checklist?: TaskChecklistItem[]
+  labelIds?: number[]
   updatedAt?: string
 }
 
@@ -38,6 +46,7 @@ export interface Note {
     transcription: string
     duration: number
   }
+  labelIds?: number[]
 }
 
 export interface Habit {
@@ -155,6 +164,7 @@ export interface Workspace {
   schemaVersion: 1
   updatedAt: string
   nextEntityId: number
+  labels: WorkspaceLabel[]
   tasks: Task[]
   notes: Note[]
   habits: Habit[]
