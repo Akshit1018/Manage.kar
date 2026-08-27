@@ -24,9 +24,10 @@ interface VoiceRecorderProps {
   onClose: () => void
   onSave: (result: VoiceRecordingResult) => void
   onSaveAsTask?: (text: string) => void
+  autoStart?: boolean
 }
 
-export function VoiceRecorder({ open, onClose, onSave, onSaveAsTask }: VoiceRecorderProps) {
+export function VoiceRecorder({ open, onClose, onSave, onSaveAsTask, autoStart = false }: VoiceRecorderProps) {
   const [phase, setPhase] = useState<VoicePhase>("idle")
   const [seconds, setSeconds] = useState(0)
   const [transcript, setTranscript] = useState("")
@@ -175,6 +176,12 @@ export function VoiceRecorder({ open, onClose, onSave, onSaveAsTask }: VoiceReco
       setPhase(kind === "unsupported" ? "unsupported" : "denied")
     }
   }
+
+  useEffect(() => {
+    if (open && autoStart) {
+      void requestMic()
+    }
+  }, [open, autoStart])
 
   const pauseOrResume = () => {
     const recorder = mediaRecorderRef.current

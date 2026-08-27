@@ -444,24 +444,6 @@ export default function Dashboard() {
     })
   }
 
-  const handleSpeechToText = (text: string) => {
-    persist((current) => {
-      const allocated = allocateEntityId(current)
-      return {
-        ...allocated.workspace,
-        notes: [
-          ...allocated.workspace.notes,
-          {
-            id: allocated.id,
-            title: clipTitle(text, 30),
-            content: text,
-            createdAt: new Date().toISOString(),
-          },
-        ],
-      }
-    })
-  }
-
   const handleVoiceTask = (text: string) => {
     persist((current) => {
       const allocated = allocateEntityId(current)
@@ -751,15 +733,9 @@ export default function Dashboard() {
       </nav>
 
       <FloatingToggle
-        tasks={tasks}
-        notes={notes}
-        onTaskToggle={handleTaskToggle}
         onAddTask={() => setTaskModal({ isOpen: true, mode: "create" })}
         onAddNote={() => setNoteModal({ isOpen: true, mode: "create" })}
-        onEditTask={(task) => setTaskModal({ isOpen: true, mode: "edit", task })}
-        onEditNote={(note) => setNoteModal({ isOpen: true, mode: "edit", note })}
         onVoiceNote={handleVoiceNote}
-        onSpeechToText={handleSpeechToText}
         onCreateTaskFromVoice={handleVoiceTask}
         onStartFocus={() => setFocusModal(true)}
       />

@@ -31,7 +31,7 @@ Sources: [iOS Ref resolutions](https://iosref.com/res), [iOS Resolution — iPho
 
 ## How the notepad voice path works
 
-1. Open a note, tap **Record a voice note**, or long-press / tap **Voice** on the + control.
+1. Open a note and tap **Record a voice note**, or long-press the floating orb. A short tap on the orb shows the small Task / Note / Focus icons.
 2. The recorder is a full-screen dark sheet with a large red bowl, elapsed clock, and stop/pause/discard — Voice Memos-shaped, not a tiny card on the list.
 3. A tap calls `navigator.mediaDevices.getUserMedia({ audio: true })`. Safari or Chrome shows the site microphone prompt.
 4. `MediaRecorder` writes audio. Safari-class browsers prefer `audio/mp4`; Chromium prefers `audio/webm`.
