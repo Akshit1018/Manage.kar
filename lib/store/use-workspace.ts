@@ -90,7 +90,15 @@ export function useWorkspace() {
   }, [])
 
   useEffect(() => {
-    reload()
+    try {
+      reload()
+    } catch {
+      applyLoaded({
+        status: "empty",
+        workspace: createEmptyWorkspace(),
+        dropped: emptyDropped(),
+      })
+    }
     const onStorage = (event: StorageEvent) => {
       if (event.key !== WORKSPACE_KEY && event.key !== null) {
         return
