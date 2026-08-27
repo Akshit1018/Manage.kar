@@ -1,3 +1,4 @@
+import "package:dio/dio.dart";
 import "package:flutter/foundation.dart";
 import "package:managekar/src/api/api_client.dart";
 
@@ -45,7 +46,7 @@ class SessionController extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (err) {
-      error = err.toString().replaceFirst("DioException [unknown]: ", "");
+      error = _readableAuthError(err);
       busy = false;
       notifyListeners();
       return false;
@@ -57,4 +58,17 @@ class SessionController extends ChangeNotifier {
     user = null;
     notifyListeners();
   }
+}
+
+String _readableAuthError(Object err) {
+  if (err is DioException) {
+    final data = err.response?.data;
+    if (data is Map && data["error"] is String) {
+      return data["error"] as String;
+    }
+    if (err.type == DioExceptionType.connectionError || err.type == DioExceptionType.connectionTimeout) {
+      return "Cannot reach the API. Check that the server is running.";
+    }
+  }
+  return err.toString();
 }

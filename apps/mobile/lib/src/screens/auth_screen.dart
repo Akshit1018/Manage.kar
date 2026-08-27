@@ -1,6 +1,9 @@
 import "package:flutter/material.dart";
 import "package:managekar/src/state/session.dart";
 
+const demoEmail = "demo@managekar.app";
+const demoPassword = "Demo12345";
+
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key, required this.session, required this.onAuthed});
 
@@ -34,6 +37,18 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
+  Future<void> skipToDemo() async {
+    email.text = demoEmail;
+    password.text = demoPassword;
+    var ok = await widget.session.login(demoEmail, demoPassword);
+    if (!ok) {
+      ok = await widget.session.register(demoEmail, demoPassword, "Demo");
+    }
+    if (ok) {
+      widget.onAuthed();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -50,24 +65,31 @@ class _AuthScreenState extends State<AuthScreen> {
                 const Text("Tasks, notes, and habits on your account. Data lives in PostgreSQL."),
                 const SizedBox(height: 28),
                 if (register) ...[
-                  TextField(
+                  _AuthField(
                     controller: name,
-                    decoration: const InputDecoration(labelText: "Name"),
+                    label: "Name",
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: 12),
                 ],
-                TextField(
+                _AuthField(
                   controller: email,
-                  decoration: const InputDecoration(labelText: "Email"),
+                  label: "Email",
+                  autofocus: true,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
                 ),
                 const SizedBox(height: 12),
-                TextField(
+                _AuthField(
                   controller: password,
-                  decoration: const InputDecoration(labelText: "Password"),
+                  label: "Password",
                   obscureText: true,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) {
+                    if (!widget.session.busy) {
+                      submit();
+                    }
+                  },
                 ),
                 if (widget.session.error != null) ...[
                   const SizedBox(height: 12),
@@ -78,6 +100,11 @@ class _AuthScreenState extends State<AuthScreen> {
                   onPressed: widget.session.busy ? null : submit,
                   child: Text(register ? "Create account" : "Sign in"),
                 ),
+                const SizedBox(height: 8),
+                OutlinedButton(
+                  onPressed: widget.session.busy ? null : skipToDemo,
+                  child: const Text("Skip to demo login"),
+                ),
                 TextButton(
                   onPressed: () => setState(() => register = !register),
                   child: Text(register ? "I already have an account" : "Create an account"),
@@ -87,6 +114,47 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
         );
       },
+    );
+  }
+}
+
+class _AuthField extends StatelessWidget {
+  const _AuthField({
+    required this.controller,
+    required this.label,
+    this.obscureText = false,
+    this.autofocus = false,
+    this.keyboardType,
+    this.textInputAction,
+    this.onSubmitted,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final bool obscureText;
+  final bool autofocus;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      autofocus: autofocus,
+      obscureText: obscureText,
+      enableInteractiveSelection: true,
+      autocorrect: false,
+      enableSuggestions: false,
+      smartDashesType: SmartDashesType.disabled,
+      smartQuotesType: SmartQuotesType.disabled,
+      keyboardType: keyboardType ?? (obscureText ? TextInputType.visiblePassword : TextInputType.text),
+      textInputAction: textInputAction,
+      onSubmitted: onSubmitted,
+      contextMenuBuilder: (context, state) {
+        return AdaptiveTextSelectionToolbar.editableText(editableTextState: state);
+      },
+      decoration: InputDecoration(labelText: label),
     );
   }
 }

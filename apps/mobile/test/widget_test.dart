@@ -9,5 +9,6 @@ void main() {
     expect(find.text("Manage.kar"), findsOneWidget);
     expect(find.text("Email"), findsOneWidget);
     expect(find.text("Sign in"), findsOneWidget);
+    expect(find.text("Skip to demo login"), findsOneWidget);
   });
 }
