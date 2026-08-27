@@ -1,62 +1,45 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
+import { CheckSquare, Clock, FileText, Mic, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import {
-  Plus,
-  X,
-  CheckSquare,
-  FileText,
-  Circle,
-  CheckCircle2,
-  Calendar,
-  Clock,
-  Edit,
-  Mic,
-  Volume2,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import type { Note, Task } from "@/lib/domain/types"
-import { MobileSheet } from "@/components/mobile-sheet"
 import { VoiceRecorder } from "@/components/voice-recorder"
+import { cn } from "@/lib/utils"
+import {
+  ICON_BAR_MS,
+  LONG_PRESS_MS,
+  clampOrbPosition,
+  defaultOrbPosition,
+  iconBarPosition,
+  movementExceeded,
+  orbReleaseAction,
+} from "@/lib/ui/orb-gesture"
 
 interface FloatingToggleProps {
-  tasks?: Task[]
-  notes?: Note[]
-  onTaskToggle?: (taskId: number) => void
   onAddTask?: () => void
   onAddNote?: () => void
-  onEditTask?: (task: Task) => void
-  onEditNote?: (note: Note) => void
   onVoiceNote?: (audioBlob: Blob, transcription: string, duration?: number) => void
-  onSpeechToText?: (text: string) => void
   onCreateTaskFromVoice?: (text: string) => void
   onStartFocus?: () => void
 }
 
 export function FloatingToggle({
-  tasks = [],
-  notes = [],
-  onTaskToggle,
   onAddTask,
   onAddNote,
-  onEditTask,
-  onEditNote,
   onVoiceNote,
   onCreateTaskFromVoice,
   onStartFocus,
 }: FloatingToggleProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<"tasks" | "notes">("tasks")
   const [recorderOpen, setRecorderOpen] = useState(false)
+  const [showIconBar, setShowIconBar] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
-  const [hasMoved, setHasMoved] = useState(false)
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const longPressTimer = useRef<number | null>(null)
+  const hideTimer = useRef<number | null>(null)
+  const dragStartRef = useRef({ x: 0, y: 0 })
+  const originRef = useRef({ x: 0, y: 0 })
   const movedRef = useRef(false)
-  const recorderRef = useRef(false)
+  const longPressFiredRef = useRef(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -65,12 +48,19 @@ export function FloatingToggle({
       try {
         const parsed = JSON.parse(saved) as { x: number; y: number }
         if (typeof parsed.x === "number" && typeof parsed.y === "number") {
-          setPosition(parsed)
+          setPosition(
+            clampOrbPosition(parsed.x, parsed.y, {
+              width: window.innerWidth,
+              height: window.innerHeight,
+            }),
+          )
+          return
         }
       } catch {
-        setPosition(null)
+        // Fall through to the default corner.
       }
     }
+    setPosition(defaultOrbPosition({ width: window.innerWidth, height: window.innerHeight }))
   }, [])
 
   useEffect(() => {
@@ -86,38 +76,90 @@ export function FloatingToggle({
     }
   }
 
+  const clearHideTimer = () => {
+    if (hideTimer.current) {
+      window.clearTimeout(hideTimer.current)
+      hideTimer.current = null
+    }
+  }
+
+  const revealIconBar = () => {
+    setShowIconBar(true)
+    clearHideTimer()
+    hideTimer.current = window.setTimeout(() => {
+      setShowIconBar(false)
+    }, ICON_BAR_MS)
+  }
+
+  const hideIconBarSoon = () => {
+    clearHideTimer()
+    hideTimer.current = window.setTimeout(() => {
+      setShowIconBar(false)
+    }, 1000)
+  }
+
+  const resolvePosition = () => {
+    if (position) {
+      return position
+    }
+    return defaultOrbPosition({ width: window.innerWidth, height: window.innerHeight })
+  }
+
   const handleStart = (clientX: number, clientY: number) => {
+    const origin = resolvePosition()
+    originRef.current = origin
+    if (!position) {
+      setPosition(origin)
+    }
     setIsDragging(true)
-    setHasMoved(false)
     movedRef.current = false
-    recorderRef.current = false
-    const origin = position ?? { x: clientX - 28, y: clientY - 28 }
-    setDragStart({ x: clientX - origin.x, y: clientY - origin.y })
+    longPressFiredRef.current = false
+    dragStartRef.current = { x: clientX - origin.x, y: clientY - origin.y }
     longPressTimer.current = window.setTimeout(() => {
       if (!movedRef.current) {
-        recorderRef.current = true
+        longPressFiredRef.current = true
+        setShowIconBar(false)
         setRecorderOpen(true)
       }
-    }, 450)
+    }, LONG_PRESS_MS)
   }
 
   const handleMove = (clientX: number, clientY: number) => {
-    if (!isDragging) {
+    const next = {
+      x: clientX - dragStartRef.current.x,
+      y: clientY - dragStartRef.current.y,
+    }
+    if (!movedRef.current && !movementExceeded(next.x - originRef.current.x, next.y - originRef.current.y)) {
       return
     }
-    setHasMoved(true)
     movedRef.current = true
     clearLongPress()
-    setPosition({
-      x: Math.max(8, Math.min(window.innerWidth - 64, clientX - dragStart.x)),
-      y: Math.max(8, Math.min(window.innerHeight - 64, clientY - dragStart.y)),
-    })
+    setPosition(
+      clampOrbPosition(next.x, next.y, {
+        width: window.innerWidth,
+        height: window.innerHeight,
+      }),
+    )
   }
 
   const handleEnd = () => {
     clearLongPress()
     setIsDragging(false)
-    setHasMoved(false)
+    const action = orbReleaseAction({
+      moved: movedRef.current,
+      longPressFired: longPressFiredRef.current,
+    })
+    switch (action) {
+      case "show-icons":
+        revealIconBar()
+        break
+      case "ignore":
+        break
+      default: {
+        const _exhaustive: never = action
+        throw new Error(`Unhandled orb release: ${_exhaustive}`)
+      }
+    }
   }
 
   useEffect(() => {
@@ -128,6 +170,7 @@ export function FloatingToggle({
     const onTouchMove = (event: TouchEvent) => {
       const touch = event.touches[0]
       if (touch) {
+        event.preventDefault()
         handleMove(touch.clientX, touch.clientY)
       }
     }
@@ -142,22 +185,71 @@ export function FloatingToggle({
       document.removeEventListener("touchmove", onTouchMove)
       document.removeEventListener("touchend", end)
     }
-  }, [isDragging, dragStart, hasMoved, recorderOpen])
+  }, [isDragging])
 
-  const pendingTasks = tasks.filter((task) => !task.completed)
-  const completedTasks = tasks.filter((task) => task.completed)
+  useEffect(() => {
+    return () => {
+      clearLongPress()
+      clearHideTimer()
+    }
+  }, [])
+
+  const pick = (action?: () => void) => {
+    setShowIconBar(false)
+    clearHideTimer()
+    action?.()
+  }
+
+  const icons = position && showIconBar && !recorderOpen ? iconBarPosition(position) : null
 
   return (
     <>
+      {icons ? (
+        <div
+          className="fixed z-[80] flex items-center gap-2 rounded-full border border-border/50 bg-card/95 p-2 shadow-2xl backdrop-blur-xl"
+          style={{ left: icons.x, top: icons.y }}
+          onMouseEnter={clearHideTimer}
+          onMouseLeave={hideIconBarSoon}
+        >
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-10 w-10 rounded-full hover:bg-primary/20"
+            onClick={() => pick(onAddTask)}
+            title="Quick Task"
+            aria-label="Add task"
+          >
+            <CheckSquare className="h-4 w-4 text-primary" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-10 w-10 rounded-full hover:bg-green-500/20"
+            onClick={() => pick(onAddNote)}
+            title="Quick Note"
+            aria-label="Add note"
+          >
+            <FileText className="h-4 w-4 text-green-500" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-10 w-10 rounded-full hover:bg-orange-500/20"
+            onClick={() => pick(onStartFocus)}
+            title="Focus"
+            aria-label="Open focus timer"
+          >
+            <Clock className="h-4 w-4 text-orange-500" />
+          </Button>
+        </div>
+      ) : null}
+
       <Button
         ref={buttonRef}
         size="icon"
         aria-label="Add task, note, or voice"
-        onClick={() => {
-          if (movedRef.current || recorderRef.current) {
-            return
-          }
-          setIsOpen((value) => !value)
+        onClick={(event) => {
+          event.preventDefault()
         }}
         onMouseDown={(event) => {
           handleStart(event.clientX, event.clientY)
@@ -168,9 +260,19 @@ export function FloatingToggle({
             handleStart(touch.clientX, touch.clientY)
           }
         }}
+        onContextMenu={(event) => event.preventDefault()}
+        onMouseEnter={() => {
+          if (!recorderOpen) {
+            revealIconBar()
+          }
+        }}
+        onMouseLeave={hideIconBarSoon}
         className={cn(
-          "floating-button mk-touch fixed z-[70] h-14 w-14 rounded-full border-2 shadow-lg",
-          isOpen || recorderOpen ? "bg-primary text-primary-foreground" : "bg-primary/90 text-primary-foreground",
+          "mk-touch fixed z-[80] h-14 w-14 cursor-move rounded-full border-2 shadow-lg select-none",
+          "bg-primary/20 text-primary-foreground backdrop-blur-md border-primary/20",
+          "shadow-[0_0_20px_rgba(59,130,246,0.3)]",
+          isDragging || showIconBar ? "scale-105 bg-primary/80 border-primary/30" : "",
+          recorderOpen ? "scale-110 animate-pulse bg-red-500/95 border-red-400/50 text-white" : "",
         )}
         style={
           position
@@ -181,112 +283,13 @@ export function FloatingToggle({
               }
         }
       >
-        {isOpen ? <X className="h-6 w-6" /> : <Plus className="h-6 w-6" />}
+        {recorderOpen ? <Mic className="h-6 w-6" /> : <Plus className="h-6 w-6" />}
       </Button>
-
-      <MobileSheet open={isOpen && !recorderOpen} onClose={() => setIsOpen(false)} title="Quick add">
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
-            <Button className="mk-touch rounded-xl" onClick={() => { setIsOpen(false); onAddTask?.() }}>
-              <CheckSquare className="h-4 w-4 mr-2" />
-              Task
-            </Button>
-            <Button variant="outline" className="mk-touch rounded-xl bg-transparent" onClick={() => { setIsOpen(false); onAddNote?.() }}>
-              <FileText className="h-4 w-4 mr-2" />
-              Note
-            </Button>
-            <Button variant="outline" className="mk-touch rounded-xl bg-transparent" onClick={() => { setIsOpen(false); setRecorderOpen(true) }}>
-              <Mic className="h-4 w-4 mr-2" />
-              Voice
-            </Button>
-            <Button variant="outline" className="mk-touch rounded-xl bg-transparent" onClick={() => { setIsOpen(false); onStartFocus?.() }}>
-              <Clock className="h-4 w-4 mr-2" />
-              Focus
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-2 rounded-xl border">
-            <button
-              type="button"
-              className={cn("mk-touch rounded-l-xl text-sm", activeTab === "tasks" && "bg-primary/10 text-primary")}
-              onClick={() => setActiveTab("tasks")}
-            >
-              Tasks ({pendingTasks.length})
-            </button>
-            <button
-              type="button"
-              className={cn("mk-touch rounded-r-xl text-sm", activeTab === "notes" && "bg-primary/10 text-primary")}
-              onClick={() => setActiveTab("notes")}
-            >
-              Notes ({notes.length})
-            </button>
-          </div>
-
-          {activeTab === "tasks" ? (
-            <div className="space-y-2">
-              {pendingTasks.length === 0 && completedTasks.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No tasks yet.</p>
-              ) : null}
-              {pendingTasks.map((task) => (
-                <div key={task.id} className="flex items-center gap-3 rounded-xl border p-3">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="mk-touch rounded-full"
-                    onClick={() => onTaskToggle?.(task.id)}
-                    aria-label={`Complete ${task.title}`}
-                  >
-                    <Circle className="h-4 w-4" />
-                  </Button>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{task.title}</p>
-                    <div className="mt-1 flex items-center gap-2">
-                      <Badge variant={task.priority === "high" ? "destructive" : "secondary"}>{task.priority}</Badge>
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Calendar className="h-3 w-3" />
-                        {task.dueDate}
-                      </span>
-                    </div>
-                  </div>
-                  {onEditTask ? (
-                    <Button variant="ghost" size="icon" className="mk-touch" onClick={() => onEditTask(task)} aria-label={`Edit ${task.title}`}>
-                      <Edit className="h-3 w-3" />
-                    </Button>
-                  ) : null}
-                </div>
-              ))}
-              {completedTasks.slice(0, 3).map((task) => (
-                <div key={task.id} className="flex items-center gap-3 rounded-xl p-3 opacity-60">
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  <p className="truncate text-sm line-through">{task.title}</p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {notes.length === 0 ? <p className="text-sm text-muted-foreground">No notes yet. Record from the bowl.</p> : null}
-              {notes.map((note) => (
-                <button
-                  key={note.id}
-                  type="button"
-                  className="w-full rounded-xl border p-3 text-left"
-                  onClick={() => onEditNote?.(note)}
-                >
-                  <p className="truncate text-sm font-medium">
-                    {note.title}
-                    {note.voiceNote ? <Volume2 className="ml-2 inline h-3 w-3 text-blue-500" /> : null}
-                  </p>
-                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{note.content}</p>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </MobileSheet>
 
       <VoiceRecorder
         open={recorderOpen}
         onClose={() => setRecorderOpen(false)}
+        autoStart
         onSave={(result) => {
           onVoiceNote?.(result.blob, result.transcription, result.duration)
         }}
