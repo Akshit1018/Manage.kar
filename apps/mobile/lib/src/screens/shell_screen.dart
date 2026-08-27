@@ -12,6 +12,7 @@ import "package:managekar/src/state/session.dart";
 import "package:managekar/src/state/workspace.dart";
 import "package:managekar/src/util/format.dart";
 import "package:managekar/src/widgets/forms.dart";
+import "package:managekar/src/widgets/voice_orb.dart";
 
 class ShellScreen extends StatefulWidget {
   const ShellScreen({
@@ -80,7 +81,12 @@ class _ShellScreenState extends State<ShellScreen> {
           _HabitsTab(workspace: widget.workspace),
         ];
         return Scaffold(
-          body: pages[index],
+          body: Stack(
+            children: [
+              pages[index],
+              VoiceOrb(onTap: () => captureVoiceFromOrb(context, widget.workspace)),
+            ],
+          ),
           bottomNavigationBar: NavigationBar(
             selectedIndex: index,
             onDestinationSelected: (value) => setState(() => index = value),

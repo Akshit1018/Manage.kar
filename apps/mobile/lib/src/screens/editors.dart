@@ -6,6 +6,28 @@ import "package:managekar/src/widgets/forms.dart";
 
 const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
+Future<void> captureVoiceFromOrb(BuildContext context, WorkspaceController workspace) async {
+  final result = await openVoiceBowl(context);
+  if (result == null || !context.mounted) {
+    return;
+  }
+  final title = result.transcription.isEmpty ? "Voice note" : result.transcription;
+  final saved = await workspace.saveNote({
+    "title": title,
+    "content": result.transcription,
+  });
+  final id = saved?["id"] as String?;
+  if (id == null) {
+    return;
+  }
+  await workspace.uploadVoiceFile(
+    id,
+    result.path,
+    transcription: result.transcription,
+    duration: result.duration,
+  );
+}
+
 Future<void> openTaskEditor(BuildContext context, WorkspaceController workspace, [Map<String, dynamic>? task]) async {
   final title = TextEditingController(text: task?["title"] as String? ?? "");
   final due = TextEditingController(text: (task?["dueDate"] as String? ?? todayKey()).sliceDate());
