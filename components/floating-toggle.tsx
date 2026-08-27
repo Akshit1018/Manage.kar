@@ -31,6 +31,7 @@ export function FloatingToggle({
   onStartFocus,
 }: FloatingToggleProps) {
   const [recorderOpen, setRecorderOpen] = useState(false)
+  const [armed, setArmed] = useState(false)
   const [showIconBar, setShowIconBar] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null)
@@ -119,7 +120,7 @@ export function FloatingToggle({
       if (!movedRef.current) {
         longPressFiredRef.current = true
         setShowIconBar(false)
-        setRecorderOpen(true)
+        setArmed(true)
       }
     }, LONG_PRESS_MS)
   }
@@ -149,9 +150,14 @@ export function FloatingToggle({
       moved: movedRef.current,
       longPressFired: longPressFiredRef.current,
     })
+    setArmed(false)
     switch (action) {
       case "show-icons":
         revealIconBar()
+        break
+      case "record":
+        setShowIconBar(false)
+        setRecorderOpen(true)
         break
       case "ignore":
         break
@@ -272,7 +278,7 @@ export function FloatingToggle({
           "bg-primary/20 text-primary-foreground backdrop-blur-md border-primary/20",
           "shadow-[0_0_20px_rgba(59,130,246,0.3)]",
           isDragging || showIconBar ? "scale-105 bg-primary/80 border-primary/30" : "",
-          recorderOpen ? "scale-110 animate-pulse bg-red-500/95 border-red-400/50 text-white" : "",
+          armed || recorderOpen ? "scale-110 animate-pulse bg-red-500/95 border-red-400/50 text-white" : "",
         )}
         style={
           position
@@ -283,7 +289,7 @@ export function FloatingToggle({
               }
         }
       >
-        {recorderOpen ? <Mic className="h-6 w-6" /> : <Plus className="h-6 w-6" />}
+        {armed || recorderOpen ? <Mic className="h-6 w-6" /> : <Plus className="h-6 w-6" />}
       </Button>
 
       <VoiceRecorder

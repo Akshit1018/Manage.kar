@@ -3,15 +3,18 @@ export const ICON_BAR_MS = 3000
 export const DRAG_THRESHOLD_PX = 10
 export const ORB_SIZE = 56
 
-export type OrbReleaseAction = "show-icons" | "ignore"
+export type OrbReleaseAction = "show-icons" | "record" | "ignore"
 
 export function movementExceeded(dx: number, dy: number, threshold = DRAG_THRESHOLD_PX): boolean {
   return Math.hypot(dx, dy) >= threshold
 }
 
 export function orbReleaseAction(input: { moved: boolean; longPressFired: boolean }): OrbReleaseAction {
-  if (input.longPressFired || input.moved) {
+  if (input.moved) {
     return "ignore"
+  }
+  if (input.longPressFired) {
+    return "record"
   }
   return "show-icons"
 }

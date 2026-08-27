@@ -22,8 +22,8 @@ describe("orbReleaseAction", () => {
     expect(orbReleaseAction({ moved: false, longPressFired: false })).toBe("show-icons")
   })
 
-  it("does not toggle icons after a long-press record", () => {
-    expect(orbReleaseAction({ moved: false, longPressFired: true })).toBe("ignore")
+  it("records after a long-press, not the small icons", () => {
+    expect(orbReleaseAction({ moved: false, longPressFired: true })).toBe("record")
   })
 
   it("does not toggle icons after a drag", () => {
