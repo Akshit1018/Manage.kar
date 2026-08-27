@@ -2,12 +2,22 @@ import "package:dio/dio.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter_secure_storage/flutter_secure_storage.dart";
 
+String defaultApiBase() {
+  const fromEnv = String.fromEnvironment("API_BASE", defaultValue: "");
+  if (fromEnv.isNotEmpty) {
+    return fromEnv;
+  }
+  if (kIsWeb) {
+    return Uri.base.origin;
+  }
+  return "http://127.0.0.1:4000";
+}
+
 class ApiClient {
   ApiClient({String? baseUrl})
       : dio = Dio(
           BaseOptions(
-            baseUrl: baseUrl ??
-                const String.fromEnvironment("API_BASE", defaultValue: "http://127.0.0.1:4000"),
+            baseUrl: baseUrl ?? defaultApiBase(),
             connectTimeout: const Duration(seconds: 12),
             receiveTimeout: const Duration(seconds: 30),
           ),

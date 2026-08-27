@@ -19,6 +19,17 @@ flutter run -d web-server --web-hostname 0.0.0.0 --web-port 5173 --dart-define=A
 
 Open [http://127.0.0.1:5173](http://127.0.0.1:5173). Create an account against PostgreSQL.
 
+Same-origin demo (Flutter files served by the API, so one URL works):
+
+```bash
+cd apps/mobile
+flutter build web --no-wasm-dry-run
+cd ../api
+FLUTTER_WEB_DIR=../mobile/build/web HOST=0.0.0.0 PORT=4000 pnpm start
+```
+
+Open [http://127.0.0.1:4000](http://127.0.0.1:4000). Demo account: `demo@managekar.app` / `Demo12345`.
+
 This is the Flutter client in Chrome/Safari, not the Next.js `localStorage` PWA. The microphone uses the browser `getUserMedia` prompt after a tap. Local notifications stay iPhone/Android-only.
 
 ## Permission modules

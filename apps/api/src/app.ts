@@ -1,5 +1,8 @@
+import { existsSync } from "node:fs"
+import { resolve } from "node:path"
 import Fastify, { type FastifyInstance, type FastifyRequest } from "fastify"
 import cors from "@fastify/cors"
+import fastifyStatic from "@fastify/static"
 import jwt from "@fastify/jwt"
 import multipart from "@fastify/multipart"
 import bcrypt from "bcryptjs"
@@ -12,6 +15,7 @@ import { defaultVoiceDir, readVoiceFile, saveVoiceFile, voiceMime } from "./voic
 
 export type BuildAppOptions = {
   voiceDir?: string
+  webDir?: string
 }
 
 const registerSchema = z.object({
@@ -720,6 +724,16 @@ export async function buildApp(prisma: PrismaClient, options: BuildAppOptions = 
     const code = status >= 500 ? 500 : status
     return reply.code(code).send({ error: err.message })
   })
+
+  if (options.webDir && existsSync(options.webDir)) {
+    await app.register(fastifyStatic, { root: resolve(options.webDir), wildcard: false })
+    app.setNotFoundHandler((request, reply) => {
+      if (request.method === "GET" && !request.url.startsWith("/api")) {
+        return reply.sendFile("index.html")
+      }
+      return reply.code(404).send({ error: "Not found" })
+    })
+  }
 
   return app
 }
