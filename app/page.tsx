@@ -464,14 +464,6 @@ export default function Dashboard() {
     (habit) => habit.name.toLowerCase().includes(query) || habit.description?.toLowerCase().includes(query),
   )
 
-  if (!hydrated) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-muted-foreground">Loading your workspace…</p>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))]">
       <ClipboardMonitor
