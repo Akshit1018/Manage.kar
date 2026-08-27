@@ -3,7 +3,9 @@
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { EmptyState } from "@/components/empty-state"
-import type { Habit, Task } from "@/lib/domain/types"
+import type { Habit, Task, WorkspaceLabel } from "@/lib/domain/types"
+import { labelsForIds } from "@/lib/labels/book"
+import { LabelChips } from "@/components/label-chips"
 import type { DateFormat } from "@/lib/dates/due-date"
 import { formatDueDate } from "@/lib/dates/due-date"
 import { CheckCircle2, Circle, Edit } from "lucide-react"
@@ -12,6 +14,7 @@ interface TodaySectionProps {
   tasks: Task[]
   todayTasks: Task[]
   todayHabits: Habit[]
+  labels: WorkspaceLabel[]
   dateFormat: DateFormat
   onToggleTask: (taskId: number) => void
   onEditTask: (task: Task) => void
@@ -23,6 +26,7 @@ export function TodaySection({
   tasks,
   todayTasks,
   todayHabits,
+  labels,
   dateFormat,
   onToggleTask,
   onEditTask,
@@ -65,6 +69,9 @@ export function TodaySection({
                       {task.checklist.filter((item) => item.completed).length}/{task.checklist.length} checklist
                     </p>
                   ) : null}
+                  <div className="mt-2">
+                    <LabelChips labels={labelsForIds(labels, task.labelIds)} />
+                  </div>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => onEditTask(task)} aria-label={`Edit ${task.title}`}>
                   <Edit className="h-4 w-4" />

@@ -4,7 +4,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { EmptyState } from "@/components/empty-state"
-import type { Task } from "@/lib/domain/types"
+import type { Task, WorkspaceLabel } from "@/lib/domain/types"
+import { labelsForIds } from "@/lib/labels/book"
+import { LabelChips } from "@/components/label-chips"
 import type { DateFormat } from "@/lib/dates/due-date"
 import { formatDueDate } from "@/lib/dates/due-date"
 import type { TaskListFilter } from "@/lib/tasks/filter"
@@ -21,6 +23,7 @@ interface TaskListProps {
   tasks: Task[]
   filter: TaskListFilter
   searchQuery: string
+  labels: WorkspaceLabel[]
   dateFormat: DateFormat
   isSelectionMode: boolean
   selectedTasks: number[]
@@ -37,6 +40,7 @@ export function TaskList({
   tasks,
   filter,
   searchQuery,
+  labels,
   dateFormat,
   isSelectionMode,
   selectedTasks,
@@ -127,6 +131,9 @@ export function TaskList({
                       {task.checklist.filter((item) => item.completed).length}/{task.checklist.length}
                     </span>
                   ) : null}
+                </div>
+                <div className="mt-2">
+                  <LabelChips labels={labelsForIds(labels, task.labelIds)} />
                 </div>
               </div>
               <Button variant="ghost" size="icon" onClick={() => onEditTask(task)} aria-label={`Edit ${task.title}`}>

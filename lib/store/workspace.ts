@@ -8,11 +8,13 @@ import type {
   Habit,
   Note,
   Task,
+  WorkspaceLabel,
   TimeEntry,
   UserProfile,
   Workspace,
 } from "@/lib/domain/types"
 import { emptyDeletedIds, stampWorkspaceMutation } from "@/lib/store/merge"
+import { hydrateWorkspaceLabels, normalizeLabelName } from "@/lib/labels/book"
 import { localDateKey, normalizeDueDate } from "@/lib/dates/due-date"
 import { hydrateHabit } from "@/lib/habits/streak"
 import { sanitizeAvatarUrl } from "@/lib/profile/avatar"
@@ -72,6 +74,7 @@ const taskSchema = z
         }),
       )
       .optional(),
+    labelIds: z.array(z.number()).optional(),
   })
   .passthrough()
 
@@ -81,6 +84,7 @@ const noteSchema = z
     title: z.string(),
     content: z.string(),
     createdAt: z.string(),
+    labelIds: z.array(z.number()).optional(),
   })
   .passthrough()
 
@@ -219,10 +223,20 @@ export function emptyDropped(): DroppedCounts {
 }
 
 export function createEmptyWorkspace(): Workspace {
+  let nextId = 1
+  const allocateId = () => nextId++
+  const hydrated = hydrateWorkspaceLabels({
+    labels: [],
+    tasks: [],
+    notes: [],
+    rawTasks: [],
+    allocateId,
+  })
   return {
     schemaVersion: 1,
     updatedAt: new Date(0).toISOString(),
-    nextEntityId: 1,
+    nextEntityId: nextId,
+    labels: hydrated.labels,
     tasks: [],
     notes: [],
     habits: [],
@@ -254,6 +268,7 @@ function collectedEntityIds(workspace: Workspace): number[] {
     ...workspace.timeEntries.map((item) => item.id),
     ...workspace.focusSessions.map((item) => item.id),
     ...(workspace.activeFocus ? [workspace.activeFocus.sessionId] : []),
+    ...(workspace.labels ?? []).map((item) => item.id),
   ]
 }
 
@@ -314,6 +329,7 @@ function asTask(item: unknown, weekStartsOn: "sunday" | "monday"): Task | null {
     ...task,
     title: task.title.trim(),
     dueDate: normalizeDueDate(task.dueDate, new Date(), weekStartsOn),
+    labelIds: asIdArray(task.labelIds),
   }
 }
 
@@ -323,7 +339,20 @@ function asNote(item: unknown): Note | null {
     return null
   }
   const note = parsed.data as Note
-  return { ...note, title: note.title.trim() }
+  return { ...note, title: note.title.trim(), labelIds: asIdArray(note.labelIds) }
+}
+
+function asLabel(item: unknown): WorkspaceLabel | null {
+  if (!isRecord(item) || typeof item.id !== "number" || !Number.isFinite(item.id)) {
+    return null
+  }
+  const name = typeof item.name === "string" ? normalizeLabelName(item.name) : ""
+  if (!name) {
+    return null
+  }
+  const kind =
+    item.kind === "place" || item.kind === "tag" || item.kind === "person" ? item.kind : "tag"
+  return { id: item.id, name, kind }
 }
 
 function asHabit(item: unknown, today: string, weekStartsOn: "sunday" | "monday"): Habit | null {
@@ -490,10 +519,22 @@ function normalizeWorkspaceDetailed(value: unknown): { workspace: Workspace | nu
     ...focusSessions.rejected,
   ]
 
+  const parsedLabels = parseArray(value.labels, asLabel)
+  const uniqueLabels: WorkspaceLabel[] = []
+  const seenNames = new Set<string>()
+  for (const label of parsedLabels.items) {
+    if (seenNames.has(label.name)) {
+      continue
+    }
+    seenNames.add(label.name)
+    uniqueLabels.push(label)
+  }
+
   const workspace: Workspace = {
     schemaVersion: 1,
     updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : new Date().toISOString(),
     nextEntityId: 1,
+    labels: uniqueLabels,
     tasks: tasks.items,
     notes: notes.items,
     habits: habits.items,
@@ -509,7 +550,18 @@ function normalizeWorkspaceDetailed(value: unknown): { workspace: Workspace | nu
   }
   const highest = collectedEntityIds(workspace).reduce((max, id) => Math.max(max, id), 0)
   const storedNext = typeof value.nextEntityId === "number" && Number.isFinite(value.nextEntityId) ? value.nextEntityId : 1
-  workspace.nextEntityId = Math.max(storedNext, highest + 1)
+  let nextId = Math.max(storedNext, highest + 1)
+  const hydrated = hydrateWorkspaceLabels({
+    labels: workspace.labels,
+    tasks: workspace.tasks,
+    notes: workspace.notes,
+    rawTasks: Array.isArray(value.tasks) ? value.tasks : [],
+    allocateId: () => nextId++,
+  })
+  workspace.labels = hydrated.labels
+  workspace.tasks = hydrated.tasks
+  workspace.notes = hydrated.notes
+  workspace.nextEntityId = Math.max(nextId, collectedEntityIds(workspace).reduce((max, id) => Math.max(max, id), 0) + 1)
 
   return {
     workspace,

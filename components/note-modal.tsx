@@ -10,7 +10,8 @@ import { ConfirmSheet } from "@/components/confirm-sheet"
 import { MobileSheet } from "@/components/mobile-sheet"
 import { VoiceAudio } from "@/components/voice-audio"
 import { VoiceRecorder, type VoiceRecordingResult } from "@/components/voice-recorder"
-import type { Note } from "@/lib/domain/types"
+import type { LabelKind, Note, WorkspaceLabel } from "@/lib/domain/types"
+import { AtTokenSuggest, LabelPicker } from "@/components/label-picker"
 
 export interface NoteSaveExtras {
   voiceBlob?: Blob
@@ -25,13 +26,17 @@ interface NoteModalProps {
   onDelete?: (noteId: number) => void
   note?: Note
   mode: "create" | "edit"
+  labels?: WorkspaceLabel[]
+  onUpsertLabel?: (name: string, kind: LabelKind) => WorkspaceLabel
 }
 
-export function NoteModal({ isOpen, onClose, onSave, onDelete, note, mode }: NoteModalProps) {
+export function NoteModal({ isOpen, onClose, onSave, onDelete, note, mode, labels = [], onUpsertLabel }: NoteModalProps) {
   const [formData, setFormData] = useState({
     title: "",
     content: "",
+    labelIds: [] as number[],
   })
+  const [contentCursor, setContentCursor] = useState(0)
   const [titleError, setTitleError] = useState("")
   const [pendingVoice, setPendingVoice] = useState<VoiceRecordingResult | null>(null)
   const [pendingVoiceUrl, setPendingVoiceUrl] = useState<string | null>(null)
@@ -43,11 +48,13 @@ export function NoteModal({ isOpen, onClose, onSave, onDelete, note, mode }: Not
       setFormData({
         title: note.title,
         content: note.content,
+        labelIds: note.labelIds || [],
       })
     } else {
       setFormData({
         title: "",
         content: "",
+        labelIds: [],
       })
     }
     setTitleError("")
@@ -119,6 +126,7 @@ export function NoteModal({ isOpen, onClose, onSave, onDelete, note, mode }: Not
     setFormData((current) => ({
       title: current.title || result.transcription.slice(0, 40),
       content: current.content || result.transcription,
+      labelIds: current.labelIds,
     }))
     setRecorderOpen(false)
   }
@@ -192,11 +200,38 @@ export function NoteModal({ isOpen, onClose, onSave, onDelete, note, mode }: Not
             <Textarea
               id="note-content"
               value={formData.content}
-              onChange={(event) => setFormData({ ...formData, content: event.target.value })}
-              placeholder="Write your note here..."
+              onChange={(event) => {
+                setFormData({ ...formData, content: event.target.value })
+                setContentCursor(event.target.selectionStart)
+              }}
+              onClick={(event) => setContentCursor(event.currentTarget.selectionStart)}
+              onKeyUp={(event) => setContentCursor(event.currentTarget.selectionStart)}
+              placeholder="Write your note here. Type @ to tag a place, tag, or person."
               className="min-h-[160px] rounded-xl resize-none"
             />
+            {onUpsertLabel ? (
+              <AtTokenSuggest
+                text={formData.content}
+                cursor={contentCursor}
+                labels={labels}
+                selectedIds={formData.labelIds}
+                onUpsertLabel={onUpsertLabel}
+                onApply={({ text, cursor, labelIds }) => {
+                  setFormData({ ...formData, content: text, labelIds })
+                  setContentCursor(cursor)
+                }}
+              />
+            ) : null}
           </div>
+
+          {onUpsertLabel ? (
+            <LabelPicker
+              labels={labels}
+              selectedIds={formData.labelIds}
+              onSelectedIdsChange={(labelIds) => setFormData({ ...formData, labelIds })}
+              onUpsertLabel={onUpsertLabel}
+            />
+          ) : null}
 
           <Button
             type="button"

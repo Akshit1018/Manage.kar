@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Repeat, Bell, Plus, X, Trash2, ChevronDown, ChevronUp, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { RecurringRule, Task } from "@/lib/domain/types"
+import type { LabelKind, RecurringRule, Task, WorkspaceLabel } from "@/lib/domain/types"
+import { AtTokenSuggest, LabelPicker } from "@/components/label-picker"
 import { localDateKey, normalizeDueDate } from "@/lib/dates/due-date"
 import { ConfirmSheet } from "@/components/confirm-sheet"
 import { MobileSheet } from "@/components/mobile-sheet"
@@ -21,9 +22,11 @@ interface TaskModalProps {
   onDelete?: (taskId: number) => void
   task?: Task
   mode: "create" | "edit"
+  labels?: WorkspaceLabel[]
+  onUpsertLabel?: (name: string, kind: LabelKind) => WorkspaceLabel
 }
 
-export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode }: TaskModalProps) {
+export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode, labels = [], onUpsertLabel }: TaskModalProps) {
   const [formData, setFormData] = useState<Omit<Task, "id">>({
     title: "",
     completed: false,
@@ -33,8 +36,10 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode }: Tas
     recurring: "none",
     reminders: false,
     checklist: [],
+    labelIds: [],
   })
   const [titleError, setTitleError] = useState("")
+  const [descriptionCursor, setDescriptionCursor] = useState(0)
   const [newChecklistItem, setNewChecklistItem] = useState("")
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -50,6 +55,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode }: Tas
         recurring: task.recurring || "none",
         reminders: task.reminders || false,
         checklist: task.checklist || [],
+        labelIds: task.labelIds || [],
       })
     } else {
       setFormData({
@@ -61,6 +67,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode }: Tas
         recurring: "none",
         reminders: false,
         checklist: [],
+        labelIds: [],
       })
     }
     setTitleError("")
@@ -190,11 +197,38 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode }: Tas
               <Textarea
                 id="task-description"
                 value={formData.description}
-                onChange={(event) => setFormData({ ...formData, description: event.target.value })}
-                placeholder="Optional details"
+                onChange={(event) => {
+                  setFormData({ ...formData, description: event.target.value })
+                  setDescriptionCursor(event.target.selectionStart)
+                }}
+                onClick={(event) => setDescriptionCursor(event.currentTarget.selectionStart)}
+                onKeyUp={(event) => setDescriptionCursor(event.currentTarget.selectionStart)}
+                placeholder="Optional details. Type @ to tag a place, tag, or person."
                 className="bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl min-h-[80px]"
               />
+              {onUpsertLabel ? (
+                <AtTokenSuggest
+                  text={formData.description ?? ""}
+                  cursor={descriptionCursor}
+                  labels={labels}
+                  selectedIds={formData.labelIds ?? []}
+                  onUpsertLabel={onUpsertLabel}
+                  onApply={({ text, cursor, labelIds }) => {
+                    setFormData({ ...formData, description: text, labelIds })
+                    setDescriptionCursor(cursor)
+                  }}
+                />
+              ) : null}
             </div>
+
+            {onUpsertLabel ? (
+              <LabelPicker
+                labels={labels}
+                selectedIds={formData.labelIds ?? []}
+                onSelectedIdsChange={(labelIds) => setFormData({ ...formData, labelIds })}
+                onUpsertLabel={onUpsertLabel}
+              />
+            ) : null}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
