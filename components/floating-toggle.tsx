@@ -9,7 +9,6 @@ import { dispatchComposerOpen } from "@/lib/dialer/dialer"
 import {
   ICON_BAR_MS,
   LONG_PRESS_MS,
-  ORB_BOTTOM_RESERVE,
   applyOrbKeyboardIntent,
   attachOrbPointerFallback,
   clampOrbPosition,
@@ -21,7 +20,10 @@ import {
   orbLostPointerShouldFinish,
   orbPlacementTransitionMs,
   orbViewportBounds,
+  parseResolvedLengthPx,
   parseSavedOrbPosition,
+  readChromeReservePx,
+  resolveCustomPropertyPx,
   resolveOrbPlacement,
   snapOrbToEdge,
 } from "@/lib/ui/orb-gesture"
@@ -36,10 +38,20 @@ interface FloatingToggleProps {
   suppressed?: boolean
 }
 
+function resolveRootChromePx() {
+  const root = document.documentElement
+  const measured = resolveCustomPropertyPx(root, (tag) => document.createElement(tag), "--mk-bottom-chrome")
+  if (measured > 0) {
+    return measured
+  }
+  return parseResolvedLengthPx(getComputedStyle(root).getPropertyValue("--mk-bottom-chrome"))
+}
+
 function readChromeReserve() {
   const probe = document.querySelector("[data-mk-bottom-chrome]")
-  const height = probe instanceof HTMLElement ? Math.round(probe.getBoundingClientRect().height) : 0
-  return Math.max(ORB_BOTTOM_RESERVE, height)
+  const probeHeight = probe instanceof HTMLElement ? probe.getBoundingClientRect().height : 0
+  const computedChromePx = probeHeight > 0 ? 0 : resolveRootChromePx()
+  return readChromeReservePx({ probeHeight, computedChromePx })
 }
 
 function readBounds() {

@@ -52,18 +52,17 @@ export function NoteList({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-xl font-bold">Notes</h3>
-        <div className="flex gap-2">
+      <div className="mk-section-toolbar">
+        <div className="mk-section-toolbar-actions">
           {onRecordVoice ? (
-            <Button variant="outline" className="mk-touch bg-transparent" onClick={onRecordVoice}>
-              <Mic className="h-4 w-4 mr-2" />
-              Record
+            <Button variant="outline" className="mk-touch bg-transparent" onClick={onRecordVoice} aria-label="Record">
+              <Mic className="h-4 w-4 min-[375px]:mr-2" />
+              <span className="hidden min-[375px]:inline">Record</span>
             </Button>
           ) : null}
-          <Button className="mk-touch" onClick={onAddNote}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add note
+          <Button className="mk-touch" onClick={onAddNote} aria-label="Add note">
+            <Plus className="h-4 w-4 min-[375px]:mr-2" />
+            <span className="hidden min-[375px]:inline">Add note</span>
           </Button>
         </div>
       </div>

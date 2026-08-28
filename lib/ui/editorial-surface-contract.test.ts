@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs"
 import path from "node:path"
 import { describe, expect, it } from "vitest"
+import { FEATURED_LIGHT_FOREGROUND } from "./contrast"
 import {
   countMkTouchMinSizeRules,
   iosZoomGuardIsUnlayered,
@@ -43,5 +44,14 @@ describe("editorial surface CSS contract", () => {
     expect(globalsCss).toMatch(/\.mk-featured-surface\s*\{/)
     expect(globalsCss).toMatch(/\.mk-pill-nav\s*\{/)
     expect(globalsCss).toMatch(/\.mk-workspace\s*\{/)
+  })
+
+  it("does not clip workspace overflow so audits can see overflowing controls", () => {
+    expect(globalsCss).not.toMatch(/\.mk-workspace\s*\{[^}]*overflow-x:\s*clip/)
+  })
+
+  it("uses ink on the light featured surface so support text can meet 4.5:1", () => {
+    expect(FEATURED_LIGHT_FOREGROUND).toBe("#170d02")
+    expect(globalsCss).toMatch(/:root\s*\{[\s\S]*?--mk-featured-foreground:\s*#170d02/)
   })
 })

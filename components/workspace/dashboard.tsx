@@ -754,14 +754,14 @@ export function Dashboard({ initialSearch }: DashboardProps) {
         </div>
       </header>
 
-      <div className="mb-10">
+      <main className="mb-10">
         {currentView === "overview" && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <button type="button" className="col-span-2 text-left lg:col-span-2" onClick={() => selectView("tasks")} aria-label={`${pendingTasksCount} pending tasks`}>
                 <div className="mk-featured-surface p-5">
                   <p className="mk-featured-numeral">{pendingTasksCount}</p>
-                  <p className="mt-2 text-sm opacity-80">pending tasks</p>
+                  <p className="mt-2 text-sm">pending tasks</p>
                 </div>
               </button>
               <button type="button" className="text-left" onClick={() => selectView("tasks")} aria-label={`${completedTasksCount} completed tasks`}>
@@ -887,7 +887,7 @@ export function Dashboard({ initialSearch }: DashboardProps) {
             onBack={() => setChatSession("")}
           />
         )}
-      </div>
+      </main>
 
       <nav className="mk-bottom-chrome" aria-label="Workspace sections">
         <div className="mk-pill-nav">

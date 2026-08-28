@@ -17,9 +17,12 @@ import {
   orbPlacementTransitionMs,
   orbReleaseAction,
   orbViewportBounds,
+  parseResolvedLengthPx,
   parseSavedOrbPosition,
+  readChromeReservePx,
   resolveOrbPlacement,
   snapOrbToEdge,
+  WORKSPACE_CHROME_FALLBACK_PX,
   type OrbBounds,
 } from "./orb-gesture"
 
@@ -261,6 +264,29 @@ describe("orbViewportBounds", () => {
     expect(
       orbViewportBounds({ width: 390, height: 844, chromeReserve: 40 }).bottomReserve,
     ).toBe(ORB_BOTTOM_RESERVE)
+  })
+})
+
+describe("readChromeReservePx", () => {
+  it("uses a measured probe when present", () => {
+    expect(readChromeReservePx({ probeHeight: 148, computedChromePx: 0 })).toBe(148)
+  })
+
+  it("resolves the root custom property when the probe is missing or zero", () => {
+    expect(readChromeReservePx({ probeHeight: 0, computedChromePx: 140 })).toBe(140)
+    expect(readChromeReservePx({ computedChromePx: 140 })).toBe(140)
+  })
+
+  it("never falls back to the 76px orb floor", () => {
+    const fallback = readChromeReservePx({ probeHeight: 0, computedChromePx: 0 })
+    expect(fallback).toBe(WORKSPACE_CHROME_FALLBACK_PX)
+    expect(fallback).toBeGreaterThan(ORB_BOTTOM_RESERVE)
+  })
+
+  it("parses resolved px and rem lengths from computed style", () => {
+    expect(parseResolvedLengthPx("132px")).toBe(132)
+    expect(parseResolvedLengthPx("8.25rem")).toBe(132)
+    expect(parseResolvedLengthPx("calc(4.75rem + 3.5rem)")).toBe(0)
   })
 })
 

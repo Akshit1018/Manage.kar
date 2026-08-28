@@ -46,7 +46,7 @@
   --sidebar-border: color-mix(in srgb, var(--mk-mid) 15%, transparent);
   --sidebar-ring: color-mix(in srgb, var(--mk-mid) 30%, transparent);
   --mk-featured: color-mix(in srgb, #e85d2a 78%, var(--mk-canvas));
-  --mk-featured-foreground: #fff7f0;
+  --mk-featured-foreground: #170d02;
   --mk-bottom-nav: calc(4.75rem + env(safe-area-inset-bottom, 0px));
   --mk-composer-slot: 3.5rem;
   --mk-bottom-chrome: calc(var(--mk-bottom-nav) + var(--mk-composer-slot));
@@ -133,7 +133,7 @@ html[data-skin="classic"] {
   --sidebar-border: oklch(0.85 0 0);
   --sidebar-ring: oklch(0.55 0.25 250 / 0.3);
   --mk-featured: color-mix(in srgb, #e85d2a 82%, white);
-  --mk-featured-foreground: #fff7f0;
+  --mk-featured-foreground: #170d02;
 }
 
 html[data-skin="classic"].dark {
@@ -957,10 +957,28 @@ html[data-skin="classic"].dark {
     min-width: 44px;
   }
 
+  .mk-section-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .mk-section-toolbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    min-width: 0;
+    max-width: 100%;
+  }
+
   .mk-workspace {
     min-height: 100dvh;
     max-width: 100%;
-    overflow-x: clip;
     padding: 1rem;
     padding-bottom: var(--mk-bottom-chrome);
     background:

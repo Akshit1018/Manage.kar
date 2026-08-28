@@ -90,16 +90,20 @@ export function TaskList({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xl font-bold">Tasks</h3>
-        <div className="flex gap-2">
-          <Button variant="outline" className="bg-transparent" onClick={onToggleSelectionMode}>
-            <CheckSquare className="h-4 w-4 mr-2" />
-            {isSelectionMode ? "Done" : "Select"}
+      <div className="mk-section-toolbar">
+        <div className="mk-section-toolbar-actions">
+          <Button
+            variant="outline"
+            className="bg-transparent"
+            onClick={onToggleSelectionMode}
+            aria-label={isSelectionMode ? "Done selecting tasks" : "Select tasks"}
+          >
+            <CheckSquare className="h-4 w-4 min-[375px]:mr-2" />
+            <span className="hidden min-[375px]:inline">{isSelectionMode ? "Done" : "Select"}</span>
           </Button>
-          <Button onClick={onAddTask}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add task
+          <Button onClick={onAddTask} aria-label="Add task">
+            <Plus className="h-4 w-4 min-[375px]:mr-2" />
+            <span className="hidden min-[375px]:inline">Add task</span>
           </Button>
         </div>
       </div>

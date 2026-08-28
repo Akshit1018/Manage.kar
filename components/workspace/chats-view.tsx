@@ -61,16 +61,16 @@ export function ChatsView({ sessionId, searchQuery, onOpenSession, onBack }: Cha
   const items = chatListItems(dialer, searchQuery)
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-xl font-bold">Chats</h3>
-        <div className="flex gap-2">
+      <div className="mk-section-toolbar">
+        <div className="mk-section-toolbar-actions">
           <Button
             variant="outline"
             className="mk-touch bg-transparent"
             onClick={() => setPairingOpen(true)}
+            aria-label="Machines"
           >
-            <Cable className="mr-2 h-4 w-4" />
-            Machines
+            <Cable className="h-4 w-4 min-[375px]:mr-2" />
+            <span className="hidden min-[375px]:inline">Machines</span>
           </Button>
           <Button
             className="mk-touch"
@@ -78,9 +78,10 @@ export function ChatsView({ sessionId, searchQuery, onOpenSession, onBack }: Cha
               onOpenSession(NEW_CHAT_TARGET)
               dispatchComposerOpen({ target: NEW_CHAT_TARGET })
             }}
+            aria-label="New chat"
           >
-            <Plus className="mr-2 h-4 w-4" />
-            New chat
+            <Plus className="h-4 w-4 min-[375px]:mr-2" />
+            <span className="hidden min-[375px]:inline">New chat</span>
           </Button>
         </div>
       </div>

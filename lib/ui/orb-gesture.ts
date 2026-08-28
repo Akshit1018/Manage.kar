@@ -8,6 +8,8 @@ export const ORB_INSET = 8
 export const ORB_BOTTOM_RESERVE = 76
 export const ORB_NUDGE_PX = 16
 export const ORB_SNAP_MS = 180
+/** 4.75rem nav + 3.5rem composer slot at a 16px root. Never use the 76px orb floor. */
+export const WORKSPACE_CHROME_FALLBACK_PX = 132
 
 export type OrbReleaseAction = "show-icons" | "record" | "ignore"
 export type OrbGestureOutcome = "show-icons" | "record" | "snap" | "idle"
@@ -103,6 +105,51 @@ export function applyOrbKeyboardIntent(
       throw new Error(`Unhandled orb keyboard intent: ${_exhaustive}`)
     }
   }
+}
+
+export function parseResolvedLengthPx(raw: string, rootFontSizePx = 16): number {
+  const value = raw.trim()
+  if (!value) {
+    return 0
+  }
+  const px = /^(-?\d+(?:\.\d+)?)px$/i.exec(value)
+  if (px) {
+    return Number(px[1])
+  }
+  const rem = /^(-?\d+(?:\.\d+)?)rem$/i.exec(value)
+  if (rem) {
+    return Number(rem[1]) * rootFontSizePx
+  }
+  return 0
+}
+
+export function readChromeReservePx(input: { probeHeight?: number; computedChromePx?: number }): number {
+  const probe = Number.isFinite(input.probeHeight) ? Number(input.probeHeight) : 0
+  const computed = Number.isFinite(input.computedChromePx) ? Number(input.computedChromePx) : 0
+  const measured = Math.max(probe, computed)
+  if (measured > 0) {
+    return Math.round(measured)
+  }
+  return WORKSPACE_CHROME_FALLBACK_PX
+}
+
+export function resolveCustomPropertyPx(
+  owner: {
+    appendChild: (node: HTMLElement) => void
+    removeChild: (node: HTMLElement) => void
+  },
+  createElement: (tag: "div") => HTMLElement,
+  property: string,
+): number {
+  const probe = createElement("div")
+  probe.style.cssText = `position:absolute;visibility:hidden;pointer-events:none;height:var(${property})`
+  owner.appendChild(probe)
+  const height = probe.getBoundingClientRect().height
+  owner.removeChild(probe)
+  if (height > 0) {
+    return Math.round(height)
+  }
+  return 0
 }
 
 export function orbViewportBounds(input: {

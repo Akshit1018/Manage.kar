@@ -28,12 +28,13 @@ export function HabitList({
 }: HabitListProps) {
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xl font-bold">Habits</h3>
-        <Button onClick={onAddHabit}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add habit
-        </Button>
+      <div className="mk-section-toolbar">
+        <div className="mk-section-toolbar-actions">
+          <Button onClick={onAddHabit} aria-label="Add habit">
+            <Plus className="h-4 w-4 min-[375px]:mr-2" />
+            <span className="hidden min-[375px]:inline">Add habit</span>
+          </Button>
+        </div>
       </div>
       {habits.length === 0 ? (
         <EmptyState
