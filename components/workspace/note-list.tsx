@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { EmptyState } from "@/components/empty-state"
 import type { Note, WorkspaceLabel } from "@/lib/domain/types"
@@ -67,7 +66,7 @@ export function NoteList({
         </div>
       </div>
 
-      <Card className="modern-card p-4">
+      <div className="modern-card p-4">
         <div className="flex items-center gap-2">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
           <h4 className="font-semibold">Ask my notes</h4>
@@ -91,7 +90,7 @@ export function NoteList({
                 <button
                   key={answer.note.id}
                   type="button"
-                  className="block w-full rounded-xl border border-border/50 bg-accent/10 p-3 text-left"
+                  className="block min-h-11 w-full rounded-xl border border-border/50 bg-accent/10 p-3 text-left"
                   onClick={() => onEditNote(answer.note)}
                 >
                   <p className="truncate text-sm font-medium">{answer.note.title}</p>
@@ -103,25 +102,25 @@ export function NoteList({
             </div>
           )
         ) : null}
-      </Card>
+      </div>
 
       {usedLabels.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter notes by label">
+        <div className="mk-filter-rail" role="group" aria-label="Filter notes by label">
           <Button
             type="button"
             size="sm"
             variant={activeLabelId === null ? "default" : "outline"}
-            className={activeLabelId === null ? "" : "bg-transparent"}
+            className={activeLabelId === null ? "rounded-full" : "rounded-full bg-transparent"}
             onClick={() => setActiveLabelId(null)}
             aria-pressed={activeLabelId === null}
           >
             All
           </Button>
           {usedLabels.map((label) => (
-            <span key={label.id} className="inline-flex items-center">
+            <span key={label.id} className="mk-label-filter">
               <button
                 type="button"
-                className="mr-1 flex h-6 w-6 items-center justify-center rounded-full border border-border/50"
+                className="mk-chip-action rounded-full border border-border/50"
                 onClick={() => onCycleLabelColor(label.id)}
                 aria-label={`Change color of ${displayLabelName(label)}`}
                 title="Tap to change color"
@@ -132,7 +131,7 @@ export function NoteList({
                 type="button"
                 size="sm"
                 variant={activeLabelId === label.id ? "default" : "outline"}
-                className={activeLabelId === label.id ? "" : "bg-transparent"}
+                className={activeLabelId === label.id ? "rounded-full" : "rounded-full bg-transparent"}
                 onClick={() => setActiveLabelId((current) => (current === label.id ? null : label.id))}
                 aria-pressed={activeLabelId === label.id}
               >
@@ -159,13 +158,13 @@ export function NoteList({
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {visibleNotes.map((note) => (
-            <Card key={note.id} className="p-4 cursor-pointer" onClick={() => onEditNote(note)}>
+            <div key={note.id} className="mk-editorial-card cursor-pointer p-4" onClick={() => onEditNote(note)}>
               <div className="flex items-start justify-between gap-2">
-                <h4 className="min-w-0 flex-1 font-semibold truncate">{note.title}</h4>
+                <h4 className="min-w-0 flex-1 truncate font-semibold">{note.title}</h4>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0"
+                  className="shrink-0"
                   onClick={(event) => {
                     event.stopPropagation()
                     onTogglePin(note.id)
@@ -183,7 +182,7 @@ export function NoteList({
                 <LabelChips labels={labelsForIds(labels, note.labelIds)} />
               </div>
               <p className="mt-2 text-xs text-muted-foreground">{formatTimestamp(note.createdAt, dateFormat)}</p>
-            </Card>
+            </div>
           ))}
         </div>
       )}

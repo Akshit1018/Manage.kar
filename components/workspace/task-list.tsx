@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { EmptyState } from "@/components/empty-state"
 import type { Task, TaskStatus, WorkspaceLabel } from "@/lib/domain/types"
 import { labelsForIds } from "@/lib/labels/book"
@@ -107,15 +106,15 @@ export function TaskList({
           </Button>
         </div>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Task filters">
+      <div className="mk-task-controls">
+        <div className="mk-filter-rail" role="group" aria-label="Task filters">
           {FILTERS.map((item) => (
             <Button
               key={item.id}
               type="button"
               size="sm"
               variant={filter === item.id ? "default" : "outline"}
-              className={filter === item.id ? "" : "bg-transparent"}
+              className={filter === item.id ? "rounded-full" : "rounded-full bg-transparent"}
               onClick={() => onFilterChange(item.id)}
               aria-pressed={filter === item.id}
             >
@@ -123,11 +122,12 @@ export function TaskList({
             </Button>
           ))}
         </div>
-        <div className="flex gap-1 rounded-xl border border-border/50 p-1" role="group" aria-label="Task view">
+        <div className="mk-view-toggle" role="group" aria-label="Task view">
           <Button
             type="button"
             size="sm"
             variant={viewMode === "list" ? "default" : "ghost"}
+            className="rounded-full"
             onClick={() => setViewMode("list")}
             aria-pressed={viewMode === "list"}
           >
@@ -138,6 +138,7 @@ export function TaskList({
             type="button"
             size="sm"
             variant={viewMode === "board" ? "default" : "ghost"}
+            className="rounded-full"
             onClick={() => setViewMode("board")}
             aria-pressed={viewMode === "board"}
           >
@@ -166,14 +167,14 @@ export function TaskList({
           />
         ))
       ) : (
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="mk-board-snap">
           {TASK_STATUSES.map((status) => {
             const column = groupTasksByStatus(tasks)[status]
             return (
-              <div key={status} className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <h4 className="font-semibold">{statusLabel(status)}</h4>
-                  <span className="rounded-full bg-secondary px-2 text-xs text-muted-foreground">{column.length}</span>
+              <div key={status} className="mk-board-column">
+                <div className="mk-board-column-head">
+                  <h4 className="mk-section-title">{statusLabel(status)}</h4>
+                  <span className="mk-board-count">{column.length}</span>
                 </div>
                 {column.length === 0 ? (
                   <p className="rounded-2xl border border-dashed border-border/70 p-4 text-center text-xs text-muted-foreground">
@@ -245,15 +246,17 @@ function TaskCard({
   onSetTaskStatus?: (taskId: number, status: TaskStatus) => void
 }) {
   return (
-    <Card className="p-4">
-      <div className="flex items-center gap-3">
+    <div className="mk-editorial-card p-4">
+      <div className="flex items-start gap-3">
         {isSelectionMode && (
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={() => onToggleSelected(task.id)}
-            aria-label={`Select ${task.title}`}
-          />
+          <label className="mk-chip-action">
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={() => onToggleSelected(task.id)}
+              aria-label={`Select ${task.title}`}
+            />
+          </label>
         )}
         <Button
           variant="ghost"
@@ -263,9 +266,9 @@ function TaskCard({
         >
           {task.completed ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5" />}
         </Button>
-        <div className="flex-1">
+        <div className="mk-entity-copy">
           <p className={task.completed ? "line-through text-muted-foreground" : ""}>{task.title}</p>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <div className="mk-meta-row mt-1 text-xs text-muted-foreground">
             <Badge variant={task.priority === "high" ? "destructive" : "secondary"}>{task.priority}</Badge>
             <span className="flex items-center gap-1">
               <Calendar className="h-3 w-3" />
@@ -299,7 +302,7 @@ function TaskCard({
             <LabelChips labels={labelsForIds(labels, task.labelIds)} />
           </div>
           {onSetTaskStatus ? (
-            <div className="mt-2 flex gap-2">
+            <div className="mk-meta-row mt-2">
               {boardActions(task).map((action) => (
                 <Button
                   key={action.status}
@@ -319,6 +322,6 @@ function TaskCard({
           <Edit className="h-4 w-4" />
         </Button>
       </div>
-    </Card>
+    </div>
   )
 }

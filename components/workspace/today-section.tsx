@@ -1,7 +1,6 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { EmptyState } from "@/components/empty-state"
 import type { Habit, Task, WorkspaceLabel } from "@/lib/domain/types"
 import { labelsForIds } from "@/lib/labels/book"
@@ -35,7 +34,7 @@ export function TodaySection({
 }: TodaySectionProps) {
   return (
     <div>
-      <h3 className="text-xl font-bold mb-4">Today</h3>
+      <h3 className="mk-section-title mb-4">Today</h3>
       {todayTasks.length === 0 && todayHabits.length === 0 ? (
         <EmptyState
           title={tasks.length === 0 ? "Nothing on your plate yet" : "Nothing due today"}
@@ -50,18 +49,17 @@ export function TodaySection({
       ) : (
         <div className="space-y-3">
           {todayTasks.map((task) => (
-            <Card key={`task-${task.id}`} className="modern-card p-4">
-              <div className="flex items-center gap-3">
+            <div key={`task-${task.id}`} className="mk-editorial-card p-4">
+              <div className="flex items-start gap-3">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
                   onClick={() => onToggleTask(task.id)}
                   aria-label={task.completed ? `Mark ${task.title} incomplete` : `Complete ${task.title}`}
                 >
                   {task.completed ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5" />}
                 </Button>
-                <div className="flex-1">
+                <div className="mk-entity-copy">
                   <p>{task.title}</p>
                   <p className="text-xs text-muted-readable">{formatDueDate(task.dueDate, dateFormat)}</p>
                   {task.checklist && task.checklist.length > 0 ? (
@@ -77,15 +75,14 @@ export function TodaySection({
                   <Edit className="h-4 w-4" />
                 </Button>
               </div>
-            </Card>
+            </div>
           ))}
           {todayHabits.map((habit) => (
-            <Card key={`habit-${habit.id}`} className="modern-card p-4">
-              <div className="flex items-center gap-3">
+            <div key={`habit-${habit.id}`} className="mk-editorial-card p-4">
+              <div className="flex items-start gap-3">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
                   onClick={() => onToggleHabit(habit.id)}
                   aria-label={habit.completedToday ? `Unmark ${habit.name} for today` : `Complete ${habit.name} today`}
                 >
@@ -95,12 +92,12 @@ export function TodaySection({
                     <Circle className="h-5 w-5" />
                   )}
                 </Button>
-                <div className="flex-1">
+                <div className="mk-entity-copy">
                   <p>{habit.name}</p>
                   <p className="text-xs text-muted-readable">Habit · streak {habit.streak}</p>
                 </div>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       )}

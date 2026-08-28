@@ -9,7 +9,7 @@ export function LabelChips({ labels }: { labels: WorkspaceLabel[] }) {
     return null
   }
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="mk-label-chips">
       {labels.map((label) => (
         <Badge key={label.id} variant="outline" className={cn(labelColorClasses(labelColor(label)))}>
           {displayLabelName(label)}

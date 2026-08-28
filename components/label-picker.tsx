@@ -51,19 +51,19 @@ export function LabelPicker({ labels, selectedIds, onSelectedIdsChange, onUpsert
         Place, tag, or person. Type @home or create @kitchen.
       </p>
       {selected.length > 0 ? (
-        <div className="flex flex-wrap gap-1">
+        <div className="mk-label-chips">
           {selected.map((label) => (
-            <Badge key={label.id} variant="secondary" className="gap-1">
-              {displayLabelName(label)}
+            <span key={label.id} className="inline-flex items-center gap-1">
+              <Badge variant="secondary">{displayLabelName(label)}</Badge>
               <button
                 type="button"
-                className="rounded-full"
+                className="mk-chip-action rounded-full"
                 aria-label={`Remove ${displayLabelName(label)}`}
                 onClick={() => onSelectedIdsChange(selectedIds.filter((id) => id !== label.id))}
               >
                 <X className="h-3 w-3" />
               </button>
-            </Badge>
+            </span>
           ))}
         </div>
       ) : null}
@@ -93,7 +93,7 @@ export function LabelPicker({ labels, selectedIds, onSelectedIdsChange, onUpsert
             <button
               key={label.id}
               type="button"
-              className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-sm hover:bg-accent/20"
+              className="mk-chip-action flex w-full items-center justify-between rounded-lg px-2 text-left text-sm hover:bg-accent/20"
               onClick={() => add(label)}
             >
               <span>{displayLabelName(label)}</span>
@@ -103,7 +103,7 @@ export function LabelPicker({ labels, selectedIds, onSelectedIdsChange, onUpsert
           {canCreate ? (
             <div className="flex flex-wrap gap-2 pt-1">
               {CREATE_KINDS.map((item) => (
-                <Button key={item.kind} type="button" size="sm" variant="outline" onClick={() => create(item.kind)}>
+                <Button key={item.kind} type="button" size="sm" variant="outline" className="rounded-full" onClick={() => create(item.kind)}>
                   {item.label} @{needle}
                 </Button>
               ))}
@@ -152,7 +152,7 @@ export function AtTokenSuggest({
         <button
           key={label.id}
           type="button"
-          className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left text-sm"
+          className="mk-chip-action flex w-full items-center justify-between rounded-lg px-2 text-left text-sm"
           onClick={() => applyLabel(label)}
         >
           <span>{displayLabelName(label)}</span>

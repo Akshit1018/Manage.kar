@@ -291,7 +291,7 @@ export function VoiceRecorder({ open, onClose, onSave, onSaveAsTask, autoStart =
             </Button>
           ) : null}
           {phase === "recording" || phase === "paused" ? (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="mk-voice-action-row">
               <Button variant="outline" className="mk-touch rounded-full bg-transparent text-white" onClick={discard}>
                 <Trash2 className="h-4 w-4" />
                 Discard
