@@ -615,6 +615,18 @@ html[data-skin="classic"].dark {
     text-align: left;
   }
 
+  .mk-voice-action-row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .mk-voice-action-row > * {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
   @media (max-width: 359px) {
     .mk-sheet-footer-actions {
       flex-direction: column;
@@ -738,18 +750,6 @@ html[data-skin="classic"].dark {
 
   .mk-voice-actions {
     padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
-  }
-
-  .mk-voice-action-row {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .mk-voice-action-row > * {
-    flex: 1 1 auto;
-    min-width: 0;
   }
 
   @keyframes mk-bowl-pulse {
