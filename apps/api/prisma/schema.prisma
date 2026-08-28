@@ -36,6 +36,7 @@ model Settings {
   habitReminders       Boolean @default(true)
   focusBreaks          Boolean @default(true)
   theme                String  @default("system")
+  skin                 String  @default("hermes")
   fontSize             String  @default("medium")
   animations           Boolean @default(true)
   clipboardMonitor     Boolean @default(false)

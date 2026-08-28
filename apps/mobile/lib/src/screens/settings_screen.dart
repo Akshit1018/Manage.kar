@@ -5,6 +5,7 @@ import "package:flutter/material.dart";
 import "package:managekar/src/io/read_file.dart";
 import "package:managekar/src/notifications/local_reminders.dart";
 import "package:managekar/src/screens/share_screen.dart";
+import "package:managekar/src/state/dialer.dart";
 import "package:managekar/src/state/session.dart";
 import "package:managekar/src/state/workspace.dart";
 import "package:managekar/src/util/platform.dart";
@@ -17,11 +18,13 @@ class SettingsScreen extends StatelessWidget {
     required this.workspace,
     required this.session,
     required this.reminders,
+    this.dialer,
   });
 
   final WorkspaceController workspace;
   final SessionController session;
   final LocalReminders reminders;
+  final DialerController? dialer;
 
   Map<String, dynamic> notifications() => workspace.settings?["notifications"] as Map<String, dynamic>? ?? {};
   Map<String, dynamic> appearance() => workspace.settings?["appearance"] as Map<String, dynamic>? ?? {};
@@ -83,6 +86,13 @@ class SettingsScreen extends StatelessWidget {
                 subtitle: Text(appearance()["theme"] as String? ?? "system"),
                 onTap: () => _pick(context, "Theme", ["light", "dark", "system"], appearance()["theme"] as String? ?? "system", (value) {
                   return patchSettings({"theme": value});
+                }),
+              ),
+              ListTile(
+                title: const Text("Skin"),
+                subtitle: Text(appearance()["skin"] as String? ?? "hermes"),
+                onTap: () => _pick(context, "Skin", ["hermes", "classic"], appearance()["skin"] as String? ?? "hermes", (value) {
+                  return patchSettings({"skin": value});
                 }),
               ),
               ListTile(
@@ -171,9 +181,10 @@ class SettingsScreen extends StatelessWidget {
                   if (await confirmAction(
                     context,
                     title: "Clear workspace",
-                    message: "Tasks, notes, habits, goals, time, and focus will be deleted. The account stays.",
+                    message: "Tasks, notes, habits, goals, time, focus, and queued chats will be deleted. The account stays.",
                   )) {
                     await workspace.clearWorkspace();
+                    await dialer?.clear();
                   }
                 },
               ),

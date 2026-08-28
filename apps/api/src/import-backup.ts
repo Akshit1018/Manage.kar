@@ -66,6 +66,7 @@ const settingsSchema = z
     appearance: z
       .object({
         theme: z.enum(["light", "dark", "system"]).optional(),
+        skin: z.enum(["hermes", "classic"]).optional(),
         fontSize: z.enum(["small", "medium", "large"]).optional(),
         animations: z.boolean().optional(),
       })
@@ -230,6 +231,7 @@ export async function replaceUserWorkspace(prisma: PrismaClient, userId: string,
         habitReminders: settings.notifications?.habitReminders,
         focusBreaks: settings.notifications?.focusBreaks,
         theme: settings.appearance?.theme,
+        skin: settings.appearance?.skin,
         fontSize: settings.appearance?.fontSize,
         animations: settings.appearance?.animations,
         clipboardMonitor: settings.privacy?.clipboardMonitor,

@@ -1,5 +1,6 @@
 import "package:flutter/material.dart";
 import "package:managekar/src/notifications/local_reminders.dart";
+import "package:managekar/src/screens/chats_screen.dart";
 import "package:managekar/src/screens/counts_screen.dart";
 import "package:managekar/src/screens/editors.dart";
 import "package:managekar/src/screens/focus_screen.dart";
@@ -8,11 +9,12 @@ import "package:managekar/src/screens/profile_screen.dart";
 import "package:managekar/src/screens/settings_screen.dart";
 import "package:managekar/src/screens/share_screen.dart";
 import "package:managekar/src/screens/time_screen.dart";
+import "package:managekar/src/state/dialer.dart";
 import "package:managekar/src/state/session.dart";
 import "package:managekar/src/state/workspace.dart";
 import "package:managekar/src/util/format.dart";
+import "package:managekar/src/widgets/assist_orb.dart";
 import "package:managekar/src/widgets/forms.dart";
-import "package:managekar/src/widgets/voice_orb.dart";
 
 class ShellScreen extends StatefulWidget {
   const ShellScreen({
@@ -32,11 +34,19 @@ class ShellScreen extends StatefulWidget {
 
 class _ShellScreenState extends State<ShellScreen> {
   int index = 0;
+  final DialerController dialer = DialerController();
 
   @override
   void initState() {
     super.initState();
     widget.workspace.refresh().then((_) => widget.reminders.sync(widget.workspace));
+    dialer.hydrate();
+  }
+
+  @override
+  void dispose() {
+    dialer.dispose();
+    super.dispose();
   }
 
   @override
@@ -45,7 +55,7 @@ class _ShellScreenState extends State<ShellScreen> {
       animation: widget.workspace,
       builder: (context, _) {
         final pages = [
-          _HomeTab(workspace: widget.workspace, session: widget.session, reminders: widget.reminders),
+          _HomeTab(workspace: widget.workspace, session: widget.session, reminders: widget.reminders, dialer: dialer),
           _ListTab(
             title: "Tasks",
             empty: "Add one task. It is stored in PostgreSQL.",
@@ -78,13 +88,19 @@ class _ShellScreenState extends State<ShellScreen> {
               }
             },
           ),
+          ChatsTab(dialer: dialer),
           _HabitsTab(workspace: widget.workspace),
         ];
         return Scaffold(
           body: Stack(
             children: [
               pages[index],
-              VoiceOrb(onTap: () => captureVoiceFromOrb(context, widget.workspace)),
+              AssistOrb(
+                onRecord: () => captureVoiceFromOrb(context, widget.workspace),
+                onTask: () => openTaskEditor(context, widget.workspace),
+                onNote: () => openNoteEditor(context, widget.workspace),
+                onChats: () => setState(() => index = 3),
+              ),
             ],
           ),
           bottomNavigationBar: NavigationBar(
@@ -94,6 +110,7 @@ class _ShellScreenState extends State<ShellScreen> {
               NavigationDestination(icon: Icon(Icons.home_outlined), label: "Home"),
               NavigationDestination(icon: Icon(Icons.check_circle_outline), label: "Tasks"),
               NavigationDestination(icon: Icon(Icons.sticky_note_2_outlined), label: "Notes"),
+              NavigationDestination(icon: Icon(Icons.chat_bubble_outline), label: "Chats"),
               NavigationDestination(icon: Icon(Icons.local_fire_department_outlined), label: "Habits"),
             ],
           ),
@@ -104,11 +121,12 @@ class _ShellScreenState extends State<ShellScreen> {
 }
 
 class _HomeTab extends StatelessWidget {
-  const _HomeTab({required this.workspace, required this.session, required this.reminders});
+  const _HomeTab({required this.workspace, required this.session, required this.reminders, this.dialer});
 
   final WorkspaceController workspace;
   final SessionController session;
   final LocalReminders reminders;
+  final DialerController? dialer;
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +153,7 @@ class _HomeTab extends StatelessWidget {
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute<void>(
-                    builder: (_) => SettingsScreen(workspace: workspace, session: session, reminders: reminders),
+                    builder: (_) => SettingsScreen(workspace: workspace, session: session, reminders: reminders, dialer: dialer),
                   ),
                 ),
                 icon: const Icon(Icons.settings_outlined),
