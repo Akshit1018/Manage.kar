@@ -10,7 +10,13 @@ import {
   installGhostEventShield,
   overlayPointerGuardAfterOpenChange,
 } from "@/lib/ui/overlay-pointer"
-import { popOverlay, pushOverlay, shouldHandleOverlayEscape, type OverlayId } from "@/lib/ui/overlay-stack"
+import {
+  overlaySelectOrListboxOpen,
+  popOverlay,
+  pushOverlay,
+  shouldHandleOverlayEscape,
+  type OverlayId,
+} from "@/lib/ui/overlay-stack"
 import { useBodyScrollLock } from "@/lib/ui/use-body-scroll-lock"
 import { useVisualViewportInset } from "@/lib/ui/use-visual-viewport"
 
@@ -41,6 +47,7 @@ export function MobileSheet({
   const descriptionId = useId()
   const [mounted, setMounted] = useState(false)
   const overlayId = useRef<OverlayId | null>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
   const pointerGuard = useRef<(() => void) | null>(null)
   useBodyScrollLock(open)
   useVisualViewportInset(open)
@@ -91,7 +98,7 @@ export function MobileSheet({
         !shouldHandleOverlayEscape({
           overlayId: id,
           key: event.key,
-          selectOrListboxOpen: Boolean(document.querySelector('[data-slot="select-content"], [role="listbox"]')),
+          selectOrListboxOpen: overlaySelectOrListboxOpen(overlayRef.current),
         })
       ) {
         return
@@ -120,7 +127,11 @@ export function MobileSheet({
   }
 
   return createPortal(
-    <div className={cn("mk-overlay", variant === "full" && "mk-overlay-full")} data-testid="mobile-sheet">
+    <div
+      ref={overlayRef}
+      className={cn("mk-overlay", variant === "full" && "mk-overlay-full")}
+      data-testid="mobile-sheet"
+    >
       <button
         type="button"
         className="mk-overlay-backdrop"

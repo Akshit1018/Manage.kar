@@ -28,6 +28,16 @@ export function resetOverlayStack(): void {
   stack.length = 0
 }
 
+const OVERLAY_SELECT_OR_LISTBOX =
+  '[data-slot="select-content"], [role="listbox"], [data-slot="select-trigger"][data-state="open"], [aria-expanded="true"][aria-haspopup="listbox"]'
+
+export function overlaySelectOrListboxOpen(scope: { querySelector: (selector: string) => unknown } | null): boolean {
+  if (!scope) {
+    return false
+  }
+  return Boolean(scope.querySelector(OVERLAY_SELECT_OR_LISTBOX))
+}
+
 export function shouldHandleOverlayEscape(input: {
   overlayId: OverlayId
   key: string
