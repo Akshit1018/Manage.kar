@@ -489,7 +489,12 @@ export function FloatingToggle({
           if (intent.type === "activate") {
             if (!recorderOpen) {
               focusTrayAfterReveal.current = true
-              revealIconBar()
+              if (showIconBar) {
+                trayRef.current?.querySelector("button")?.focus()
+                focusTrayAfterReveal.current = false
+              } else {
+                revealIconBar()
+              }
             }
             return
           }
