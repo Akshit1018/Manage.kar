@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest"
 import {
-  POINTER_THROUGH_GUARD_MS,
-  armPointerThroughGuard,
   backdropPointerDown,
+  createGhostEventShield,
+  installGhostEventShield,
   overlayPointerResult,
   type PointerGuardDocument,
 } from "./overlay-pointer"
@@ -33,8 +33,46 @@ describe("overlay pointer contract", () => {
       }),
     ).toBe("ignore")
   })
+})
 
-  it("arms a capture guard that swallows the leftover click after a nested sheet unmounts", () => {
+describe("one-shot ghost-event shield", () => {
+  const origin = { pointerId: 7, clientX: 160, clientY: 6 }
+
+  it("blocks the leftover same-gesture click once, then disarms", () => {
+    const shield = createGhostEventShield(origin)
+    expect(shield.armed).toBe(true)
+    expect(
+      shield.consume({ type: "pointerup", pointerId: 7, clientX: 160, clientY: 6 }),
+    ).toBe("block")
+    expect(shield.armed).toBe(true)
+    expect(shield.consume({ type: "click", clientX: 160, clientY: 6 })).toBe("block")
+    expect(shield.armed).toBe(false)
+    expect(shield.consume({ type: "click", clientX: 160, clientY: 6 })).toBe("ignore")
+  })
+
+  it("does not swallow a fresh tap from a new pointer 100ms later", () => {
+    const shield = createGhostEventShield(origin)
+    expect(
+      shield.consume({ type: "pointerdown", pointerId: 8, clientX: 160, clientY: 6 }),
+    ).toBe("ignore")
+    expect(shield.armed).toBe(false)
+    expect(
+      shield.consume({ type: "pointerup", pointerId: 8, clientX: 160, clientY: 6 }),
+    ).toBe("ignore")
+    expect(shield.consume({ type: "click", clientX: 160, clientY: 6 })).toBe("ignore")
+  })
+
+  it("ignores a different pointer while still armed for the original gesture", () => {
+    const shield = createGhostEventShield(origin)
+    expect(
+      shield.consume({ type: "pointerup", pointerId: 99, clientX: 10, clientY: 10 }),
+    ).toBe("ignore")
+    expect(shield.armed).toBe(true)
+    expect(shield.consume({ type: "click", clientX: 160, clientY: 6 })).toBe("block")
+    expect(shield.armed).toBe(false)
+  })
+
+  it("installs a capture listener that removes itself after the leftover click", () => {
     const listeners = new Map<string, EventListener>()
     const doc: PointerGuardDocument = {
       addEventListener(type, listener) {
@@ -44,28 +82,20 @@ describe("overlay pointer contract", () => {
         listeners.delete(type)
       },
     }
-    let scheduled: (() => void) | undefined
-    const dispose = armPointerThroughGuard(doc, {
-      schedule: (fn, ms) => {
-        expect(ms).toBe(POINTER_THROUGH_GUARD_MS)
-        scheduled = fn
-        return 1
-      },
-      cancel: () => {
-        scheduled = undefined
-      },
-    })
+    const dispose = installGhostEventShield(doc, origin)
+    expect(listeners.has("click")).toBe(true)
+    expect(listeners.has("pointerup")).toBe(true)
 
     const events: string[] = []
     const leftover = {
+      type: "click",
+      clientX: 160,
+      clientY: 6,
       preventDefault: () => events.push("prevent"),
       stopPropagation: () => events.push("stop"),
-    } as unknown as Event
-    listeners.get("click")?.(leftover)
-    listeners.get("pointerup")?.(leftover)
-    expect(events).toEqual(["prevent", "stop", "prevent", "stop"])
-
-    scheduled?.()
+    }
+    listeners.get("click")?.(leftover as unknown as Event)
+    expect(events).toEqual(["prevent", "stop"])
     expect(listeners.size).toBe(0)
     dispose()
   })

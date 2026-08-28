@@ -85,6 +85,7 @@ export interface OverlayCssContract {
   hasSwitchRow: boolean
   hasFormGrid: boolean
   hasStackedFooter: boolean
+  noDuplicateBottomSafeArea: boolean
 }
 
 export function overlayCssContract(css: string): OverlayCssContract {
@@ -103,5 +104,8 @@ export function overlayCssContract(css: string): OverlayCssContract {
     hasSwitchRow: /\.mk-switch-row\s*\{/.test(css),
     hasFormGrid: /\.mk-form-grid\s*\{/.test(css),
     hasStackedFooter: /\.mk-sheet-footer-actions\s*\{/.test(css),
+    noDuplicateBottomSafeArea:
+      /\.mk-sheet:not\(:has\(\.mk-sheet-footer\)\)/.test(css) &&
+      !/\.mk-sheet\s*\{[^}]*padding-bottom:\s*env\(safe-area-inset-bottom/.test(css),
   }
 }

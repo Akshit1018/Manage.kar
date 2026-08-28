@@ -506,6 +506,9 @@ html[data-skin="classic"].dark {
     background: var(--card);
     color: var(--card-foreground);
     border-radius: 1.5rem 1.5rem 0 0;
+  }
+
+  .mk-sheet:not(:has(.mk-sheet-footer)) {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 

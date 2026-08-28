@@ -76,5 +76,6 @@ describe("overlay pointer and form layout contracts", () => {
     expect(contract.hasSwitchRow).toBe(true)
     expect(contract.hasFormGrid).toBe(true)
     expect(contract.hasStackedFooter).toBe(true)
+    expect(contract.noDuplicateBottomSafeArea).toBe(true)
   })
 })

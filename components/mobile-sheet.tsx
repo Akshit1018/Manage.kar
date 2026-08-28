@@ -5,7 +5,8 @@ import { createPortal } from "react-dom"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { armPointerThroughGuard, backdropPointerDown } from "@/lib/ui/overlay-pointer"
+import { backdropPointerDown, installGhostEventShield } from "@/lib/ui/overlay-pointer"
+import { popOverlay, pushOverlay, shouldHandleOverlayEscape, type OverlayId } from "@/lib/ui/overlay-stack"
 import { useBodyScrollLock } from "@/lib/ui/use-body-scroll-lock"
 import { useVisualViewportInset } from "@/lib/ui/use-visual-viewport"
 
@@ -35,6 +36,7 @@ export function MobileSheet({
   const titleId = useId()
   const descriptionId = useId()
   const [mounted, setMounted] = useState(false)
+  const overlayId = useRef<OverlayId | null>(null)
   const pointerGuard = useRef<(() => void) | null>(null)
   useBodyScrollLock(open)
   useVisualViewportInset(open)
@@ -54,11 +56,30 @@ export function MobileSheet({
     if (!open) {
       return
     }
+    const id = pushOverlay()
+    overlayId.current = id
+    return () => {
+      popOverlay(id)
+      overlayId.current = null
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
+      const id = overlayId.current
+      if (!id) {
         return
       }
-      if (document.querySelector('[data-slot="select-content"], [role="listbox"]')) {
+      if (
+        !shouldHandleOverlayEscape({
+          overlayId: id,
+          key: event.key,
+          selectOrListboxOpen: Boolean(document.querySelector('[data-slot="select-content"], [role="listbox"]')),
+        })
+      ) {
         return
       }
       onClose()
@@ -72,9 +93,10 @@ export function MobileSheet({
       return
     }
     pointerGuard.current?.()
-    pointerGuard.current = armPointerThroughGuard(document, {
-      schedule: window.setTimeout.bind(window),
-      cancel: window.clearTimeout.bind(window),
+    pointerGuard.current = installGhostEventShield(document, {
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
     })
     onClose()
   }

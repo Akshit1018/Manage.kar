@@ -1,5 +1,3 @@
-export const POINTER_THROUGH_GUARD_MS = 350
-
 export type OverlayHitTarget = "backdrop" | "sheet" | "workspace"
 
 export interface OverlayPointerResult {
@@ -38,34 +36,105 @@ export function backdropPointerDown(event: BackdropPointerEvent): "dismiss" | "i
   return "dismiss"
 }
 
+export interface GhostPointerOrigin {
+  pointerId: number
+  clientX: number
+  clientY: number
+}
+
+export interface GhostPointerEvent {
+  type: "pointerdown" | "pointerup" | "click"
+  pointerId?: number
+  clientX?: number
+  clientY?: number
+}
+
+const COORD_SLOP_PX = 16
+
+function sameCoordinates(event: GhostPointerEvent, origin: GhostPointerOrigin): boolean {
+  if (event.clientX == null || event.clientY == null) {
+    return false
+  }
+  const dx = event.clientX - origin.clientX
+  const dy = event.clientY - origin.clientY
+  return dx * dx + dy * dy <= COORD_SLOP_PX * COORD_SLOP_PX
+}
+
+export function createGhostEventShield(origin: GhostPointerOrigin) {
+  let armed = true
+
+  return {
+    get armed() {
+      return armed
+    },
+    consume(event: GhostPointerEvent): "block" | "ignore" {
+      if (!armed) {
+        return "ignore"
+      }
+      if (event.type === "pointerdown" && event.pointerId != null && event.pointerId !== origin.pointerId) {
+        armed = false
+        return "ignore"
+      }
+      if (event.type === "pointerup") {
+        if (event.pointerId != null && event.pointerId !== origin.pointerId) {
+          return "ignore"
+        }
+        return "block"
+      }
+      if (event.type === "click" && sameCoordinates(event, origin)) {
+        armed = false
+        return "block"
+      }
+      return "ignore"
+    },
+  }
+}
+
 export interface PointerGuardDocument {
   addEventListener(type: string, listener: EventListener, options?: boolean): void
   removeEventListener(type: string, listener: EventListener, options?: boolean): void
 }
 
-export interface PointerGuardTimers<T = ReturnType<typeof setTimeout>> {
-  schedule: (fn: () => void, ms: number) => T
-  cancel: (id: T) => void
+function asGhostEvent(event: Event): GhostPointerEvent {
+  const pointed = event as Event & { pointerId?: number; clientX?: number; clientY?: number }
+  const type = event.type
+  switch (type) {
+    case "pointerdown":
+    case "pointerup":
+    case "click":
+      return {
+        type,
+        pointerId: pointed.pointerId,
+        clientX: pointed.clientX,
+        clientY: pointed.clientY,
+      }
+    default:
+      return { type: "click" }
+  }
 }
 
-export function armPointerThroughGuard<T = ReturnType<typeof setTimeout>>(
-  doc: PointerGuardDocument,
-  timers: PointerGuardTimers<T>,
-  durationMs = POINTER_THROUGH_GUARD_MS,
-): () => void {
-  const block: EventListener = (event) => {
+export function installGhostEventShield(doc: PointerGuardDocument, origin: GhostPointerOrigin): () => void {
+  const shield = createGhostEventShield(origin)
+  const onEvent: EventListener = (event) => {
+    if (shield.consume(asGhostEvent(event)) !== "block") {
+      if (!shield.armed) {
+        dispose()
+      }
+      return
+    }
     event.preventDefault()
     event.stopPropagation()
+    if (!shield.armed) {
+      dispose()
+    }
   }
-  doc.addEventListener("click", block, true)
-  doc.addEventListener("pointerup", block, true)
-  const id = timers.schedule(() => {
-    doc.removeEventListener("click", block, true)
-    doc.removeEventListener("pointerup", block, true)
-  }, durationMs)
-  return () => {
-    timers.cancel(id)
-    doc.removeEventListener("click", block, true)
-    doc.removeEventListener("pointerup", block, true)
+  const dispose = () => {
+    doc.removeEventListener("click", onEvent, true)
+    doc.removeEventListener("pointerup", onEvent, true)
+    doc.removeEventListener("pointerdown", onEvent, true)
   }
+  doc.addEventListener("click", onEvent, true)
+  doc.addEventListener("pointerup", onEvent, true)
+  doc.addEventListener("pointerdown", onEvent, true)
+  return dispose
 }
