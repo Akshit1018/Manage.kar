@@ -22,6 +22,7 @@ import {
   Home,
   Download,
 } from "lucide-react"
+import { ChatComposer } from "@/components/chat-composer"
 import { FloatingToggle } from "@/components/floating-toggle"
 import { TaskModal } from "@/components/task-modal"
 import { NoteModal, type NoteSaveExtras } from "@/components/note-modal"
@@ -739,6 +740,8 @@ export default function Dashboard() {
         onCreateTaskFromVoice={handleVoiceTask}
         onStartFocus={() => setFocusModal(true)}
       />
+
+      <ChatComposer onVoice={() => setVoiceRecorderOpen(true)} />
 
       <TaskModal
         isOpen={taskModal.isOpen}
