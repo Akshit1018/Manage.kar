@@ -268,6 +268,7 @@ export function FloatingToggle({
         break
       }
       case "idle":
+        setShowIconBar(false)
         break
       default: {
         const _exhaustive: never = outcome
