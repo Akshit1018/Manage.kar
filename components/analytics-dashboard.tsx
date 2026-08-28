@@ -75,8 +75,8 @@ export function AnalyticsDashboard({ isOpen, onClose, tasks = [], habits = [] }:
           </div>
 
           {/* Key Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="glass-card p-4 rounded-2xl">
+          <div className="mk-metric-grid">
+            <Card className="mk-editorial-card p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-primary/10 rounded-xl">
                   <Award className="h-5 w-5 text-primary" />
@@ -88,7 +88,7 @@ export function AnalyticsDashboard({ isOpen, onClose, tasks = [], habits = [] }:
               </div>
             </Card>
 
-            <Card className="glass-card p-4 rounded-2xl">
+            <Card className="mk-editorial-card p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-green-500/10 rounded-xl">
                   <Target className="h-5 w-5 text-green-500" />
@@ -100,7 +100,7 @@ export function AnalyticsDashboard({ isOpen, onClose, tasks = [], habits = [] }:
               </div>
             </Card>
 
-            <Card className="glass-card p-4 rounded-2xl">
+            <Card className="mk-editorial-card p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-500/10 rounded-xl">
                   <Clock className="h-5 w-5 text-blue-500" />
@@ -112,7 +112,7 @@ export function AnalyticsDashboard({ isOpen, onClose, tasks = [], habits = [] }:
               </div>
             </Card>
 
-            <Card className="glass-card p-4 rounded-2xl">
+            <Card className="mk-editorial-card p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-orange-500/10 rounded-xl">
                   <Zap className="h-5 w-5 text-orange-500" />
@@ -135,7 +135,7 @@ export function AnalyticsDashboard({ isOpen, onClose, tasks = [], habits = [] }:
               {insights.map((insight, index) => {
                 const Icon = insight.icon
                 return (
-                  <Card key={index} className="glass-card p-4 rounded-2xl">
+                  <Card key={index} className="mk-editorial-card p-4">
                     <div className="flex items-start gap-4">
                       <div
                         className={`p-2 rounded-xl ${
@@ -157,8 +157,8 @@ export function AnalyticsDashboard({ isOpen, onClose, tasks = [], habits = [] }:
                         />
                       </div>
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h4 className="font-semibold font-sans">{insight.title}</h4>
+                        <div className="mk-meta-row mb-2">
+                          <h4 className="min-w-0 truncate font-semibold font-sans">{insight.title}</h4>
                           <Badge
                             variant={
                               insight.impact === "high"
@@ -183,7 +183,7 @@ export function AnalyticsDashboard({ isOpen, onClose, tasks = [], habits = [] }:
           </div>
 
           {/* Weekly Progress Chart */}
-          <Card className="glass-card p-6 rounded-2xl">
+          <Card className="mk-editorial-card p-6">
             <h3 className="text-lg font-semibold font-sans mb-4">All items</h3>
             <div className="space-y-4">
               <div className="flex items-center justify-between">

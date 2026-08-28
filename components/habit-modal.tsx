@@ -145,22 +145,19 @@ export function HabitModal({
       onClose={onClose}
       title={mode === "create" ? "Create habit" : "Edit habit"}
       footer={
-        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="mk-sheet-footer-actions">
           {mode === "edit" && onDelete ? (
             <Button variant="destructive" onClick={handleDelete} className="mk-touch rounded-xl">
               <Trash2 className="h-4 w-4 mr-2" />
               Delete
             </Button>
           ) : null}
-          <div className="flex-1" />
-          <div className="grid grid-cols-2 gap-2 sm:flex">
-            <Button variant="outline" onClick={onClose} className="mk-touch rounded-xl bg-transparent">
-              Cancel
-            </Button>
-            <Button onClick={handleSave} className="mk-touch rounded-xl">
-              {mode === "create" ? "Create habit" : "Save changes"}
-            </Button>
-          </div>
+          <Button variant="outline" onClick={onClose} className="mk-touch rounded-xl bg-transparent">
+            Cancel
+          </Button>
+          <Button onClick={handleSave} className="mk-touch rounded-xl">
+            {mode === "create" ? "Create habit" : "Save changes"}
+          </Button>
         </div>
       }
     >
@@ -246,7 +243,7 @@ export function HabitModal({
                   <Label className="text-sm font-medium">
                     {formData.frequency === "weekly" ? "Day of the week" : "Select days"}
                   </Label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="mk-duration-rail">
                     {weekDays.map((day) => (
                       <Button
                         key={day}
@@ -254,7 +251,7 @@ export function HabitModal({
                         variant={formData.customDays?.includes(day) ? "default" : "outline"}
                         size="sm"
                         onClick={() => toggleCustomDay(day)}
-                        className="rounded-xl glass bg-transparent"
+                        className="mk-touch rounded-xl glass bg-transparent"
                       >
                         {day.slice(0, 3)}
                       </Button>
@@ -265,7 +262,7 @@ export function HabitModal({
             </div>
 
             {/* Goal & Unit */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="mk-form-grid gap-4">
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Goal</Label>
                 <Input
@@ -296,7 +293,7 @@ export function HabitModal({
 
             {/* Reminders */}
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="mk-switch-row">
                 <div className="flex items-center gap-2">
                   <Bell className="h-4 w-4 text-muted-foreground" />
                   <Label className="text-sm font-medium">Reminders</Label>

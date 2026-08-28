@@ -1,7 +1,6 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { EmptyState } from "@/components/empty-state"
 import type { Habit } from "@/lib/domain/types"
 import { isHabitScheduledOn } from "@/lib/habits/schedule"
@@ -47,11 +46,12 @@ export function HabitList({
         />
       ) : (
         habits.map((habit) => (
-          <Card key={habit.id} className="p-4">
+          <article key={habit.id} className="mk-editorial-card p-4">
             <div className="flex items-center gap-3">
               <Button
                 variant="ghost"
                 size="icon"
+                className="mk-touch shrink-0"
                 onClick={() => onToggleHabit(habit.id)}
                 aria-label={habit.completedToday ? `Unmark ${habit.name} for today` : `Complete ${habit.name} today`}
               >
@@ -61,18 +61,24 @@ export function HabitList({
                   <Circle className="h-5 w-5" />
                 )}
               </Button>
-              <div className="flex-1">
+              <div className="mk-entity-copy">
                 <p>{habit.name}</p>
                 <p className="text-xs text-muted-foreground">
                   Streak {habit.streak}
                   {isHabitScheduledOn(habit, todayKey, weekStartsOn) ? "" : " · off today"}
                 </p>
               </div>
-              <Button variant="ghost" size="icon" onClick={() => onEditHabit(habit)} aria-label={`Edit ${habit.name}`}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="mk-touch shrink-0"
+                onClick={() => onEditHabit(habit)}
+                aria-label={`Edit ${habit.name}`}
+              >
                 <Edit className="h-4 w-4" />
               </Button>
             </div>
-          </Card>
+          </article>
         ))
       )}
     </div>

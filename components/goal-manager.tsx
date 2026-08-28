@@ -176,8 +176,8 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
     <MobileSheet open={isOpen} onClose={onClose} title="Goals" wide>
         <div className="space-y-6">
           {/* Stats Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="glass-card p-4 rounded-2xl">
+          <div className="mk-metric-grid">
+            <Card className="mk-editorial-card p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-primary/10 rounded-xl">
                   <Target className="h-5 w-5 text-primary" />
@@ -189,7 +189,7 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
               </div>
             </Card>
 
-            <Card className="glass-card p-4 rounded-2xl">
+            <Card className="mk-editorial-card p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-green-500/10 rounded-xl">
                   <CheckCircle2 className="h-5 w-5 text-green-500" />
@@ -201,7 +201,7 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
               </div>
             </Card>
 
-            <Card className="glass-card p-4 rounded-2xl">
+            <Card className="mk-editorial-card p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-500/10 rounded-xl">
                   <TrendingUp className="h-5 w-5 text-blue-500" />
@@ -215,7 +215,7 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
               </div>
             </Card>
 
-            <Card className="glass-card p-4 rounded-2xl">
+            <Card className="mk-editorial-card p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-orange-500/10 rounded-xl">
                   <Award className="h-5 w-5 text-orange-500" />
@@ -231,9 +231,9 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
           </div>
 
           {/* Create Goal Button */}
-          <div className="flex justify-between items-center">
+          <div className="mk-aux-toolbar">
             <h3 className="text-lg font-semibold font-sans">Your Goals</h3>
-            <Button onClick={() => setShowCreateForm(true)} className="rounded-2xl">
+            <Button onClick={() => setShowCreateForm(true)} className="mk-touch rounded-2xl">
               <Plus className="h-4 w-4 mr-2" />
               New Goal
             </Button>
@@ -241,9 +241,9 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
 
           {/* Create Goal Form */}
           {showCreateForm && (
-            <Card className="glass-card p-6 rounded-2xl">
+            <Card className="mk-editorial-card p-6">
               <h4 className="font-semibold font-sans mb-4">Create New Goal</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="mk-form-grid gap-4">
                 <div className="space-y-1">
                   <Label className="text-sm">Goal Title</Label>
                   <Input
@@ -295,7 +295,7 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="md:col-span-2 space-y-1">
+                <div className="col-span-full space-y-1">
                   <Label className="text-sm">Description</Label>
                   <Textarea
                     value={newGoal.description}
@@ -305,11 +305,11 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
                   />
                 </div>
               </div>
-              <div className="flex gap-2 mt-4">
-                <Button onClick={createGoal} disabled={!newGoal.title.trim()}>
+              <div className="mk-sheet-footer-actions mt-4">
+                <Button className="mk-touch" onClick={createGoal} disabled={!newGoal.title.trim()}>
                   Create Goal
                 </Button>
-                <Button variant="outline" onClick={() => setShowCreateForm(false)}>
+                <Button variant="outline" className="mk-touch" onClick={() => setShowCreateForm(false)}>
                   Cancel
                 </Button>
               </div>
@@ -322,13 +322,13 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
               <p className="text-sm text-muted-foreground">No goals yet. Create one and it will stay on this device.</p>
             ) : null}
             {goals.map((goal) => (
-              <Card key={goal.id} className="glass-card p-6 rounded-2xl">
+              <Card key={goal.id} className="mk-editorial-card p-6">
                 <div className="space-y-4">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <h4 className="text-lg font-semibold font-sans">{goal.title}</h4>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0 space-y-2">
+                      <h4 className="truncate text-lg font-semibold font-sans">{goal.title}</h4>
                       <p className="text-sm text-muted-foreground">{goal.description}</p>
-                      <div className="flex items-center gap-2">
+                      <div className="mk-meta-row">
                         <Badge className={getCategoryColor(goal.category)}>{goal.category}</Badge>
                         <Badge
                           variant={
@@ -347,20 +347,20 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
                         </span>
                       </div>
                     </div>
-                    <div className="text-right space-y-2">
+                    <div className="space-y-2 sm:text-right">
                       <p className="text-2xl font-bold text-primary">{goal.progress}%</p>
                       <p className="text-sm text-muted-foreground">{goal.status}</p>
-                      <div className="flex justify-end gap-2">
+                      <div className="mk-sheet-footer-actions">
                         {goal.status !== "completed" ? (
-                          <Button size="sm" variant="outline" onClick={() => setGoalStatus(goal.id, "completed")}>
+                          <Button size="sm" variant="outline" className="mk-touch" onClick={() => setGoalStatus(goal.id, "completed")}>
                             Mark done
                           </Button>
                         ) : (
-                          <Button size="sm" variant="outline" onClick={() => setGoalStatus(goal.id, "active")}>
+                          <Button size="sm" variant="outline" className="mk-touch" onClick={() => setGoalStatus(goal.id, "active")}>
                             Reopen
                           </Button>
                         )}
-                        <Button size="sm" variant="destructive" onClick={() => requestDeleteGoal(goal.id)}>
+                        <Button size="sm" variant="destructive" className="mk-touch" onClick={() => requestDeleteGoal(goal.id)}>
                           <Trash2 className="h-4 w-4" />
                           <span className="sr-only">Delete {goal.title}</span>
                         </Button>
@@ -369,12 +369,13 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
                   </div>
 
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="text-sm font-medium">Progress</span>
-                      <div className="flex gap-2">
+                      <div className="mk-duration-rail">
                         <Button
                           variant="outline"
                           size="sm"
+                          className="mk-touch"
                           onClick={() => updateGoalProgress(goal.id, goal.progress - 10)}
                           disabled={goal.progress <= 0}
                         >
@@ -383,6 +384,7 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
                         <Button
                           variant="outline"
                           size="sm"
+                          className="mk-touch"
                           onClick={() => updateGoalProgress(goal.id, goal.progress + 10)}
                           disabled={goal.progress >= 100}
                         >
@@ -400,7 +402,7 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
 
                   <div className="space-y-2">
                     <h5 className="font-medium text-sm">Milestones</h5>
-                    <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="mk-aux-toolbar">
                       <Input
                         value={milestoneDrafts[goal.id]?.title ?? ""}
                         onChange={(event) =>
@@ -429,7 +431,7 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
                         }
                         aria-label={`Milestone due date for ${goal.title}`}
                       />
-                      <Button type="button" variant="outline" onClick={() => createMilestone(goal.id)}>
+                      <Button type="button" variant="outline" className="mk-touch" onClick={() => createMilestone(goal.id)}>
                         Add
                       </Button>
                     </div>
@@ -438,7 +440,7 @@ export function GoalManager({ isOpen, onClose, workspace, persist }: GoalManager
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-6 w-6 rounded-full"
+                          className="mk-touch shrink-0 rounded-full"
                           onClick={() => toggleMilestone(goal.id, milestone.id)}
                           aria-label={
                             milestone.completed

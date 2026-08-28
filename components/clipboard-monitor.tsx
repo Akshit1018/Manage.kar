@@ -174,12 +174,12 @@ export function ClipboardMonitor({ onCreateTask, onCreateNote, enabled = false }
       onClose={handleDismiss}
       title={getSuggestionTitle(currentSuggestion.type)}
       footer={
-        <div className="flex w-full gap-2">
-          <Button className="mk-touch flex-1 rounded-xl" onClick={handleCreateTask}>
+        <div className="mk-sheet-footer-actions">
+          <Button className="mk-touch rounded-xl" onClick={handleCreateTask}>
             <CheckSquare className="h-4 w-4 mr-2" />
             Task
           </Button>
-          <Button variant="outline" className="mk-touch flex-1 rounded-xl bg-transparent" onClick={handleCreateNote}>
+          <Button variant="outline" className="mk-touch rounded-xl bg-transparent" onClick={handleCreateNote}>
             <FileText className="h-4 w-4 mr-2" />
             Note
           </Button>
@@ -193,7 +193,7 @@ export function ClipboardMonitor({ onCreateTask, onCreateNote, enabled = false }
             {getContentLabel(currentSuggestion.type)}
           </Badge>
         </div>
-        <p className="rounded-xl bg-accent/10 p-3 text-sm leading-6 text-muted-foreground">
+        <p className="break-words rounded-xl bg-accent/10 p-3 text-sm leading-6 text-muted-foreground">
           {currentSuggestion.content}
         </p>
         <p className="text-xs text-muted-foreground">
