@@ -35,6 +35,16 @@ export function defaultOrbPosition(viewport: { width: number; height: number }):
   return clampOrbPosition(viewport.width - 100, viewport.height - 100, viewport)
 }
 
-export function iconBarPosition(orb: { x: number; y: number }): { x: number; y: number } {
-  return { x: orb.x - 60, y: orb.y - 60 }
+/** Width of the revealed icon bar: four 40px icons, three 8px gaps, 8px padding each side. */
+export const ICON_BAR_WIDTH = 4 * 40 + 3 * 8 + 16
+
+export function iconBarPosition(
+  orb: { x: number; y: number },
+  viewport: { width: number; height: number },
+  barWidth = ICON_BAR_WIDTH,
+): { x: number; y: number } {
+  return {
+    x: Math.max(8, Math.min(viewport.width - barWidth - 8, orb.x - 60)),
+    y: Math.max(8, orb.y - 60),
+  }
 }

@@ -1,10 +1,11 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { CheckSquare, Clock, FileText, Mic, Plus } from "lucide-react"
+import { CheckSquare, FileText, Mic, MessageCircle, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { VoiceRecorder } from "@/components/voice-recorder"
 import { cn } from "@/lib/utils"
+import { COMPOSER_OPEN_EVENT } from "@/lib/dialer/dialer"
 import {
   ICON_BAR_MS,
   LONG_PRESS_MS,
@@ -20,7 +21,6 @@ interface FloatingToggleProps {
   onAddNote?: () => void
   onVoiceNote?: (audioBlob: Blob, transcription: string, duration?: number) => void
   onCreateTaskFromVoice?: (text: string) => void
-  onStartFocus?: () => void
 }
 
 export function FloatingToggle({
@@ -28,7 +28,6 @@ export function FloatingToggle({
   onAddNote,
   onVoiceNote,
   onCreateTaskFromVoice,
-  onStartFocus,
 }: FloatingToggleProps) {
   const [recorderOpen, setRecorderOpen] = useState(false)
   const [armed, setArmed] = useState(false)
@@ -206,7 +205,10 @@ export function FloatingToggle({
     action?.()
   }
 
-  const icons = position && showIconBar && !recorderOpen ? iconBarPosition(position) : null
+  const icons =
+    position && showIconBar && !recorderOpen
+      ? iconBarPosition(position, { width: window.innerWidth, height: window.innerHeight })
+      : null
 
   return (
     <>
@@ -217,6 +219,16 @@ export function FloatingToggle({
           onMouseEnter={clearHideTimer}
           onMouseLeave={hideIconBarSoon}
         >
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-10 w-10 rounded-full hover:bg-red-500/20"
+            onClick={() => pick(() => setRecorderOpen(true))}
+            title="Record"
+            aria-label="Record voice note"
+          >
+            <Mic className="h-4 w-4 text-red-500" />
+          </Button>
           <Button
             size="icon"
             variant="ghost"
@@ -240,12 +252,12 @@ export function FloatingToggle({
           <Button
             size="icon"
             variant="ghost"
-            className="h-10 w-10 rounded-full hover:bg-orange-500/20"
-            onClick={() => pick(onStartFocus)}
-            title="Focus"
-            aria-label="Open focus timer"
+            className="h-10 w-10 rounded-full hover:bg-primary/20"
+            onClick={() => pick(() => window.dispatchEvent(new Event(COMPOSER_OPEN_EVENT)))}
+            title="Chats"
+            aria-label="Open chats"
           >
-            <Clock className="h-4 w-4 text-orange-500" />
+            <MessageCircle className="h-4 w-4 text-primary" />
           </Button>
         </div>
       ) : null}

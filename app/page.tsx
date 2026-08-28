@@ -738,7 +738,6 @@ export default function Dashboard() {
         onAddNote={() => setNoteModal({ isOpen: true, mode: "create" })}
         onVoiceNote={handleVoiceNote}
         onCreateTaskFromVoice={handleVoiceTask}
-        onStartFocus={() => setFocusModal(true)}
       />
 
       <ChatComposer onVoice={() => setVoiceRecorderOpen(true)} />

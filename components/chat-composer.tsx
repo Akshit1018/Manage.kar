@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
+  COMPOSER_OPEN_EVENT,
   WHEEL_ITEM_HEIGHT,
   centeredWheelIndex,
   loadDialer,
@@ -35,6 +36,9 @@ export function ChatComposer({ onVoice }: ChatComposerProps) {
 
   useEffect(() => {
     setDialer(loadDialer(window.localStorage))
+    const open = () => setExpanded(true)
+    window.addEventListener(COMPOSER_OPEN_EVENT, open)
+    return () => window.removeEventListener(COMPOSER_OPEN_EVENT, open)
   }, [])
 
   useEffect(() => {

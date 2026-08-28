@@ -10,6 +10,8 @@ import {
 
 export const DIALER_KEY = "managekar.dialer.v1"
 export const WHEEL_ITEM_HEIGHT = 48
+/** Window event asking the chat composer to expand (fired by the orb's Chats icon). */
+export const COMPOSER_OPEN_EVENT = "managekar:composer-open"
 
 export function createEmptyDialer(): DialerState {
   return { schemaVersion: 1, sessions: [], outbox: [] }
