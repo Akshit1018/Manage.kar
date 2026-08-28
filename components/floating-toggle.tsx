@@ -5,7 +5,7 @@ import { CheckSquare, FileText, Mic, MessageCircle, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { VoiceRecorder } from "@/components/voice-recorder"
 import { cn } from "@/lib/utils"
-import { COMPOSER_OPEN_EVENT } from "@/lib/dialer/dialer"
+import { dispatchComposerOpen } from "@/lib/dialer/dialer"
 import {
   ICON_BAR_MS,
   LONG_PRESS_MS,
@@ -21,6 +21,7 @@ interface FloatingToggleProps {
   onAddNote?: () => void
   onVoiceNote?: (audioBlob: Blob, transcription: string, duration?: number) => void
   onCreateTaskFromVoice?: (text: string) => void
+  suppressed?: boolean
 }
 
 export function FloatingToggle({
@@ -28,6 +29,7 @@ export function FloatingToggle({
   onAddNote,
   onVoiceNote,
   onCreateTaskFromVoice,
+  suppressed = false,
 }: FloatingToggleProps) {
   const [recorderOpen, setRecorderOpen] = useState(false)
   const [armed, setArmed] = useState(false)
@@ -206,9 +208,13 @@ export function FloatingToggle({
   }
 
   const icons =
-    position && showIconBar && !recorderOpen
+    position && showIconBar && !recorderOpen && !suppressed
       ? iconBarPosition(position, { width: window.innerWidth, height: window.innerHeight })
       : null
+
+  if (suppressed && !recorderOpen) {
+    return null
+  }
 
   return (
     <>
@@ -253,7 +259,7 @@ export function FloatingToggle({
             size="icon"
             variant="ghost"
             className="h-10 w-10 rounded-full hover:bg-primary/20"
-            onClick={() => pick(() => window.dispatchEvent(new Event(COMPOSER_OPEN_EVENT)))}
+            onClick={() => pick(() => dispatchComposerOpen({ openTab: true }))}
             title="Chats"
             aria-label="Open chats"
           >
@@ -265,7 +271,7 @@ export function FloatingToggle({
       <Button
         ref={buttonRef}
         size="icon"
-        aria-label="Add task, note, or voice"
+        aria-label="Record, add a task or note, or open chats"
         onClick={(event) => {
           event.preventDefault()
         }}

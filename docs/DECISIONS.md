@@ -3,6 +3,37 @@
 Locked decisions from the founder grilling sessions (August 2026). Every feature PR
 should be consistent with this document; if a decision changes, update it here first.
 
+## Engineering locks still in force
+
+These predate the Hermes companion direction and are not reversed by it.
+
+### D001 — This product is a personal productivity workspace
+
+- **Why:** Forcing a recruiting architecture would be a rewrite of a different product.
+- **Reversal:** Owner writes a new vision and we start a separate app or a new major version.
+
+### D002 — One workspace document is the source of truth
+
+- **Why:** Data loss is P0. A single versioned JSON document is reversible and testable.
+- **Satellite:** Chat outbox lives in `managekar.dialer.v1` until pairing lands; wipe and backup must include it.
+- **Reversal:** Move the same schema to IndexedDB when voice blobs or size require it.
+
+### D003 — First run is empty, not fake seed data
+
+- **Why:** Trust. Empty states tell the user what to do next.
+- **Chats exception:** Demo Hermes machines are shown in memory so the dialer is usable before pairing. They are labeled Demo, never marked sent, and are not written on first load.
+- **Reversal:** Add an explicit “Load sample workspace” action if testers need it.
+
+### D004 — No CRDT / no backend in this slice
+
+- **Why:** Sync without a product need creates cost and conflict UI we cannot staff.
+- **Reversal:** When a second device is a real requirement, add an adapter behind the workspace interface.
+
+### D005 — Clipboard monitor off by default
+
+- **Why:** Privacy is a product feature.
+- **Reversal:** User enables it in Settings → Privacy.
+
 ## Prime directive
 
 **Build only what Hermes doesn't already have.** Manage.kar is a companion client for

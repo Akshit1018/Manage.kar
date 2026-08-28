@@ -1,16 +1,21 @@
 import { describe, expect, it } from "vitest"
 import {
   centeredWheelIndex,
+  chatListItems,
   createEmptyDialer,
   flushOutbox,
   loadDialer,
+  messagesForTarget,
   presenceDotClass,
   presenceLabel,
+  queueCopy,
   queueMessage,
   queuedCountFor,
   saveDialer,
   targetTitle,
+  visibleSessions,
   wheelItems,
+  DIALER_KEY,
 } from "./dialer"
 import { NEW_CHAT_TARGET, type DialerState, type HermesSession } from "./types"
 
@@ -20,6 +25,7 @@ function session(overrides: Partial<HermesSession>): HermesSession {
     title: "Hermes local",
     presence: "active",
     lastActivityAt: "2026-08-28T09:00:00.000Z",
+    source: "paired",
     ...overrides,
   }
 }
@@ -76,11 +82,36 @@ describe("queueMessage", () => {
     expect(result?.state.outbox).toHaveLength(1)
   })
 
-  it("marks the message sent immediately when the session is active", () => {
+  it("queues when the session is idle", () => {
+    const state = stateWith([session({ id: "s1", presence: "idle" })])
+    const result = queueMessage(state, "s1", "hi", "2026-08-28T10:00:00.000Z")
+    expect(result?.message.status).toBe("queued")
+  })
+
+  it("does not mark a message sent without an explicit transport ack", () => {
     const state = stateWith([session({ id: "s1", presence: "active" })])
     const result = queueMessage(state, "s1", "hi", "2026-08-28T10:00:00.000Z")
+    expect(result?.message.status).toBe("queued")
+    expect(result?.message.sentAt).toBeUndefined()
+  })
+
+  it("marks the message sent only when the caller confirms delivery", () => {
+    const state = stateWith([session({ id: "s1", presence: "active", source: "paired" })])
+    const result = queueMessage(state, "s1", "hi", "2026-08-28T10:00:00.000Z", { deliver: true })
     expect(result?.message.status).toBe("sent")
     expect(result?.message.sentAt).toBe("2026-08-28T10:00:00.000Z")
+  })
+
+  it("never treats a demo session as delivered even if deliver is requested", () => {
+    const state = stateWith([session({ id: "demo-local", source: "demo", presence: "active" })])
+    const result = queueMessage(state, "demo-local", "hi", "2026-08-28T10:00:00.000Z", { deliver: true })
+    expect(result?.message.status).toBe("queued")
+  })
+
+  it("attaches a demo session into state when the user messages it", () => {
+    const result = queueMessage(createEmptyDialer(), "demo-local", "hi", "2026-08-28T10:00:00.000Z")
+    expect(result?.state.sessions.find((item) => item.id === "demo-local")?.source).toBe("demo")
+    expect(result?.message.target).toBe("demo-local")
   })
 
   it("queues new-chat messages until a chat exists to carry them", () => {
@@ -147,24 +178,101 @@ describe("centeredWheelIndex", () => {
 })
 
 describe("storage round trip", () => {
-  it("seeds demo sessions on first load and persists outbox", () => {
+  it("does not persist demo machines on first load", () => {
     const store = new MemoryStore()
     const first = loadDialer(store)
-    expect(first.sessions.length).toBeGreaterThan(0)
+    expect(first.sessions).toEqual([])
+    expect(store.getItem(DIALER_KEY)).toBeNull()
+    expect(visibleSessions(first).some((item) => item.source === "demo")).toBe(true)
+  })
 
-    const queued = queueMessage(first, first.sessions[0].id, "hello", "2026-08-28T10:00:00.000Z")!
+  it("keeps an empty persisted session list empty", () => {
+    const store = new MemoryStore()
+    const queued = queueMessage(createEmptyDialer(), NEW_CHAT_TARGET, "hello", "2026-08-28T10:00:00.000Z")!
     saveDialer(store, queued.state)
-
     const reloaded = loadDialer(store)
+    expect(reloaded.sessions).toEqual([])
     expect(reloaded.outbox).toHaveLength(1)
     expect(reloaded.outbox[0].text).toBe("hello")
   })
 
-  it("recovers from corrupt storage with a fresh seed", () => {
+  it("recovers from corrupt storage without writing demo machines", () => {
     const store = new MemoryStore()
-    store.setItem("managekar.dialer.v1", "{not json")
+    store.setItem(DIALER_KEY, "{not json")
     const state = loadDialer(store)
     expect(state.schemaVersion).toBe(1)
+    expect(state.sessions).toEqual([])
     expect(state.outbox).toEqual([])
+    expect(JSON.parse(store.getItem(DIALER_KEY) ?? "{}").sessions).toEqual([])
+  })
+
+  it("rejects a planted session that steals the new-chat id", () => {
+    const store = new MemoryStore()
+    store.setItem(
+      DIALER_KEY,
+      JSON.stringify({
+        schemaVersion: 1,
+        sessions: [{ id: NEW_CHAT_TARGET, title: "Hijack", presence: "active" }],
+        outbox: [],
+      }),
+    )
+    expect(loadDialer(store).sessions).toEqual([])
+  })
+})
+
+describe("visibleSessions and chat list", () => {
+  it("shows in-memory demos until a paired machine exists", () => {
+    const demos = visibleSessions(createEmptyDialer())
+    expect(demos.map((item) => item.id)).toEqual(["demo-local", "demo-vps", "demo-research"])
+    const paired = visibleSessions(stateWith([session({ id: "real", source: "paired" })]))
+    expect(paired.map((item) => item.id)).toEqual(["real"])
+  })
+
+  it("lists New chat first, then sessions by latest activity, with queued badges", () => {
+    let state = stateWith([
+      session({ id: "old", title: "Old", lastActivityAt: "2026-08-01T00:00:00.000Z" }),
+      session({ id: "fresh", title: "Fresh", lastActivityAt: "2026-08-28T00:00:00.000Z" }),
+    ])
+    state = queueMessage(state, "old", "later", "2026-08-28T10:00:00.000Z")!.state
+    state = queueMessage(state, NEW_CHAT_TARGET, "start", "2026-08-28T09:00:00.000Z")!.state
+    const items = chatListItems(state, "")
+    expect(items.map((item) => item.id)).toEqual([NEW_CHAT_TARGET, "fresh", "old"])
+    expect(items[0].queuedCount).toBe(1)
+    expect(items[2].queuedCount).toBe(1)
+    expect(items[2].preview).toBe("later")
+  })
+
+  it("filters the chat list by title or preview", () => {
+    const state = stateWith([session({ id: "vps", title: "Hermes · VPS" })])
+    expect(chatListItems(state, "vps").map((item) => item.id)).toEqual(["vps"])
+    expect(chatListItems(state, "nope")).toEqual([])
+  })
+
+  it("returns outbox rows for one target in time order", () => {
+    let state = createEmptyDialer()
+    state = queueMessage(state, NEW_CHAT_TARGET, "one", "2026-08-28T10:00:00.000Z")!.state
+    state = queueMessage(state, "s1", "skip", "2026-08-28T10:01:00.000Z")!.state
+    state = queueMessage(state, NEW_CHAT_TARGET, "two", "2026-08-28T10:02:00.000Z")!.state
+    expect(messagesForTarget(state, NEW_CHAT_TARGET).map((item) => item.text)).toEqual(["one", "two"])
+  })
+
+  it("uses honest copy until a real send exists", () => {
+    expect(queueCopy({ status: "queued", source: "demo" })).toMatch(/pairing/i)
+    expect(queueCopy({ status: "sent", source: "demo" })).toMatch(/pairing/i)
+    expect(queueCopy({ status: "queued", source: "paired", presence: "offline" })).toMatch(/online/i)
+    expect(queueCopy({ status: "sent" })).toMatch(/sent/i)
+  })
+
+  it("treats leftover demo machine ids as demo even without a source field", () => {
+    const store = new MemoryStore()
+    store.setItem(
+      DIALER_KEY,
+      JSON.stringify({
+        schemaVersion: 1,
+        sessions: [{ id: "demo-local", title: "Hermes · local", presence: "active" }],
+        outbox: [],
+      }),
+    )
+    expect(loadDialer(store).sessions[0]?.source).toBe("demo")
   })
 })

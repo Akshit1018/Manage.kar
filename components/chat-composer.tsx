@@ -7,47 +7,76 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
   COMPOSER_OPEN_EVENT,
+  DIALER_CHANGED_EVENT,
   WHEEL_ITEM_HEIGHT,
   centeredWheelIndex,
   loadDialer,
+  persistDialer,
   presenceDotClass,
   presenceLabel,
+  queueCopy,
   queueMessage,
   queuedCountFor,
-  saveDialer,
+  resolveSession,
   targetTitle,
+  visibleSessions,
   wheelItems,
 } from "@/lib/dialer/dialer"
-import { NEW_CHAT_TARGET, type DialerState } from "@/lib/dialer/types"
+import { NEW_CHAT_TARGET, type ComposerOpenDetail, type DialerState } from "@/lib/dialer/types"
+import { useVisualViewportInset } from "@/lib/ui/use-visual-viewport"
 
 interface ChatComposerProps {
   onVoice?: () => void
+  onExpandedChange?: (expanded: boolean) => void
+  preferredTarget?: string
 }
 
-export function ChatComposer({ onVoice }: ChatComposerProps) {
+export function ChatComposer({ onVoice, onExpandedChange, preferredTarget }: ChatComposerProps) {
   const [dialer, setDialer] = useState<DialerState | null>(null)
   const [expanded, setExpanded] = useState(false)
   const [wheelOpen, setWheelOpen] = useState(false)
-  const [target, setTarget] = useState<string>(NEW_CHAT_TARGET)
+  const [target, setTarget] = useState<string>(preferredTarget || NEW_CHAT_TARGET)
   const [text, setText] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
   const wheelRef = useRef<HTMLDivElement>(null)
   const scrollSettleTimer = useRef<number | null>(null)
+  const sendingRef = useRef(false)
+  useVisualViewportInset(expanded)
 
   useEffect(() => {
-    setDialer(loadDialer(window.localStorage))
-    const open = () => setExpanded(true)
+    const reload = () => setDialer(loadDialer(window.localStorage))
+    reload()
+    const open = (event: Event) => {
+      const detail = (event as CustomEvent<ComposerOpenDetail>).detail
+      if (detail?.target) {
+        setTarget(detail.target)
+      }
+      setExpanded(true)
+    }
     window.addEventListener(COMPOSER_OPEN_EVENT, open)
-    return () => window.removeEventListener(COMPOSER_OPEN_EVENT, open)
+    window.addEventListener(DIALER_CHANGED_EVENT, reload)
+    window.addEventListener("storage", reload)
+    return () => {
+      window.removeEventListener(COMPOSER_OPEN_EVENT, open)
+      window.removeEventListener(DIALER_CHANGED_EVENT, reload)
+      window.removeEventListener("storage", reload)
+    }
   }, [])
 
   useEffect(() => {
+    if (preferredTarget) {
+      setTarget(preferredTarget)
+    }
+  }, [preferredTarget])
+
+  useEffect(() => {
+    onExpandedChange?.(expanded)
     if (expanded) {
       inputRef.current?.focus()
     } else {
       setWheelOpen(false)
     }
-  }, [expanded])
+  }, [expanded, onExpandedChange])
 
   useEffect(() => {
     return () => {
@@ -57,7 +86,7 @@ export function ChatComposer({ onVoice }: ChatComposerProps) {
     }
   }, [])
 
-  const items = useMemo(() => (dialer ? wheelItems(dialer.sessions) : []), [dialer])
+  const items = useMemo(() => (dialer ? wheelItems(visibleSessions(dialer)) : []), [dialer])
   const selected = items.find((item) => item.id === target) ?? items[0]
   const queuedForTarget = dialer ? queuedCountFor(dialer, target) : 0
 
@@ -94,22 +123,32 @@ export function ChatComposer({ onVoice }: ChatComposerProps) {
   }
 
   const handleSend = () => {
-    if (!dialer) {
+    if (sendingRef.current) {
       return
     }
-    const result = queueMessage(dialer, target, text, new Date().toISOString())
+    const draft = text.trim()
+    if (!draft) {
+      return
+    }
+    sendingRef.current = true
+    const base = dialer ?? loadDialer(window.localStorage)
+    const result = queueMessage(base, target, draft, new Date().toISOString())
     if (!result) {
+      sendingRef.current = false
       return
     }
-    saveDialer(window.localStorage, result.state)
-    setDialer(result.state)
     setText("")
-    const title = targetTitle(result.state.sessions, target)
-    if (result.message.status === "sent") {
-      toast.success(`Sent to ${title}`)
-    } else {
-      toast(`Queued for ${title} — sends when the agent is back online`)
-    }
+    persistDialer(window.localStorage, result.state)
+    setDialer(result.state)
+    const session = resolveSession(result.state, target)
+    const title = targetTitle(visibleSessions(result.state), target)
+    const copy = queueCopy({
+      status: result.message.status,
+      source: session?.source,
+      presence: session?.presence,
+    })
+    toast(result.message.status === "sent" ? `Sent to ${title}` : `${copy} · ${title}`)
+    sendingRef.current = false
   }
 
   if (!dialer) {
@@ -124,7 +163,7 @@ export function ChatComposer({ onVoice }: ChatComposerProps) {
         onClick={() => setExpanded(true)}
         className={cn(
           "mk-touch fixed left-1/2 z-[70] -translate-x-1/2 select-none",
-          "bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-6",
+          "bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px)+var(--mk-keyboard,0px))] sm:bottom-6",
           "flex items-center gap-2 rounded-full border border-border/60 bg-card/80 px-4 py-2.5",
           "text-sm text-muted-foreground shadow-lg backdrop-blur-xl",
         )}
@@ -138,8 +177,8 @@ export function ChatComposer({ onVoice }: ChatComposerProps) {
   return (
     <div
       className={cn(
-        "fixed inset-x-2 z-[70] sm:inset-x-auto sm:left-1/2 sm:w-[28rem] sm:-translate-x-1/2",
-        "bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] sm:bottom-6",
+        "fixed inset-x-2 right-16 z-[70] sm:inset-x-auto sm:right-auto sm:left-1/2 sm:w-[28rem] sm:-translate-x-1/2",
+        "bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px)+var(--mk-keyboard,0px))] sm:bottom-6",
       )}
     >
       {wheelOpen ? (
@@ -244,7 +283,7 @@ export function ChatComposer({ onVoice }: ChatComposerProps) {
           <Button
             size="icon"
             variant="ghost"
-            aria-label="Record voice message"
+            aria-label="Record a voice note"
             className="h-9 w-9 shrink-0 rounded-full"
             onClick={onVoice}
           >
