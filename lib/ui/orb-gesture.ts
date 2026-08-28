@@ -144,8 +144,8 @@ export function clampOrbPosition(
 ): { x: number; y: number } {
   const { width, height, inset, bottomReserve } = resolveBounds(bounds)
   return {
-    x: Math.max(inset, Math.min(width - size - inset, x)),
-    y: Math.max(inset, Math.min(height - size - bottomReserve, y)),
+    x: Math.round(Math.max(inset, Math.min(width - size - inset, x))),
+    y: Math.round(Math.max(inset, Math.min(height - size - bottomReserve, y))),
   }
 }
 

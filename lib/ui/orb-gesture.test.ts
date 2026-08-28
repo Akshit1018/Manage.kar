@@ -95,6 +95,10 @@ describe("orb placement", () => {
     expect(clampOrbPosition(200, 300, IPHONE_SE)).toEqual({ x: 200, y: 300 })
   })
 
+  it("persists whole pixels after a fractional pointer sample", () => {
+    expect(clampOrbPosition(8.4, 351.9999084472656, IPHONE_390)).toEqual({ x: 8, y: 352 })
+  })
+
   it("keeps the tray visible and inward on the left edge", () => {
     const orb = { x: 8, y: 400 }
     const bar = iconBarPosition(orb, IPHONE_390)
