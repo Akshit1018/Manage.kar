@@ -41,7 +41,14 @@ export function ChatComposer({ onVoice, onExpandedChange, preferredTarget }: Cha
   const wheelRef = useRef<HTMLDivElement>(null)
   const scrollSettleTimer = useRef<number | null>(null)
   const sendingRef = useRef(false)
+  const onExpandedChangeRef = useRef(onExpandedChange)
+  onExpandedChangeRef.current = onExpandedChange
   useVisualViewportInset(expanded)
+
+  const setExpandedAndNotify = (next: boolean) => {
+    onExpandedChangeRef.current?.(next)
+    setExpanded(next)
+  }
 
   useEffect(() => {
     const reload = () => setDialer(loadDialer(window.localStorage))
@@ -51,7 +58,7 @@ export function ChatComposer({ onVoice, onExpandedChange, preferredTarget }: Cha
       if (detail?.target) {
         setTarget(detail.target)
       }
-      setExpanded(true)
+      setExpandedAndNotify(true)
     }
     window.addEventListener(COMPOSER_OPEN_EVENT, open)
     window.addEventListener(DIALER_CHANGED_EVENT, reload)
@@ -70,13 +77,12 @@ export function ChatComposer({ onVoice, onExpandedChange, preferredTarget }: Cha
   }, [preferredTarget])
 
   useEffect(() => {
-    onExpandedChange?.(expanded)
     if (expanded) {
       inputRef.current?.focus()
     } else {
       setWheelOpen(false)
     }
-  }, [expanded, onExpandedChange])
+  }, [expanded])
 
   useEffect(() => {
     return () => {
@@ -160,7 +166,7 @@ export function ChatComposer({ onVoice, onExpandedChange, preferredTarget }: Cha
       <button
         type="button"
         aria-label="Open chat composer"
-        onClick={() => setExpanded(true)}
+        onClick={() => setExpandedAndNotify(true)}
         className={cn(
           "mk-touch mk-composer mk-composer-collapsed fixed z-[70] sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-auto select-none",
           "flex items-center gap-2 rounded-full border border-border/60 bg-card/80 px-4 py-2.5",
@@ -185,7 +191,7 @@ export function ChatComposer({ onVoice, onExpandedChange, preferredTarget }: Cha
           setWheelOpen(false)
           return
         }
-        setExpanded(false)
+        setExpandedAndNotify(false)
       }}
     >
       {wheelOpen ? (
@@ -237,7 +243,7 @@ export function ChatComposer({ onVoice, onExpandedChange, preferredTarget }: Cha
           variant="ghost"
           aria-label="Close composer"
           className="mk-touch shrink-0 rounded-full"
-          onClick={() => setExpanded(false)}
+          onClick={() => setExpandedAndNotify(false)}
         >
           <X className="h-4 w-4" />
         </Button>
