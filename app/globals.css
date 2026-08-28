@@ -1383,6 +1383,7 @@ html[data-skin="classic"].dark {
 [data-slot="select-trigger"],
 [data-slot="select-item"],
 [data-slot="textarea"],
+[data-slot="switch"],
 .mk-touch {
   min-height: 44px;
   min-width: 44px;

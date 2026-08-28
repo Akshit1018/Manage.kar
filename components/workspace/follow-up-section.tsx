@@ -19,7 +19,7 @@ export function FollowUpSection({ tasks, onToggleTask, onNudge }: FollowUpSectio
     <div>
       <div className="mb-1 flex items-center gap-2">
         <BellRing className="h-4 w-4 text-primary" />
-        <h3 className="mk-section-title">Follow-ups</h3>
+        <h2 className="mk-section-title">Follow-ups</h2>
       </div>
       <p className="mk-section-support mb-4">
         Local nudges while this app is open — not push notifications.

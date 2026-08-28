@@ -167,13 +167,13 @@ export function TaskList({
           />
         ))
       ) : (
-        <div className="mk-board-snap">
+        <div className="mk-board-snap" role="region" aria-label="Task board">
           {TASK_STATUSES.map((status) => {
             const column = groupTasksByStatus(tasks)[status]
             return (
               <div key={status} className="mk-board-column">
                 <div className="mk-board-column-head">
-                  <h4 className="mk-section-title">{statusLabel(status)}</h4>
+                  <h2 className="mk-section-title">{statusLabel(status)}</h2>
                   <span className="mk-board-count">{column.length}</span>
                 </div>
                 {column.length === 0 ? (

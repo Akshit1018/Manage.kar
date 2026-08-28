@@ -7,11 +7,14 @@ import {
   iosZoomGuardIsUnlayered,
   iosZoomGuardLivesInBaseLayer,
   readGlobalsCss,
+  switchInTouchFloor,
+  switchPrimitiveContract,
   touchTargetFloorIsUnlayered,
   touchTargetFloorLivesInBaseLayer,
 } from "./editorial-surface-contract"
 
 const BUTTON_TSX = readFileSync(path.join(process.cwd(), "components/ui/button.tsx"), "utf8")
+const SWITCH_TSX = readFileSync(path.join(process.cwd(), "components/ui/switch.tsx"), "utf8")
 
 describe("editorial surface CSS contract", () => {
   const globalsCss = readGlobalsCss()
@@ -53,5 +56,13 @@ describe("editorial surface CSS contract", () => {
   it("uses ink on the light featured surface so support text can meet 4.5:1", () => {
     expect(FEATURED_LIGHT_FOREGROUND).toBe("#170d02")
     expect(globalsCss).toMatch(/:root\s*\{[\s\S]*?--mk-featured-foreground:\s*#170d02/)
+  })
+
+  it("gives Switch a 44px hit area without enlarging the visual track", () => {
+    const contract = switchPrimitiveContract(SWITCH_TSX)
+    expect(contract.rootHitArea44).toBe(true)
+    expect(contract.hasCompactTrack).toBe(true)
+    expect(contract.focusVisibleOnRoot).toBe(true)
+    expect(switchInTouchFloor(globalsCss)).toBe(true)
   })
 })

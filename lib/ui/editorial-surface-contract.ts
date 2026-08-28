@@ -131,3 +131,23 @@ export function countMkTouchMinSizeRules(css: string): number {
   return (css.match(/\.mk-touch\s*\{[^}]*min-height:\s*44px[^}]*min-width:\s*44px[^}]*\}/g) ?? [])
     .length
 }
+
+export interface SwitchPrimitiveContract {
+  rootHitArea44: boolean
+  hasCompactTrack: boolean
+  focusVisibleOnRoot: boolean
+}
+
+export function switchPrimitiveContract(source: string): SwitchPrimitiveContract {
+  const rootBlock = source.slice(source.indexOf("data-slot=\"switch\""), source.indexOf("SwitchPrimitive.Thumb"))
+  return {
+    rootHitArea44: /size-11|h-11 w-11|min-h-11 min-w-11/.test(rootBlock),
+    hasCompactTrack: /data-slot="switch-track"/.test(source) && /h-\[1\.15rem\] w-8/.test(source),
+    focusVisibleOnRoot: /focus-visible:ring-\[3px\]/.test(rootBlock),
+  }
+}
+
+export function switchInTouchFloor(css: string): boolean {
+  const block = touchTargetFloorBlock(stripLayerBlocks(css))
+  return Boolean(block && /\[data-slot="switch"\]/.test(block))
+}

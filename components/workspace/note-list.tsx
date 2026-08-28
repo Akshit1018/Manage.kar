@@ -66,10 +66,10 @@ export function NoteList({
         </div>
       </div>
 
-      <div className="modern-card p-4">
+      <div className="mk-editorial-card p-4">
         <div className="flex items-center gap-2">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <h4 className="font-semibold">Ask my notes</h4>
+          <h2 className="font-semibold">Ask my notes</h2>
         </div>
         <Input
           value={question}
@@ -92,6 +92,7 @@ export function NoteList({
                   type="button"
                   className="block min-h-11 w-full rounded-xl border border-border/50 bg-accent/10 p-3 text-left"
                   onClick={() => onEditNote(answer.note)}
+                  aria-label={`Open note ${answer.note.title}`}
                 >
                   <p className="truncate text-sm font-medium">{answer.note.title}</p>
                   {answer.snippet ? (
@@ -158,17 +159,26 @@ export function NoteList({
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {visibleNotes.map((note) => (
-            <div key={note.id} className="mk-editorial-card cursor-pointer p-4" onClick={() => onEditNote(note)}>
-              <div className="flex items-start justify-between gap-2">
-                <h4 className="min-w-0 flex-1 truncate font-semibold">{note.title}</h4>
+            <article key={note.id} className="mk-editorial-card p-4">
+              <div className="flex items-start gap-2">
+                <button
+                  type="button"
+                  className="min-w-0 flex-1 rounded-xl text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  onClick={() => onEditNote(note)}
+                  aria-label={`Edit ${note.title}`}
+                >
+                  <h3 className="truncate font-semibold">{note.title}</h3>
+                  <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{note.content}</p>
+                  <div className="mt-2">
+                    <LabelChips labels={labelsForIds(labels, note.labelIds)} />
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">{formatTimestamp(note.createdAt, dateFormat)}</p>
+                </button>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="shrink-0"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    onTogglePin(note.id)
-                  }}
+                  onClick={() => onTogglePin(note.id)}
                   aria-label={note.pinned ? `Unpin ${note.title}` : `Pin ${note.title}`}
                   aria-pressed={Boolean(note.pinned)}
                 >
@@ -177,12 +187,7 @@ export function NoteList({
                   />
                 </Button>
               </div>
-              <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{note.content}</p>
-              <div className="mt-2">
-                <LabelChips labels={labelsForIds(labels, note.labelIds)} />
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">{formatTimestamp(note.createdAt, dateFormat)}</p>
-            </div>
+            </article>
           ))}
         </div>
       )}

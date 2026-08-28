@@ -34,7 +34,7 @@ export function TodaySection({
 }: TodaySectionProps) {
   return (
     <div>
-      <h3 className="mk-section-title mb-4">Today</h3>
+      <h2 className="mk-section-title mb-4">Today</h2>
       {todayTasks.length === 0 && todayHabits.length === 0 ? (
         <EmptyState
           title={tasks.length === 0 ? "Nothing on your plate yet" : "Nothing due today"}

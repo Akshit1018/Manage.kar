@@ -6,7 +6,9 @@ import { NARROW_FORM_MAX_WIDTH } from "./sheet-layout"
 import {
   boardColumnWidth,
   filterRailLayout,
+  headingLandmarkContract,
   modalFooterOrientation,
+  noteInteractionContract,
   stacksBelowNarrowForm,
   taskBoardLayout,
   taskNoteCssContract,
@@ -98,5 +100,29 @@ describe("task and note source contract", () => {
     expect(contract.labelPickerUsesChipActions).toBe(true)
     expect(contract.labelChipsUseRail).toBe(true)
     expect(contract.voiceUsesActionRow).toBe(true)
+  })
+
+  it("keeps note edit and pin as sibling controls with distinct names", () => {
+    const contract = noteInteractionContract(readComponent("components/workspace/note-list.tsx"))
+    expect(contract.cardHasOnClick).toBe(false)
+    expect(contract.usesStopPropagation).toBe(false)
+    expect(contract.hasEditAriaLabel).toBe(true)
+    expect(contract.hasPinAriaLabel).toBe(true)
+    expect(contract.askHasOpenAriaLabel).toBe(true)
+  })
+
+  it("names the task board and uses H1 then section headings", () => {
+    const contract = headingLandmarkContract({
+      taskList: readComponent("components/workspace/task-list.tsx"),
+      todaySection: readComponent("components/workspace/today-section.tsx"),
+      followUpSection: readComponent("components/workspace/follow-up-section.tsx"),
+      noteList: readComponent("components/workspace/note-list.tsx"),
+    })
+    expect(contract.boardNamedRegion).toBe(true)
+    expect(contract.todayH2).toBe(true)
+    expect(contract.followUpH2).toBe(true)
+    expect(contract.askH2).toBe(true)
+    expect(contract.boardH2).toBe(true)
+    expect(contract.noteTitleH3).toBe(true)
   })
 })

@@ -108,6 +108,50 @@ export interface TaskNoteSourceContract {
   voiceUsesActionRow: boolean
 }
 
+export interface NoteInteractionContract {
+  cardHasOnClick: boolean
+  usesStopPropagation: boolean
+  hasEditAriaLabel: boolean
+  hasPinAriaLabel: boolean
+  askHasOpenAriaLabel: boolean
+}
+
+export function noteInteractionContract(source: string): NoteInteractionContract {
+  return {
+    cardHasOnClick: /mk-editorial-card[^>]*onClick/.test(source) || /cursor-pointer[^>]*onClick/.test(source),
+    usesStopPropagation: source.includes("stopPropagation"),
+    hasEditAriaLabel: /aria-label=\{`Edit \$\{note\.title\}`\}/.test(source),
+    hasPinAriaLabel: /aria-label=\{note\.pinned \? `Unpin \$\{note\.title\}` : `Pin \$\{note\.title\}`\}/.test(source),
+    askHasOpenAriaLabel: /aria-label=\{`Open note \$\{answer\.note\.title\}`\}/.test(source),
+  }
+}
+
+export interface HeadingLandmarkContract {
+  todayH2: boolean
+  followUpH2: boolean
+  askH2: boolean
+  boardH2: boolean
+  noteTitleH3: boolean
+  boardNamedRegion: boolean
+}
+
+export function headingLandmarkContract(sources: {
+  taskList: string
+  todaySection: string
+  followUpSection: string
+  noteList: string
+}): HeadingLandmarkContract {
+  return {
+    todayH2: /<h2 className="mk-section-title/.test(sources.todaySection),
+    followUpH2: /<h2 className="mk-section-title/.test(sources.followUpSection),
+    askH2: /<h2[\s\S]*?>Ask my notes<\/h2>/.test(sources.noteList),
+    boardH2: /<h2 className="mk-section-title/.test(sources.taskList),
+    noteTitleH3: /<h3[\s\S]*?\{note\.title\}/.test(sources.noteList),
+    boardNamedRegion:
+      /role="region"/.test(sources.taskList) && /aria-label="Task board"/.test(sources.taskList),
+  }
+}
+
 export function taskNoteSourceContract(sources: {
   taskList: string
   todaySection: string
