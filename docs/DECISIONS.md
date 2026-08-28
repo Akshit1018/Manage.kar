@@ -146,3 +146,42 @@ These predate the Hermes companion direction and are not reversed by it.
 
 - **Today feed**: today's tasks, active agent sessions with live status, habit checkmark
   row, recent notes — in that order. Stats live in Analytics, not on Home.
+
+## Workspace sections slice (August 2026)
+
+New decisions from the notes/tasks/pairing sections. These extend, and do not reverse,
+D001–D005.
+
+### D006 — Label colors come from a fixed 8-color palette with stable defaults
+
+- Labels get an optional `color`; unassigned labels derive a stable color from a name
+  hash so old data is colored without a migration. Users recolor by tapping the color
+  dot next to a label filter chip (cycles the palette — one tap, no popover).
+- **Reversal:** Introduce a full color picker if the palette proves too small.
+
+### D007 — Kanban status derives done-ness from `completed`
+
+- Tasks carry `status?: todo | doing | done`, but `completed` stays the source of truth:
+  a completed task is always `done`, and an incomplete one is only `doing` when marked.
+  Old data (no status field) maps completed→done, otherwise→todo, with no migration.
+  Owner (default "me") and worker are free-text metadata for the future Hermes kanban;
+  no agent is assigned anything yet and the UI says so.
+- **Reversal:** When the Hermes kanban lands, map these three statuses into its
+  seven-state pipeline and let the backend own transitions.
+
+### D008 — Follow-ups are local nudges, not push notifications
+
+- A task may follow up `daily` or `weekly` until done. Due follow-ups surface on the
+  Home tab while the app is open; "Checked in" stamps `lastNudgedAt`. Copy must never
+  imply delivery or scheduling outside the open app.
+- **Reversal:** Route through Hermes cron once pairing is real.
+
+### D009 — Pairing is an honest local scaffold until Hermes connects
+
+- Machines live in `managekar.pairing.v1` (backed up and wiped with everything else).
+  Pairing codes/links are generated on-device; the QR is labeled a placeholder and the
+  only completion path is a button explicitly named "Simulate pairing (dev)". Simulated
+  pairing creates a dialer session with `source: "paired"`, `presence: "active"` — the
+  only sessions whose sends may read "Sent".
+- **Reversal:** Replace the simulate action with the real QR/magic-link handshake when
+  the Hermes backend module ships; the storage shape is designed to survive that swap.

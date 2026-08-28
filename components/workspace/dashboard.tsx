@@ -44,13 +44,16 @@ import { NoteList } from "@/components/workspace/note-list"
 import { HabitList } from "@/components/workspace/habit-list"
 import { ChatsView } from "@/components/workspace/chats-view"
 import type { Habit, LabelKind, Note, Task, TaskStatus, WorkspaceLabel } from "@/lib/domain/types"
-import { withTaskStatus } from "@/lib/tasks/board"
+import { taskStatus, withTaskStatus } from "@/lib/tasks/board"
 import { attachUnknownTokensAsTags, parseAtTokens, uniqueLabelIds, upsertLabel } from "@/lib/labels/book"
 import { labelColor, nextLabelColor } from "@/lib/labels/palette"
 import { togglePinned } from "@/lib/notes/organize"
 import { matchesLabelSearch } from "@/lib/labels/query"
 import { useWorkspace } from "@/lib/store/use-workspace"
-import { allocateEntityId } from "@/lib/store/workspace"
+import { allocateEntityId, browserStorage } from "@/lib/store/workspace"
+import { PAIRING_CHANGED_EVENT, loadPairing } from "@/lib/pairing/pairing"
+import { dueFollowUps, nudgeFollowUp } from "@/lib/tasks/follow-up"
+import { FollowUpSection } from "@/components/workspace/follow-up-section"
 import { recordBrowserEvent } from "@/lib/analytics/local-events"
 import { isTaskDueTodayOrOverdue, localDateKey, normalizeDueDate } from "@/lib/dates/due-date"
 import { isHabitScheduledOn } from "@/lib/habits/schedule"
@@ -113,6 +116,18 @@ export function Dashboard({ initialSearch }: DashboardProps) {
 
   const weekStartsOn = workspace.settings.general.weekStartsOn
   const todayKey = localDateKey()
+  const [pairedMachineCount, setPairedMachineCount] = useState(0)
+
+  useEffect(() => {
+    const reload = () => setPairedMachineCount(loadPairing(browserStorage()).machines.length)
+    reload()
+    window.addEventListener(PAIRING_CHANGED_EVENT, reload)
+    window.addEventListener("storage", reload)
+    return () => {
+      window.removeEventListener(PAIRING_CHANGED_EVENT, reload)
+      window.removeEventListener("storage", reload)
+    }
+  }, [])
 
   useEffect(() => {
     const next = serializeWorkspaceSearch(currentView, searchQuery, taskFilter, chatSession)
@@ -531,8 +546,18 @@ export function Dashboard({ initialSearch }: DashboardProps) {
     })
   }
 
+  const handleNudgeFollowUp = (taskId: number) => {
+    persist((current) => ({
+      ...current,
+      tasks: current.tasks.map((task) => (task.id === taskId ? nudgeFollowUp(task) : task)),
+    }))
+  }
+
   const completedTasksCount = tasks.filter((task) => task.completed).length
   const pendingTasksCount = tasks.filter((task) => !task.completed).length
+  const pinnedNotesCount = notes.filter((note) => note.pinned).length
+  const doingTasksCount = tasks.filter((task) => taskStatus(task) === "doing").length
+  const followUpsDue = dueFollowUps(tasks)
   const todayTasks = tasks.filter((task) => isTaskDueTodayOrOverdue(task.dueDate, task.completed))
   const todayHabits = habits.filter((habit) => isHabitScheduledOn(habit, todayKey, weekStartsOn))
   const query = searchQuery.toLowerCase()
@@ -721,6 +746,43 @@ export function Dashboard({ initialSearch }: DashboardProps) {
                 </Card>
               </button>
             </div>
+
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <button type="button" className="text-left" onClick={() => setCurrentView("tasks")} aria-label={`${doingTasksCount} tasks in progress`}>
+                <Card className="modern-card p-4">
+                  <p className="text-2xl font-bold">{doingTasksCount}</p>
+                  <p className="text-xs text-muted-readable">Doing</p>
+                </Card>
+              </button>
+              <button type="button" className="text-left" onClick={() => setCurrentView("tasks")} aria-label={`${followUpsDue.length} follow-ups due`}>
+                <Card className="modern-card p-4">
+                  <p className="text-2xl font-bold">{followUpsDue.length}</p>
+                  <p className="text-xs text-muted-readable">Follow-ups due</p>
+                </Card>
+              </button>
+              <button type="button" className="text-left" onClick={() => setCurrentView("notes")} aria-label={`${pinnedNotesCount} pinned notes`}>
+                <Card className="modern-card p-4">
+                  <p className="text-2xl font-bold">{pinnedNotesCount}</p>
+                  <p className="text-xs text-muted-readable">Pinned notes</p>
+                </Card>
+              </button>
+              <button
+                type="button"
+                className="text-left"
+                onClick={() => {
+                  setCurrentView("chats")
+                  setChatSession("")
+                }}
+                aria-label={`${pairedMachineCount} paired machines`}
+              >
+                <Card className="modern-card p-4">
+                  <p className="text-2xl font-bold">{pairedMachineCount}</p>
+                  <p className="text-xs text-muted-readable">Machines paired</p>
+                </Card>
+              </button>
+            </div>
+
+            <FollowUpSection tasks={followUpsDue} onToggleTask={handleTaskToggle} onNudge={handleNudgeFollowUp} />
 
             <TodaySection
               tasks={tasks}
