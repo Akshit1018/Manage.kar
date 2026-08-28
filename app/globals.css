@@ -447,11 +447,6 @@ html[data-skin="classic"].dark {
     }
   }
 
-  .mk-touch {
-    min-height: 44px;
-    min-width: 44px;
-  }
-
   .mk-overlay {
     position: fixed;
     inset: 0;
@@ -884,31 +879,6 @@ html[data-skin="classic"].dark {
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
-
-  /*
-   * Editorial touch contract: 16px form text on narrow viewports prevents iOS
-   * input zoom; 44px minimum hit areas for shared interactive controls.
-   */
-  @media (max-width: 767px) {
-    input:not([type="checkbox"]):not([type="radio"]),
-    select,
-    textarea,
-    [data-slot="input"],
-    [data-slot="textarea"],
-    [data-slot="select-trigger"] {
-      font-size: 16px;
-    }
-  }
-
-  [data-slot="button"],
-  [data-slot="input"],
-  [data-slot="select-trigger"],
-  [data-slot="select-item"],
-  [data-slot="textarea"],
-  .mk-touch {
-    min-height: 44px;
-    min-width: 44px;
-  }
 }
 
 @layer components {
@@ -975,6 +945,31 @@ html[data-skin="classic"].dark {
     min-height: 44px;
     min-width: 44px;
   }
+}
+
+/*
+ * Editorial surface contract — intentionally unlayered so these hard floors
+ * outrank Tailwind utilities (text-sm, h-9, min-h-0, etc.).
+ */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea,
+  [data-slot="input"],
+  [data-slot="textarea"],
+  [data-slot="select-trigger"] {
+    font-size: max(16px, 1em);
+  }
+}
+
+[data-slot="button"],
+[data-slot="input"],
+[data-slot="select-trigger"],
+[data-slot="select-item"],
+[data-slot="textarea"],
+.mk-touch {
+  min-height: 44px;
+  min-width: 44px;
 }
 
 html[data-font-size="small"] {
