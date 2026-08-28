@@ -313,6 +313,28 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   </h4>
                   <div className="space-y-3 sm:space-y-4">
                     <div className="space-y-2">
+                      <Label className="responsive-text-sm text-readable">Skin</Label>
+                      <Select
+                        value={settings.appearance.skin}
+                        onValueChange={(value: "hermes" | "classic") =>
+                          updateSettings("appearance", "skin", value)
+                        }
+                      >
+                        <SelectTrigger className="mobile-touch-target">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="hermes">Hermes (default)</SelectItem>
+                          <SelectItem value="classic">Classic Manage.kar</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Hermes uses the Nous design palette: teal-black with warm cream in dark mode, Nous blue in
+                        light mode.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
                       <Label className="responsive-text-sm text-readable">Theme</Label>
                       <Select
                         value={settings.appearance.theme}
