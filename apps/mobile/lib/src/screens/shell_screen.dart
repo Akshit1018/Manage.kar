@@ -55,7 +55,7 @@ class _ShellScreenState extends State<ShellScreen> {
       animation: widget.workspace,
       builder: (context, _) {
         final pages = [
-          _HomeTab(workspace: widget.workspace, session: widget.session, reminders: widget.reminders),
+          _HomeTab(workspace: widget.workspace, session: widget.session, reminders: widget.reminders, dialer: dialer),
           _ListTab(
             title: "Tasks",
             empty: "Add one task. It is stored in PostgreSQL.",
@@ -121,11 +121,12 @@ class _ShellScreenState extends State<ShellScreen> {
 }
 
 class _HomeTab extends StatelessWidget {
-  const _HomeTab({required this.workspace, required this.session, required this.reminders});
+  const _HomeTab({required this.workspace, required this.session, required this.reminders, this.dialer});
 
   final WorkspaceController workspace;
   final SessionController session;
   final LocalReminders reminders;
+  final DialerController? dialer;
 
   @override
   Widget build(BuildContext context) {
@@ -152,7 +153,7 @@ class _HomeTab extends StatelessWidget {
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute<void>(
-                    builder: (_) => SettingsScreen(workspace: workspace, session: session, reminders: reminders),
+                    builder: (_) => SettingsScreen(workspace: workspace, session: session, reminders: reminders, dialer: dialer),
                   ),
                 ),
                 icon: const Icon(Icons.settings_outlined),
