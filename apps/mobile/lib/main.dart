@@ -65,10 +65,11 @@ class _ManageKarAppState extends State<ManageKarApp> {
   Widget build(BuildContext context) {
     final appearance = workspace.settings?["appearance"] as Map<String, dynamic>? ?? {};
     final fontSize = appearance["fontSize"] as String? ?? "medium";
+    final skin = normalizeSkin(appearance["skin"]);
     return MaterialApp(
       title: "Manage.kar",
-      theme: buildAppTheme(fontSize: fontSize),
-      darkTheme: buildAppTheme(brightness: Brightness.dark, fontSize: fontSize),
+      theme: buildAppTheme(fontSize: fontSize, skin: skin),
+      darkTheme: buildAppTheme(brightness: Brightness.dark, fontSize: fontSize, skin: skin),
       themeMode: themeModeFrom(appearance["theme"] as String?),
       home: authed
           ? ShellScreen(session: session, workspace: workspace, reminders: reminders)
