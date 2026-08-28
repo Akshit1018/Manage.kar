@@ -363,8 +363,12 @@ export function FloatingToggle({
           if (event.button !== 0 || activePointerRef.current !== null) {
             return
           }
+          try {
+            event.currentTarget.setPointerCapture(event.pointerId)
+          } catch {
+            // Untrusted or already-released pointers still start the gesture.
+          }
           activePointerRef.current = event.pointerId
-          event.currentTarget.setPointerCapture(event.pointerId)
           handleStart(event.clientX, event.clientY)
         }}
         onPointerMove={(event) => {
