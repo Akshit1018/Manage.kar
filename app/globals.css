@@ -50,6 +50,7 @@
   --mk-bottom-nav: calc(4.75rem + env(safe-area-inset-bottom, 0px));
   --mk-composer-slot: 3.5rem;
   --mk-bottom-chrome: calc(var(--mk-bottom-nav) + var(--mk-composer-slot));
+  --mk-keyboard: 0px;
 }
 
 .dark {
@@ -460,29 +461,24 @@ html[data-skin="classic"].dark {
 
   .mk-overlay {
     position: fixed;
-    inset: 0;
+    top: 0;
+    right: 0;
+    left: 0;
+    bottom: calc(0px + var(--mk-keyboard));
     z-index: 80;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
     width: 100vw;
-    height: 100dvh;
-    max-height: 100dvh;
+    height: auto;
+    max-height: none;
     overflow: hidden;
     isolation: isolate;
     pointer-events: auto;
     padding: 0;
     padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
-    padding-bottom: var(--mk-keyboard, 0px);
     transform: none;
-    transition: padding-bottom 0.12s ease;
-  }
-
-  @supports (height: 100svh) {
-    .mk-overlay {
-      height: 100svh;
-      max-height: 100svh;
-    }
+    transition: bottom 0.12s ease;
   }
 
   .mk-overlay-full {
@@ -758,6 +754,7 @@ html[data-skin="classic"].dark {
       justify-content: center;
       align-items: center;
       padding: 1.5rem;
+      bottom: calc(0px + var(--mk-keyboard));
     }
 
     .mk-sheet-split {

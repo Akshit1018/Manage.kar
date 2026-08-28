@@ -97,7 +97,8 @@ export function overlayCssContract(css: string): OverlayCssContract {
     singleScrollBody: /\.mk-sheet-body\s*\{[^}]*overflow-y:\s*auto/.test(css),
     safeAreaAware:
       /\.mk-overlay\s*\{[^}]*safe-area-inset-top/.test(css) || /\.mk-sheet\s*\{[^}]*safe-area-inset-top/.test(css),
-    keyboardAware: /\.mk-overlay\s*\{[^}]*--mk-keyboard/.test(css),
+    keyboardAware:
+      /--mk-keyboard:\s*0px/.test(css) && /\.mk-overlay\s*\{[^}]*bottom:\s*calc\(0px \+ var\(--mk-keyboard\)/.test(css),
     hasSheetTabs: /\.mk-sheet-tabs\s*\{/.test(css),
     hasSwitchRow: /\.mk-switch-row\s*\{/.test(css),
     hasFormGrid: /\.mk-form-grid\s*\{/.test(css),
