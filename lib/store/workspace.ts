@@ -15,6 +15,7 @@ import type {
 } from "@/lib/domain/types"
 import { emptyDeletedIds, stampWorkspaceMutation } from "@/lib/store/merge"
 import { hydrateWorkspaceLabels, normalizeLabelName } from "@/lib/labels/book"
+import { isLabelColor } from "@/lib/labels/palette"
 import { normalizeSkin } from "@/lib/theme/apply-theme"
 import { localDateKey, normalizeDueDate } from "@/lib/dates/due-date"
 import { hydrateHabit } from "@/lib/habits/streak"
@@ -88,6 +89,7 @@ const noteSchema = z
     content: z.string(),
     createdAt: z.string(),
     labelIds: z.array(z.number()).optional(),
+    pinned: z.unknown().optional(),
   })
   .passthrough()
 
@@ -343,7 +345,12 @@ function asNote(item: unknown): Note | null {
     return null
   }
   const note = parsed.data as Note
-  return { ...note, title: note.title.trim(), labelIds: asIdArray(note.labelIds) }
+  return {
+    ...note,
+    title: note.title.trim(),
+    labelIds: asIdArray(note.labelIds),
+    pinned: parsed.data.pinned === true ? true : undefined,
+  }
 }
 
 function asLabel(item: unknown): WorkspaceLabel | null {
@@ -356,7 +363,7 @@ function asLabel(item: unknown): WorkspaceLabel | null {
   }
   const kind =
     item.kind === "place" || item.kind === "tag" || item.kind === "person" ? item.kind : "tag"
-  return { id: item.id, name, kind }
+  return { id: item.id, name, kind, ...(isLabelColor(item.color) ? { color: item.color } : {}) }
 }
 
 function asHabit(item: unknown, today: string, weekStartsOn: "sunday" | "monday"): Habit | null {

@@ -9,11 +9,13 @@ export type GoalStatus = "active" | "completed" | "paused"
 export type FocusType = "pomodoro" | "deep-work" | "break" | "custom"
 export type DateFormat = "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD"
 export type LabelKind = "place" | "tag" | "person"
+export type LabelColor = "slate" | "red" | "orange" | "amber" | "green" | "teal" | "blue" | "purple"
 
 export interface WorkspaceLabel {
   id: number
   name: string
   kind: LabelKind
+  color?: LabelColor
 }
 
 export interface TaskChecklistItem {
@@ -48,6 +50,7 @@ export interface Note {
     duration: number
   }
   labelIds?: number[]
+  pinned?: boolean
 }
 
 export interface Habit {

@@ -437,6 +437,65 @@ describe("workspace store", () => {
     expect(loaded.tasks[0]?.labelIds).toEqual(expect.arrayContaining(people.map((label) => label.id)))
   })
 
+  it("round-trips note pins and label colors, and tolerates old data without them", () => {
+    const storage = new MemoryStore()
+    const workspace = createEmptyWorkspace()
+    const allocatedLabel = allocateEntityId(workspace)
+    allocatedLabel.workspace.labels.push({ id: allocatedLabel.id, name: "ideas", kind: "tag", color: "purple" })
+    const allocatedNote = allocateEntityId(allocatedLabel.workspace)
+    allocatedNote.workspace.notes.push({
+      id: allocatedNote.id,
+      title: "Pinned idea",
+      content: "Keep this on top",
+      createdAt: "2026-08-23T00:00:00.000Z",
+      pinned: true,
+      labelIds: [allocatedLabel.id],
+    })
+
+    saveWorkspace(storage, allocatedNote.workspace)
+    const loaded = loadWorkspace(storage)
+
+    expect(loaded.notes.find((note) => note.title === "Pinned idea")?.pinned).toBe(true)
+    expect(loaded.labels.find((label) => label.name === "ideas")?.color).toBe("purple")
+
+    storage.setItem(
+      WORKSPACE_KEY,
+      JSON.stringify({
+        schemaVersion: 1,
+        tasks: [],
+        notes: [
+          { id: 1, title: "Old note", content: "no pin field", createdAt: "2026-01-01T00:00:00.000Z" },
+          { id: 2, title: "Bad pin", content: "", createdAt: "2026-01-01T00:00:00.000Z", pinned: "yes" },
+        ],
+        habits: [],
+        labels: [{ id: 3, name: "legacy", kind: "tag", color: "not-a-color" }],
+      }),
+    )
+    const legacy = loadWorkspace(storage)
+    expect(legacy.notes.find((note) => note.id === 1)?.pinned).toBeUndefined()
+    expect(legacy.notes.find((note) => note.id === 2)?.pinned).toBeUndefined()
+    expect(legacy.labels.find((label) => label.name === "legacy")?.color).toBeUndefined()
+  })
+
+  it("keeps pins, colors, and task metadata through a backup round trip", () => {
+    const workspace = createEmptyWorkspace()
+    workspace.labels.push({ id: 90, name: "deep", kind: "tag", color: "teal" })
+    workspace.notes.push({
+      id: 91,
+      title: "Backup pin",
+      content: "still pinned",
+      createdAt: "2026-08-23T00:00:00.000Z",
+      pinned: true,
+    })
+
+    const parsed = parseBackup(serializeBackup(workspace))
+    expect(parsed.ok).toBe(true)
+    if (parsed.ok) {
+      expect(parsed.workspace.notes.find((note) => note.title === "Backup pin")?.pinned).toBe(true)
+      expect(parsed.workspace.labels.find((label) => label.name === "deep")?.color).toBe("teal")
+    }
+  })
+
   it("includes the dialer in backups and removes it on wipe", () => {
     const storage = new MemoryStore()
     const queued = queueMessage(createEmptyDialer(), NEW_CHAT_TARGET, "secret prompt", "2026-08-28T10:00:00.000Z")!

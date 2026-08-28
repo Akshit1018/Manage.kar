@@ -45,6 +45,8 @@ import { HabitList } from "@/components/workspace/habit-list"
 import { ChatsView } from "@/components/workspace/chats-view"
 import type { Habit, LabelKind, Note, Task, WorkspaceLabel } from "@/lib/domain/types"
 import { attachUnknownTokensAsTags, parseAtTokens, uniqueLabelIds, upsertLabel } from "@/lib/labels/book"
+import { labelColor, nextLabelColor } from "@/lib/labels/palette"
+import { togglePinned } from "@/lib/notes/organize"
 import { matchesLabelSearch } from "@/lib/labels/query"
 import { useWorkspace } from "@/lib/store/use-workspace"
 import { allocateEntityId } from "@/lib/store/workspace"
@@ -298,6 +300,22 @@ export function Dashboard({ initialSearch }: DashboardProps) {
         toast.error("Could not keep the recording on this device. The words were saved without audio.")
       })
     }
+  }
+
+  const handleTogglePin = (noteId: number) => {
+    persist((current) => ({
+      ...current,
+      notes: current.notes.map((note) => (note.id === noteId ? togglePinned(note) : note)),
+    }))
+  }
+
+  const handleCycleLabelColor = (labelId: number) => {
+    persist((current) => ({
+      ...current,
+      labels: (current.labels ?? []).map((label) =>
+        label.id === labelId ? { ...label, color: nextLabelColor(labelColor(label)) } : label,
+      ),
+    }))
   }
 
   const handleDeleteNote = (noteId: number) => {
@@ -725,6 +743,8 @@ export function Dashboard({ initialSearch }: DashboardProps) {
             onAddNote={() => setNoteModal({ isOpen: true, mode: "create" })}
             onEditNote={(note) => setNoteModal({ isOpen: true, mode: "edit", note })}
             onRecordVoice={() => setVoiceRecorderOpen(true)}
+            onTogglePin={handleTogglePin}
+            onCycleLabelColor={handleCycleLabelColor}
           />
         )}
 

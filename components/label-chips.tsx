@@ -1,21 +1,8 @@
 import { Badge } from "@/components/ui/badge"
-import type { LabelKind, WorkspaceLabel } from "@/lib/domain/types"
+import type { WorkspaceLabel } from "@/lib/domain/types"
 import { displayLabelName } from "@/lib/labels/book"
-
-function badgeVariant(kind: LabelKind): "default" | "secondary" | "outline" {
-  switch (kind) {
-    case "place":
-      return "default"
-    case "person":
-      return "outline"
-    case "tag":
-      return "secondary"
-    default: {
-      const exhaustive: never = kind
-      return exhaustive
-    }
-  }
-}
+import { labelColor, labelColorClasses } from "@/lib/labels/palette"
+import { cn } from "@/lib/utils"
 
 export function LabelChips({ labels }: { labels: WorkspaceLabel[] }) {
   if (labels.length === 0) {
@@ -24,7 +11,7 @@ export function LabelChips({ labels }: { labels: WorkspaceLabel[] }) {
   return (
     <div className="flex flex-wrap gap-1">
       {labels.map((label) => (
-        <Badge key={label.id} variant={badgeVariant(label.kind)}>
+        <Badge key={label.id} variant="outline" className={cn(labelColorClasses(labelColor(label)))}>
           {displayLabelName(label)}
         </Badge>
       ))}
