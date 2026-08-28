@@ -25,6 +25,7 @@ import {
   readChromeReservePx,
   resolveCustomPropertyPx,
   resolveOrbPlacement,
+  resolveSafeAreaInsets,
   snapOrbToEdge,
 } from "@/lib/ui/orb-gesture"
 
@@ -54,14 +55,35 @@ function readChromeReserve() {
   return readChromeReservePx({ probeHeight, computedChromePx })
 }
 
+function readCssInsetPx(property: string, axis: "width" | "height") {
+  const root = document.documentElement
+  const measured = resolveCustomPropertyPx(root, (tag) => document.createElement(tag), property, axis)
+  if (measured > 0) {
+    return measured
+  }
+  return parseResolvedLengthPx(getComputedStyle(root).getPropertyValue(property))
+}
+
+function readSafeAreaInsets() {
+  return resolveSafeAreaInsets({
+    top: readCssInsetPx("--mk-safe-top", "height"),
+    right: readCssInsetPx("--mk-safe-right", "width"),
+    left: readCssInsetPx("--mk-safe-left", "width"),
+  })
+}
+
 function readBounds() {
   const visual = window.visualViewport
+  const safe = readSafeAreaInsets()
   return orbViewportBounds({
     width: window.innerWidth,
     height: window.innerHeight,
     visualHeight: visual?.height,
     visualOffsetTop: visual?.offsetTop,
     chromeReserve: readChromeReserve(),
+    topInset: safe.top,
+    leftInset: safe.left,
+    rightInset: safe.right,
   })
 }
 
@@ -139,10 +161,12 @@ export function FloatingToggle({
     window.addEventListener("resize", onViewport)
     window.addEventListener("orientationchange", onViewport)
     window.visualViewport?.addEventListener("resize", onViewport)
+    window.visualViewport?.addEventListener("scroll", onViewport)
     return () => {
       window.removeEventListener("resize", onViewport)
       window.removeEventListener("orientationchange", onViewport)
       window.visualViewport?.removeEventListener("resize", onViewport)
+      window.visualViewport?.removeEventListener("scroll", onViewport)
     }
   }, [])
 

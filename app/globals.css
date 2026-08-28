@@ -51,6 +51,9 @@
   --mk-composer-slot: 3.5rem;
   --mk-bottom-chrome: calc(var(--mk-bottom-nav) + var(--mk-composer-slot));
   --mk-keyboard: 0px;
+  --mk-safe-top: env(safe-area-inset-top, 0px);
+  --mk-safe-right: env(safe-area-inset-right, 0px);
+  --mk-safe-left: env(safe-area-inset-left, 0px);
 }
 
 .dark {

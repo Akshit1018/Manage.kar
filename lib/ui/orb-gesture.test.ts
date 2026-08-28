@@ -20,7 +20,9 @@ import {
   parseResolvedLengthPx,
   parseSavedOrbPosition,
   readChromeReservePx,
+  resolveCustomPropertyPx,
   resolveOrbPlacement,
+  resolveSafeAreaInsets,
   snapOrbToEdge,
   WORKSPACE_CHROME_FALLBACK_PX,
   type OrbBounds,
@@ -264,6 +266,142 @@ describe("orbViewportBounds", () => {
     expect(
       orbViewportBounds({ width: 390, height: 844, chromeReserve: 40 }).bottomReserve,
     ).toBe(ORB_BOTTOM_RESERVE)
+  })
+
+  it("carries nonzero top, left, and right safe-area insets into OrbBounds", () => {
+    expect(
+      orbViewportBounds({
+        width: 844,
+        height: 390,
+        topInset: 47,
+        leftInset: 44,
+        rightInset: 44,
+        chromeReserve: 132,
+      }),
+    ).toEqual({
+      width: 844,
+      height: 390,
+      bottomReserve: 132,
+      topInset: 47,
+      leftInset: 44,
+      rightInset: 44,
+    })
+  })
+})
+
+const LANDSCAPE_NOTCH: OrbBounds = {
+  width: 844,
+  height: 390,
+  topInset: 47,
+  leftInset: 44,
+  rightInset: 44,
+  bottomReserve: 132,
+}
+
+describe("safe-area orb placement", () => {
+  it("clamps the orb outside a landscape notch and Dynamic Island", () => {
+    expect(clampOrbPosition(0, 0, LANDSCAPE_NOTCH)).toEqual({ x: 44, y: 47 })
+    expect(clampOrbPosition(800, 360, LANDSCAPE_NOTCH)).toEqual({
+      x: 844 - ORB_SIZE - 44,
+      y: 390 - ORB_SIZE - 132,
+    })
+    const parked = clampOrbPosition(0, 0, LANDSCAPE_NOTCH)
+    expect(parked.x).toBeGreaterThanOrEqual(44)
+    expect(parked.y).toBeGreaterThanOrEqual(47)
+    expect(parked.x + ORB_SIZE).toBeLessThanOrEqual(844 - 44)
+    expect(parked.y + ORB_SIZE).toBeLessThanOrEqual(390 - 132)
+  })
+
+  it("snaps to the safe left and right edges, not the raw 8px inset", () => {
+    expect(snapOrbToEdge({ x: 100, y: 200 }, LANDSCAPE_NOTCH)).toEqual({ x: 44, y: 200 })
+    expect(snapOrbToEdge({ x: 700, y: 200 }, LANDSCAPE_NOTCH)).toEqual({
+      x: 844 - ORB_SIZE - 44,
+      y: 200,
+    })
+  })
+
+  it("keeps the tray inside the left and right safe-area insets", () => {
+    const leftOrb = snapOrbToEdge({ x: 80, y: 200 }, LANDSCAPE_NOTCH)
+    const leftTray = iconBarPosition(leftOrb, LANDSCAPE_NOTCH)
+    expect(leftTray.x).toBeGreaterThanOrEqual(44)
+    expect(leftTray.x + ICON_BAR_WIDTH).toBeLessThanOrEqual(844 - 44)
+    expect(leftTray.y).toBeGreaterThanOrEqual(47)
+
+    const rightOrb = snapOrbToEdge({ x: 700, y: 80 }, LANDSCAPE_NOTCH)
+    const rightTray = iconBarPosition(rightOrb, LANDSCAPE_NOTCH)
+    expect(rightTray.x).toBeGreaterThanOrEqual(44)
+    expect(rightTray.x + ICON_BAR_WIDTH).toBeLessThanOrEqual(844 - 44)
+    expect(rightTray.y).toBeGreaterThanOrEqual(47)
+  })
+
+  it("keeps keyboard nudges and parks outside the notch", () => {
+    expect(
+      applyOrbKeyboardIntent({ x: 44, y: 200 }, { type: "nudge", dx: -16, dy: 0 }, LANDSCAPE_NOTCH),
+    ).toEqual({ x: 44, y: 200 })
+    expect(
+      applyOrbKeyboardIntent({ x: 200, y: 47 }, { type: "nudge", dx: 0, dy: -16 }, LANDSCAPE_NOTCH),
+    ).toEqual({ x: 200, y: 47 })
+    expect(applyOrbKeyboardIntent({ x: 200, y: 200 }, { type: "park", edge: "left" }, LANDSCAPE_NOTCH)).toEqual({
+      x: 44,
+      y: 200,
+    })
+    expect(applyOrbKeyboardIntent({ x: 200, y: 200 }, { type: "park", edge: "right" }, LANDSCAPE_NOTCH)).toEqual({
+      x: 844 - ORB_SIZE - 44,
+      y: 200,
+    })
+  })
+})
+
+describe("safe-area CSS probes", () => {
+  it("reads exact nonzero insets from probe and computed custom properties", () => {
+    expect(
+      resolveSafeAreaInsets({
+        top: 47.4,
+        right: 44,
+        left: 44.2,
+        bottom: 21,
+      }),
+    ).toEqual({ top: 47, right: 44, left: 44, bottom: 21 })
+    expect(resolveSafeAreaInsets({})).toEqual({ top: 0, right: 0, left: 0, bottom: 0 })
+  })
+
+  it("measures a custom property on the requested axis", () => {
+    const nodes: Array<{ axis: string; property: string }> = []
+    const owner = {
+      appendChild(node: { style: { cssText: string }; getBoundingClientRect: () => DOMRect }) {
+        const match = /(?:^|;)(width|height):var\((--[\w-]+)\)/.exec(node.style.cssText)
+        if (match) {
+          nodes.push({ axis: match[1], property: match[2] })
+        }
+      },
+      removeChild() {},
+    }
+    const createElement = () => {
+      const box = {
+        style: { cssText: "" },
+        getBoundingClientRect: () =>
+          ({
+            width: 44,
+            height: 47,
+            x: 0,
+            y: 0,
+            top: 0,
+            left: 0,
+            right: 44,
+            bottom: 47,
+            toJSON() {
+              return {}
+            },
+          }) as DOMRect,
+      }
+      return box as unknown as HTMLElement
+    }
+    expect(resolveCustomPropertyPx(owner, createElement, "--mk-safe-top", "height")).toBe(47)
+    expect(resolveCustomPropertyPx(owner, createElement, "--mk-safe-left", "width")).toBe(44)
+    expect(nodes).toEqual([
+      { axis: "height", property: "--mk-safe-top" },
+      { axis: "width", property: "--mk-safe-left" },
+    ])
   })
 })
 

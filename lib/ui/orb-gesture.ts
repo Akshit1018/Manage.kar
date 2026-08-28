@@ -23,6 +23,9 @@ export type OrbBounds = {
   width: number
   height: number
   inset?: number
+  topInset?: number
+  leftInset?: number
+  rightInset?: number
   bottomReserve?: number
 }
 
@@ -140,16 +143,36 @@ export function resolveCustomPropertyPx(
   },
   createElement: (tag: "div") => HTMLElement,
   property: string,
+  axis: "width" | "height" = "height",
 ): number {
   const probe = createElement("div")
-  probe.style.cssText = `position:absolute;visibility:hidden;pointer-events:none;height:var(${property})`
+  probe.style.cssText = `position:absolute;visibility:hidden;pointer-events:none;${axis}:var(${property})`
   owner.appendChild(probe)
-  const height = probe.getBoundingClientRect().height
+  const box = probe.getBoundingClientRect()
   owner.removeChild(probe)
-  if (height > 0) {
-    return Math.round(height)
+  const size = axis === "width" ? box.width : box.height
+  if (size > 0) {
+    return Math.round(size)
   }
   return 0
+}
+
+export function resolveSafeAreaInsets(input: {
+  top?: number
+  right?: number
+  bottom?: number
+  left?: number
+}): { top: number; right: number; bottom: number; left: number } {
+  const asPx = (value: number | undefined) => {
+    const numeric = Number.isFinite(value) ? Number(value) : 0
+    return Math.max(0, Math.round(numeric))
+  }
+  return {
+    top: asPx(input.top),
+    right: asPx(input.right),
+    bottom: asPx(input.bottom),
+    left: asPx(input.left),
+  }
 }
 
 export function orbViewportBounds(input: {
@@ -158,13 +181,21 @@ export function orbViewportBounds(input: {
   visualHeight?: number
   visualOffsetTop?: number
   chromeReserve?: number
+  topInset?: number
+  leftInset?: number
+  rightInset?: number
 }): OrbBounds {
   const overlap = keyboardOverlap(
     input.height,
     input.visualHeight ?? input.height,
     input.visualOffsetTop ?? 0,
   )
-  return {
+  const insets = resolveSafeAreaInsets({
+    top: input.topInset,
+    left: input.leftInset,
+    right: input.rightInset,
+  })
+  const bounds: OrbBounds = {
     width: input.width,
     height: input.height,
     bottomReserve: Math.max(
@@ -173,6 +204,16 @@ export function orbViewportBounds(input: {
       overlap + ORB_INSET,
     ),
   }
+  if (insets.top > 0) {
+    bounds.topInset = insets.top
+  }
+  if (insets.left > 0) {
+    bounds.leftInset = insets.left
+  }
+  if (insets.right > 0) {
+    bounds.rightInset = insets.right
+  }
+  return bounds
 }
 
 export function orbPlacementTransitionMs(prefersReducedMotion: boolean): number {
@@ -269,10 +310,14 @@ export function attachOrbPointerFallback(
 }
 
 function resolveBounds(bounds: OrbBounds) {
+  const inset = bounds.inset ?? ORB_INSET
   return {
     width: bounds.width,
     height: bounds.height,
-    inset: bounds.inset ?? ORB_INSET,
+    inset,
+    leftInset: Math.max(inset, bounds.leftInset ?? inset),
+    rightInset: Math.max(inset, bounds.rightInset ?? inset),
+    topInset: Math.max(inset, bounds.topInset ?? inset),
     bottomReserve: bounds.bottomReserve ?? ORB_BOTTOM_RESERVE,
   }
 }
@@ -283,10 +328,10 @@ export function clampOrbPosition(
   bounds: OrbBounds,
   size = ORB_SIZE,
 ): { x: number; y: number } {
-  const { width, height, inset, bottomReserve } = resolveBounds(bounds)
+  const { width, height, leftInset, rightInset, topInset, bottomReserve } = resolveBounds(bounds)
   return {
-    x: Math.round(Math.max(inset, Math.min(width - size - inset, x))),
-    y: Math.round(Math.max(inset, Math.min(height - size - bottomReserve, y))),
+    x: Math.round(Math.max(leftInset, Math.min(width - size - rightInset, x))),
+    y: Math.round(Math.max(topInset, Math.min(height - size - bottomReserve, y))),
   }
 }
 
@@ -296,9 +341,9 @@ export function snapOrbToEdge(
   size = ORB_SIZE,
 ): { x: number; y: number } {
   const clamped = clampOrbPosition(position.x, position.y, bounds, size)
-  const { width, inset } = resolveBounds(bounds)
-  const left = inset
-  const right = width - size - inset
+  const { width, leftInset, rightInset } = resolveBounds(bounds)
+  const left = leftInset
+  const right = width - size - rightInset
   if (right <= left) {
     return clamped
   }
@@ -318,11 +363,11 @@ export function iconBarPosition(
   bounds: OrbBounds,
   barWidth = ICON_BAR_WIDTH,
 ): { x: number; y: number } {
-  const { width, inset } = resolveBounds(bounds)
+  const { width, leftInset, rightInset, topInset } = resolveBounds(bounds)
   const opensRight = orb.x + ORB_SIZE / 2 < width / 2
   const rawX = opensRight ? orb.x + 60 : orb.x - 60
   return {
-    x: Math.max(inset, Math.min(width - barWidth - inset, rawX)),
-    y: Math.max(inset, orb.y - 60),
+    x: Math.max(leftInset, Math.min(width - barWidth - rightInset, rawX)),
+    y: Math.max(topInset, orb.y - 60),
   }
 }
