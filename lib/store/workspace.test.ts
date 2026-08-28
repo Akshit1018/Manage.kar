@@ -19,6 +19,7 @@ import {
 } from "./workspace"
 import { DIALER_KEY, createEmptyDialer, queueMessage, saveDialer } from "@/lib/dialer/dialer"
 import { NEW_CHAT_TARGET } from "@/lib/dialer/types"
+import { PAIRING_KEY, completeSimulatedPairing, createEmptyPairing, savePairing } from "@/lib/pairing/pairing"
 
 class MemoryStore implements KeyValueStore {
   private readonly data = new Map<string, string>()
@@ -571,5 +572,35 @@ describe("workspace store", () => {
     clearWorkspace(storage)
     expect(storage.getItem(DIALER_KEY)).toBeNull()
     expect(storage.getItem(WORKSPACE_KEY)).not.toBeNull()
+  })
+
+  it("includes pairing state in backups and removes it on wipe", () => {
+    const storage = new MemoryStore()
+    const paired = completeSimulatedPairing(createEmptyPairing(), createEmptyDialer(), {
+      id: "m1",
+      name: "Home VPS",
+      kind: "vps",
+      nowIso: "2026-08-28T10:00:00.000Z",
+    })
+    savePairing(storage, paired.pairing)
+    saveWorkspace(storage, createEmptyWorkspace())
+
+    const backup = serializeBackup(createEmptyWorkspace(), paired.dialer, paired.pairing)
+    const parsed = parseBackup(backup)
+    expect(parsed.ok).toBe(true)
+    if (parsed.ok) {
+      expect(parsed.pairing?.machines[0]?.name).toBe("Home VPS")
+      expect(parsed.dialer?.sessions[0]?.source).toBe("paired")
+    }
+
+    const withoutPairing = parseBackup(serializeBackup(createEmptyWorkspace()))
+    expect(withoutPairing.ok).toBe(true)
+    if (withoutPairing.ok) {
+      expect(withoutPairing.pairing).toBeUndefined()
+    }
+
+    expect(storage.getItem(PAIRING_KEY)).not.toBeNull()
+    clearWorkspace(storage)
+    expect(storage.getItem(PAIRING_KEY)).toBeNull()
   })
 })

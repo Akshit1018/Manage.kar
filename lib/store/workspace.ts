@@ -26,6 +26,8 @@ import { sanitizeAvatarUrl } from "@/lib/profile/avatar"
 import { ANALYTICS_KEY } from "@/lib/analytics/local-events"
 import { DIALER_KEY, parseDialer } from "@/lib/dialer/dialer"
 import type { DialerState } from "@/lib/dialer/types"
+import { PAIRING_KEY, parsePairing } from "@/lib/pairing/pairing"
+import type { PairingState } from "@/lib/pairing/types"
 
 export const WORKSPACE_KEY = "managekar.workspace.v1"
 export const WORKSPACE_CHANGED_EVENT = "managekar:workspace-changed"
@@ -752,7 +754,7 @@ export function migrateLegacyWorkspace(storage: KeyValueStore): Workspace {
   return saveWorkspace(storage, workspace)
 }
 
-export function serializeBackup(workspace: Workspace, dialer?: DialerState): string {
+export function serializeBackup(workspace: Workspace, dialer?: DialerState, pairing?: PairingState): string {
   return JSON.stringify(
     {
       appName: "Manage.kar",
@@ -761,6 +763,7 @@ export function serializeBackup(workspace: Workspace, dialer?: DialerState): str
       ...workspace,
       schemaVersion: 1,
       ...(dialer ? { dialer } : {}),
+      ...(pairing ? { pairing } : {}),
     },
     null,
     2,
@@ -769,7 +772,9 @@ export function serializeBackup(workspace: Workspace, dialer?: DialerState): str
 
 export function parseBackup(
   raw: string,
-): { ok: true; workspace: Workspace; dialer?: DialerState } | { ok: false; error: string } {
+):
+  | { ok: true; workspace: Workspace; dialer?: DialerState; pairing?: PairingState }
+  | { ok: false; error: string } {
   const parsed = parseJson(raw)
   if (!isRecord(parsed)) {
     return { ok: false, error: "Invalid Manage.kar backup file." }
@@ -783,7 +788,13 @@ export function parseBackup(
     return { ok: false, error: "Invalid Manage.kar backup file." }
   }
   const dialer = parsed.dialer === undefined ? undefined : parseDialer(parsed.dialer)
-  return { ok: true, workspace: normalized.workspace, ...(dialer ? { dialer } : {}) }
+  const pairing = parsed.pairing === undefined ? undefined : parsePairing(parsed.pairing)
+  return {
+    ok: true,
+    workspace: normalized.workspace,
+    ...(dialer ? { dialer } : {}),
+    ...(pairing ? { pairing } : {}),
+  }
 }
 
 export function replaceWorkspace(storage: KeyValueStore, workspace: Workspace): Workspace {
@@ -804,6 +815,7 @@ export function clearWorkspace(storage: KeyValueStore): Workspace {
   storage.removeItem(WORKSPACE_DROPPED_KEY)
   storage.removeItem(ANALYTICS_KEY)
   storage.removeItem(DIALER_KEY)
+  storage.removeItem(PAIRING_KEY)
   return saveWorkspace(storage, empty)
 }
 
