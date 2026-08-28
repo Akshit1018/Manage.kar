@@ -59,6 +59,9 @@ export function snapOrbToEdge(
   const { width, inset } = resolveBounds(bounds)
   const left = inset
   const right = width - size - inset
+  if (right <= left) {
+    return clamped
+  }
   const x = clamped.x - left <= right - clamped.x ? left : right
   return { x, y: clamped.y }
 }
@@ -67,8 +70,8 @@ export function defaultOrbPosition(bounds: OrbBounds): { x: number; y: number } 
   return clampOrbPosition(bounds.width - 100, bounds.height - 100, bounds)
 }
 
-/** Width of the revealed icon bar: four 40px icons, three 8px gaps, 8px padding each side. */
-export const ICON_BAR_WIDTH = 4 * 40 + 3 * 8 + 16
+/** Width of the revealed icon bar: four 44px icons, three 8px gaps, 8px padding each side. */
+export const ICON_BAR_WIDTH = 4 * 44 + 3 * 8 + 16
 
 export function iconBarPosition(
   orb: { x: number; y: number },

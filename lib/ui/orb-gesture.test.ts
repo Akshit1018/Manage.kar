@@ -54,6 +54,19 @@ describe("orb placement", () => {
     expect(iconBarPosition({ x: 100, y: 744 }, IPHONE_390)).toEqual({ x: 160, y: 684 })
   })
 
+  it("sizes the tray for four 44px buttons plus gaps and padding", () => {
+    expect(ICON_BAR_WIDTH).toBe(4 * 44 + 3 * 8 + 16)
+  })
+
+  it("keeps a 44px-button tray visible at the 320 right edge", () => {
+    const liveTrayWidth = 4 * 44 + 3 * 8 + 16
+    const orb = snapOrbToEdge({ x: 300, y: 400 }, IPHONE_SE)
+    const bar = iconBarPosition(orb, IPHONE_SE)
+    expect(orb.x).toBe(256)
+    expect(bar.x).toBeGreaterThanOrEqual(8)
+    expect(bar.x + liveTrayWidth).toBeLessThanOrEqual(IPHONE_SE.width - 8)
+  })
+
   it("keeps all four icons on screen when the ball hugs the right edge", () => {
     const bar = iconBarPosition({ x: 290, y: 744 }, IPHONE_390)
     expect(bar.x + ICON_BAR_WIDTH).toBeLessThanOrEqual(IPHONE_390.width - 8)
@@ -67,11 +80,11 @@ describe("orb placement", () => {
   it("re-clamps a previously valid 390x844 position inside 320x568", () => {
     const previous = { x: 290, y: 744 }
     const next = clampOrbPosition(previous.x, previous.y, IPHONE_SE)
-    expect(next.x).toBeGreaterThanOrEqual(8)
-    expect(next.x + ORB_SIZE).toBeLessThanOrEqual(IPHONE_SE.width - 8)
-    expect(next.y).toBeGreaterThanOrEqual(8)
-    expect(next.y + ORB_SIZE).toBeLessThanOrEqual(IPHONE_SE.height - 76)
-    expect(next).not.toEqual(previous)
+    expect(next).toEqual({ x: 256, y: 436 })
+  })
+
+  it("leaves an already valid 320x568 point unchanged", () => {
+    expect(clampOrbPosition(200, 300, IPHONE_SE)).toEqual({ x: 200, y: 300 })
   })
 
   it("keeps the tray visible and inward on the left edge", () => {
@@ -100,5 +113,24 @@ describe("orb placement", () => {
     const snapped = snapOrbToEdge({ x: 60, y: 400 }, IPHONE_390)
     expect(snapped.x).toBe(8)
     expect(snapped.y).toBe(400)
+  })
+
+  it("snaps the 390 parked-edge midpoint x=167 to the left edge", () => {
+    expect(snapOrbToEdge({ x: 167, y: 400 }, IPHONE_390)).toEqual({ x: 8, y: 400 })
+  })
+
+  it("snaps just past the 390 parked-edge midpoint x=168 to the right edge", () => {
+    expect(snapOrbToEdge({ x: 168, y: 400 }, IPHONE_390)).toEqual({ x: 326, y: 400 })
+  })
+
+  it("snaps a release in the reserved chrome band to the nearest edge and max y", () => {
+    expect(snapOrbToEdge({ x: 280, y: 800 }, IPHONE_390)).toEqual({ x: 326, y: 712 })
+  })
+
+  it("does not snap to a negative x when the viewport is narrower than the orb", () => {
+    const tiny = { width: 50, height: 200 }
+    const snapped = snapOrbToEdge({ x: 20, y: 40 }, tiny)
+    expect(snapped.x).toBeGreaterThanOrEqual(0)
+    expect(snapped).toEqual(clampOrbPosition(20, 40, tiny))
   })
 })
