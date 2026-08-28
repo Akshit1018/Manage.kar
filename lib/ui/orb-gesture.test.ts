@@ -6,15 +6,19 @@ import {
   ORB_NUDGE_PX,
   ORB_SIZE,
   applyOrbKeyboardIntent,
+  attachOrbPointerFallback,
   clampOrbPosition,
   defaultOrbPosition,
   iconBarPosition,
   movementExceeded,
   orbGestureOutcome,
   orbKeyboardIntent,
+  orbLostPointerShouldFinish,
   orbPlacementTransitionMs,
   orbReleaseAction,
   orbViewportBounds,
+  parseSavedOrbPosition,
+  resolveOrbPlacement,
   snapOrbToEdge,
   type OrbBounds,
 } from "./orb-gesture"
@@ -245,5 +249,123 @@ describe("orbPlacementTransitionMs", () => {
 
   it("allows a short snap animation otherwise", () => {
     expect(orbPlacementTransitionMs(false)).toBe(180)
+  })
+})
+
+describe("orbLostPointerShouldFinish", () => {
+  it("finishes only the active unfinished gesture", () => {
+    expect(
+      orbLostPointerShouldFinish({ activePointerId: 7, eventPointerId: 7, gestureEnded: false }),
+    ).toBe(true)
+  })
+
+  it("does not finish after pointerup already ended the gesture", () => {
+    expect(
+      orbLostPointerShouldFinish({ activePointerId: null, eventPointerId: 7, gestureEnded: true }),
+    ).toBe(false)
+    expect(
+      orbLostPointerShouldFinish({ activePointerId: 7, eventPointerId: 7, gestureEnded: true }),
+    ).toBe(false)
+  })
+
+  it("ignores a lost capture for a different pointer", () => {
+    expect(
+      orbLostPointerShouldFinish({ activePointerId: 7, eventPointerId: 3, gestureEnded: false }),
+    ).toBe(false)
+  })
+})
+
+describe("parseSavedOrbPosition", () => {
+  it("reads a finite parked point", () => {
+    expect(parseSavedOrbPosition('{"x":326,"y":712}')).toEqual({ x: 326, y: 712 })
+  })
+
+  it("rejects NaN, Infinity, and non-finite coordinates", () => {
+    expect(parseSavedOrbPosition('{"x":null,"y":712}')).toBeNull()
+    expect(parseSavedOrbPosition('{"x":"8","y":400}')).toBeNull()
+    expect(parseSavedOrbPosition(JSON.stringify({ x: Number.NaN, y: 400 }))).toBeNull()
+    expect(parseSavedOrbPosition(JSON.stringify({ x: 8, y: Number.POSITIVE_INFINITY }))).toBeNull()
+  })
+
+  it("rejects missing or corrupt payloads", () => {
+    expect(parseSavedOrbPosition(null)).toBeNull()
+    expect(parseSavedOrbPosition("{")).toBeNull()
+    expect(parseSavedOrbPosition('{"y":400}')).toBeNull()
+  })
+})
+
+describe("resolveOrbPlacement", () => {
+  it("does not persist a first-paint default", () => {
+    const result = resolveOrbPlacement({
+      prev: null,
+      saved: null,
+      bounds: IPHONE_390,
+      reason: "hydrate",
+    })
+    expect(result.next).toEqual(defaultOrbPosition(IPHONE_390))
+    expect(result.persist).toBe(false)
+  })
+
+  it("persists a hydrate re-clamp of a previously saved point", () => {
+    const result = resolveOrbPlacement({
+      prev: null,
+      saved: { x: 290, y: 744 },
+      bounds: IPHONE_SE,
+      reason: "hydrate",
+    })
+    expect(result.next).toEqual({ x: 256, y: 436 })
+    expect(result.persist).toBe(true)
+  })
+
+  it("is safe to call twice with the same prev without changing the persist decision", () => {
+    const input = {
+      prev: { x: 326, y: 712 } as { x: number; y: number },
+      saved: { x: 326, y: 712 } as { x: number; y: number },
+      bounds: IPHONE_SE,
+      reason: "viewport" as const,
+    }
+    const first = resolveOrbPlacement(input)
+    const second = resolveOrbPlacement(input)
+    expect(first).toEqual(second)
+    expect(first.next).toEqual({ x: 256, y: 436 })
+    expect(first.persist).toBe(true)
+  })
+})
+
+describe("attachOrbPointerFallback", () => {
+  it("routes matching pointer events and always detaches on cleanup", () => {
+    const listeners = new Map<string, Set<EventListenerOrEventListenerObject>>()
+    const target = {
+      addEventListener(type: string, listener: EventListenerOrEventListenerObject) {
+        const set = listeners.get(type) ?? new Set()
+        set.add(listener)
+        listeners.set(type, set)
+      },
+      removeEventListener(type: string, listener: EventListenerOrEventListenerObject) {
+        listeners.get(type)?.delete(listener)
+      },
+    }
+    const moves: Array<[number, number]> = []
+    const ends: string[] = []
+    const detach = attachOrbPointerFallback(target, 9, {
+      onMove: (x, y) => moves.push([x, y]),
+      onUp: () => ends.push("up"),
+      onCancel: () => ends.push("cancel"),
+    })
+    expect([...listeners.keys()].sort()).toEqual(["pointercancel", "pointermove", "pointerup"])
+
+    const fire = (type: string, pointerId: number, clientX = 0, clientY = 0) => {
+      const listener = [...(listeners.get(type) ?? [])][0] as EventListener
+      listener({ pointerId, clientX, clientY } as PointerEvent)
+    }
+    fire("pointermove", 4, 10, 10)
+    fire("pointermove", 9, 12, 40)
+    fire("pointerup", 9)
+    fire("pointercancel", 9)
+    expect(moves).toEqual([[12, 40]])
+    expect(ends).toEqual(["up", "cancel"])
+
+    detach()
+    expect([...listeners.values()].every((set) => set.size === 0)).toBe(true)
   })
 })

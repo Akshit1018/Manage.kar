@@ -10,14 +10,18 @@ import {
   ICON_BAR_MS,
   LONG_PRESS_MS,
   applyOrbKeyboardIntent,
+  attachOrbPointerFallback,
   clampOrbPosition,
   defaultOrbPosition,
   iconBarPosition,
   movementExceeded,
   orbGestureOutcome,
   orbKeyboardIntent,
+  orbLostPointerShouldFinish,
   orbPlacementTransitionMs,
   orbViewportBounds,
+  parseSavedOrbPosition,
+  resolveOrbPlacement,
   snapOrbToEdge,
 } from "@/lib/ui/orb-gesture"
 
@@ -43,21 +47,6 @@ function readBounds() {
 
 function persistPosition(position: { x: number; y: number }) {
   localStorage.setItem(POSITION_KEY, JSON.stringify(position))
-}
-
-function parseSavedPosition(raw: string | null): { x: number; y: number } | null {
-  if (!raw) {
-    return null
-  }
-  try {
-    const parsed = JSON.parse(raw) as { x: number; y: number }
-    if (typeof parsed.x === "number" && typeof parsed.y === "number") {
-      return parsed
-    }
-  } catch {
-    return null
-  }
-  return null
 }
 
 function samePoint(
@@ -92,20 +81,33 @@ export function FloatingToggle({
   const pendingPosRef = useRef<{ x: number; y: number } | null>(null)
   const latestPosRef = useRef<{ x: number; y: number } | null>(null)
   const rafRef = useRef<number | null>(null)
+  const fallbackDetachRef = useRef<(() => void) | null>(null)
+  const finishGestureRef = useRef<(cancelled: boolean) => void>(() => {})
+  const handleMoveRef = useRef<(clientX: number, clientY: number) => void>(() => {})
   const positionRef = useRef(position)
   positionRef.current = position
+
+  const detachPointerFallback = () => {
+    fallbackDetachRef.current?.()
+    fallbackDetachRef.current = null
+  }
 
   useEffect(() => {
     const syncPlacement = (reason: "hydrate" | "viewport") => {
       const bounds = readBounds()
+      const saved = parseSavedOrbPosition(localStorage.getItem(POSITION_KEY))
+      const planned = resolveOrbPlacement({
+        prev: positionRef.current,
+        saved,
+        bounds,
+        reason,
+      })
+      if (planned.persist) {
+        persistPosition(planned.next)
+      }
+      latestPosRef.current = planned.next
       setPosition((prev) => {
-        const saved = parseSavedPosition(localStorage.getItem(POSITION_KEY))
-        const source = prev ?? saved ?? defaultOrbPosition(bounds)
-        const next = clampOrbPosition(source.x, source.y, bounds)
-        const changed = next.x !== source.x || next.y !== source.y
-        if (changed && (reason === "viewport" || (reason === "hydrate" && saved))) {
-          persistPosition(next)
-        }
+        const next = resolveOrbPlacement({ prev, saved, bounds, reason }).next
         latestPosRef.current = next
         return samePoint(prev, next) ? prev : next
       })
@@ -231,6 +233,7 @@ export function FloatingToggle({
   }
 
   const finishGesture = (cancelled: boolean) => {
+    detachPointerFallback()
     if (gestureEndedRef.current) {
       return
     }
@@ -273,8 +276,18 @@ export function FloatingToggle({
     }
   }
 
+  handleMoveRef.current = handleMove
+  finishGestureRef.current = finishGesture
+
+  useEffect(() => {
+    if (suppressed && !recorderOpen && !gestureEndedRef.current) {
+      finishGestureRef.current(true)
+    }
+  }, [suppressed, recorderOpen])
+
   useEffect(() => {
     return () => {
+      detachPointerFallback()
       clearLongPress()
       clearHideTimer()
       flushRaf()
@@ -363,13 +376,23 @@ export function FloatingToggle({
           if (event.button !== 0 || activePointerRef.current !== null) {
             return
           }
+          let captured = false
           try {
             event.currentTarget.setPointerCapture(event.pointerId)
+            captured = event.currentTarget.hasPointerCapture(event.pointerId)
           } catch {
-            // Untrusted or already-released pointers still start the gesture.
+            captured = false
           }
           activePointerRef.current = event.pointerId
           handleStart(event.clientX, event.clientY)
+          if (!captured) {
+            detachPointerFallback()
+            fallbackDetachRef.current = attachOrbPointerFallback(window, event.pointerId, {
+              onMove: (clientX, clientY) => handleMoveRef.current(clientX, clientY),
+              onUp: () => finishGestureRef.current(false),
+              onCancel: () => finishGestureRef.current(true),
+            })
+          }
         }}
         onPointerMove={(event) => {
           if (event.pointerId !== activePointerRef.current) {
@@ -385,6 +408,18 @@ export function FloatingToggle({
         }}
         onPointerCancel={(event) => {
           if (event.pointerId !== activePointerRef.current) {
+            return
+          }
+          finishGesture(true)
+        }}
+        onLostPointerCapture={(event) => {
+          if (
+            !orbLostPointerShouldFinish({
+              activePointerId: activePointerRef.current,
+              eventPointerId: event.pointerId,
+              gestureEnded: gestureEndedRef.current,
+            })
+          ) {
             return
           }
           finishGesture(true)

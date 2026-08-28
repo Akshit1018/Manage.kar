@@ -127,6 +127,90 @@ export function orbPlacementTransitionMs(prefersReducedMotion: boolean): number 
   return prefersReducedMotion ? 0 : ORB_SNAP_MS
 }
 
+export function orbLostPointerShouldFinish(input: {
+  activePointerId: number | null
+  eventPointerId: number
+  gestureEnded: boolean
+}): boolean {
+  if (input.gestureEnded || input.activePointerId == null) {
+    return false
+  }
+  return input.eventPointerId === input.activePointerId
+}
+
+export function parseSavedOrbPosition(raw: string | null): { x: number; y: number } | null {
+  if (!raw) {
+    return null
+  }
+  try {
+    const parsed = JSON.parse(raw) as { x?: unknown; y?: unknown }
+    if (Number.isFinite(parsed.x) && Number.isFinite(parsed.y)) {
+      return { x: parsed.x, y: parsed.y }
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
+export function resolveOrbPlacement(input: {
+  prev: { x: number; y: number } | null
+  saved: { x: number; y: number } | null
+  bounds: OrbBounds
+  reason: "hydrate" | "viewport"
+}): { next: { x: number; y: number }; persist: boolean } {
+  const source = input.prev ?? input.saved ?? defaultOrbPosition(input.bounds)
+  const next = clampOrbPosition(source.x, source.y, input.bounds)
+  const changed = next.x !== source.x || next.y !== source.y
+  const persist =
+    changed && (input.reason === "viewport" || (input.reason === "hydrate" && input.saved != null))
+  return { next, persist }
+}
+
+type OrbPointerFallbackTarget = {
+  addEventListener: (type: string, listener: EventListenerOrEventListenerObject) => void
+  removeEventListener: (type: string, listener: EventListenerOrEventListenerObject) => void
+}
+
+export function attachOrbPointerFallback(
+  target: OrbPointerFallbackTarget,
+  pointerId: number,
+  handlers: {
+    onMove: (clientX: number, clientY: number) => void
+    onUp: () => void
+    onCancel: () => void
+  },
+): () => void {
+  const matches = (event: Event) => (event as PointerEvent).pointerId === pointerId
+  const onMove = (event: Event) => {
+    if (!matches(event)) {
+      return
+    }
+    const pointer = event as PointerEvent
+    handlers.onMove(pointer.clientX, pointer.clientY)
+  }
+  const onUp = (event: Event) => {
+    if (!matches(event)) {
+      return
+    }
+    handlers.onUp()
+  }
+  const onCancel = (event: Event) => {
+    if (!matches(event)) {
+      return
+    }
+    handlers.onCancel()
+  }
+  target.addEventListener("pointermove", onMove)
+  target.addEventListener("pointerup", onUp)
+  target.addEventListener("pointercancel", onCancel)
+  return () => {
+    target.removeEventListener("pointermove", onMove)
+    target.removeEventListener("pointerup", onUp)
+    target.removeEventListener("pointercancel", onCancel)
+  }
+}
+
 function resolveBounds(bounds: OrbBounds) {
   return {
     width: bounds.width,
