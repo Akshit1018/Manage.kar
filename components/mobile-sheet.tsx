@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useId, useState, type ReactNode } from "react"
+import { useEffect, useId, useRef, useState, type PointerEvent, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { armPointerThroughGuard, backdropPointerDown } from "@/lib/ui/overlay-pointer"
 import { useBodyScrollLock } from "@/lib/ui/use-body-scroll-lock"
 import { useVisualViewportInset } from "@/lib/ui/use-visual-viewport"
 
@@ -34,11 +35,19 @@ export function MobileSheet({
   const titleId = useId()
   const descriptionId = useId()
   const [mounted, setMounted] = useState(false)
+  const pointerGuard = useRef<(() => void) | null>(null)
   useBodyScrollLock(open)
   useVisualViewportInset(open)
 
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      pointerGuard.current?.()
+      pointerGuard.current = null
+    }
   }, [])
 
   useEffect(() => {
@@ -58,13 +67,36 @@ export function MobileSheet({
     return () => window.removeEventListener("keydown", onKey, true)
   }, [open, onClose])
 
+  const dismissFromBackdrop = (event: PointerEvent<HTMLButtonElement>) => {
+    if (backdropPointerDown(event) !== "dismiss") {
+      return
+    }
+    pointerGuard.current?.()
+    pointerGuard.current = armPointerThroughGuard(document, {
+      schedule: window.setTimeout.bind(window),
+      cancel: window.clearTimeout.bind(window),
+    })
+    onClose()
+  }
+
   if (!open || !mounted) {
     return null
   }
 
   return createPortal(
     <div className={cn("mk-overlay", variant === "full" && "mk-overlay-full")} data-testid="mobile-sheet">
-      <button type="button" className="mk-overlay-backdrop" aria-label="Close" onClick={onClose} />
+      <button
+        type="button"
+        className="mk-overlay-backdrop"
+        data-testid="overlay-backdrop"
+        aria-label="Close"
+        onPointerDown={dismissFromBackdrop}
+        onClick={(event) => {
+          if (event.detail === 0) {
+            onClose()
+          }
+        }}
+      />
       <div
         role="dialog"
         aria-modal="true"
@@ -79,7 +111,7 @@ export function MobileSheet({
         ) : (
           <header className="mk-sheet-header">
             <div className="min-w-0">
-              <h2 id={titleId} className="truncate text-lg font-semibold">
+              <h2 id={titleId} className="mk-sheet-title truncate">
                 {title}
               </h2>
               {description ? (
@@ -99,7 +131,9 @@ export function MobileSheet({
             </Button>
           </header>
         )}
-        <div className="mk-sheet-body">{children}</div>
+        <div className="mk-sheet-body" data-testid="sheet-body">
+          {children}
+        </div>
         {footer ? <footer className="mk-sheet-footer">{footer}</footer> : null}
       </div>
     </div>,

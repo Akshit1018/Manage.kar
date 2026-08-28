@@ -185,8 +185,8 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
       onClose={onClose}
       title="Share tasks"
       footer={
-        <div className="flex w-full flex-col gap-2 sm:flex-row">
-          <Button variant="outline" onClick={onClose} className="mk-touch rounded-xl bg-transparent">
+        <div className="mk-sheet-footer-actions">
+          <Button variant="outline" onClick={onClose} className="mk-touch flex-1 rounded-xl bg-transparent">
             Cancel
           </Button>
           <Button
@@ -227,44 +227,44 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
             </p>
             <div className="space-y-3">
               <Label className="responsive-text-sm font-medium text-readable">Share method</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="mk-form-grid">
                 <Button
                   variant={shareMethod === "whatsapp" ? "default" : "outline"}
                   onClick={() => setShareMethod("whatsapp")}
-                  className="justify-start bg-transparent rounded-xl hover:scale-105 transition-all duration-200 responsive-button"
+                  className="rounded-xl bg-transparent"
                 >
-                  <MessageCircle className="h-4 w-4 mr-2" />
+                  <MessageCircle className="h-4 w-4 mr-2 shrink-0" />
                   WhatsApp (plain text)
                 </Button>
                 <Button
                   variant={shareMethod === "link" ? "default" : "outline"}
                   onClick={() => setShareMethod("link")}
-                  className="justify-start bg-transparent rounded-xl hover:scale-105 transition-all duration-200 responsive-button"
+                  className="rounded-xl bg-transparent"
                 >
-                  <Link className="h-4 w-4 mr-2" />
+                  <Link className="h-4 w-4 mr-2 shrink-0" />
                   Share Link
                 </Button>
                 <Button
                   variant={shareMethod === "email" ? "default" : "outline"}
                   onClick={() => setShareMethod("email")}
-                  className="justify-start bg-transparent rounded-xl hover:scale-105 transition-all duration-200 responsive-button"
+                  className="rounded-xl bg-transparent"
                 >
-                  <Mail className="h-4 w-4 mr-2" />
+                  <Mail className="h-4 w-4 mr-2 shrink-0" />
                   Email
                 </Button>
                 <Button
                   variant={shareMethod === "export" ? "default" : "outline"}
                   onClick={() => setShareMethod("export")}
-                  className="justify-start bg-transparent rounded-xl hover:scale-105 transition-all duration-200 responsive-button"
+                  className="rounded-xl bg-transparent"
                 >
-                  <Download className="h-4 w-4 mr-2" />
+                  <Download className="h-4 w-4 mr-2 shrink-0" />
                   Export
                 </Button>
               </div>
             </div>
 
             <div className="space-y-3 sm:space-y-4">
-              <div className="flex items-center justify-between gap-4">
+              <div className="mk-switch-row">
                 <Label className="responsive-text-sm font-medium text-readable">Include completed tasks</Label>
                 <Switch checked={includeCompleted} onCheckedChange={setIncludeCompleted} />
               </div>
@@ -368,11 +368,11 @@ export function ShareModal({ isOpen, onClose, tasks, userName = "User" }: ShareM
             {shareMethod === "link" && generatedLink && (
               <div className="space-y-2">
                 <Label className="responsive-text-sm font-medium text-readable">Generated Link</Label>
-                <div className="flex gap-2">
+                <div className="flex min-w-0 gap-2">
                   <Input
                     value={generatedLink}
                     readOnly
-                    className="bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl responsive-text-xs mobile-touch-target"
+                    className="min-w-0 bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl responsive-text-xs mobile-touch-target"
                   />
                   <Button
                     variant="outline"

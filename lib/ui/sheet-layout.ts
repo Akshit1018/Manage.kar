@@ -52,3 +52,55 @@ export function overlayContainingBlockIsSafe(styles: {
   const transform = styles.transform?.trim() ?? "none"
   return backdrop === "none" && filter === "none" && transform === "none"
 }
+
+export const NARROW_FORM_MAX_WIDTH = 360
+
+export function mobileBackdropIsDismissible(pointerEvents: string): boolean {
+  return pointerEvents.trim() !== "none"
+}
+
+export function overlayBlocksWorkspace(pointerEvents: string): boolean {
+  return pointerEvents.trim() !== "none"
+}
+
+export function sectionTabsShouldWrap(width: number): boolean {
+  return width < DESKTOP_DIALOG_MIN_WIDTH
+}
+
+export function formGridColumns(width: number): 1 | 2 {
+  return width < NARROW_FORM_MAX_WIDTH ? 1 : 2
+}
+
+export function sheetFooterOrientation(width: number): "stack" | "row" {
+  return width < NARROW_FORM_MAX_WIDTH ? "stack" : "row"
+}
+
+export interface OverlayCssContract {
+  mobileBackdropPointerNone: boolean
+  overlayCapturesPointer: boolean
+  singleScrollBody: boolean
+  safeAreaAware: boolean
+  keyboardAware: boolean
+  hasSheetTabs: boolean
+  hasSwitchRow: boolean
+  hasFormGrid: boolean
+  hasStackedFooter: boolean
+}
+
+export function overlayCssContract(css: string): OverlayCssContract {
+  const mobileBackdrop = css.match(
+    /@media\s*\(\s*max-width:\s*639px\s*\)\s*\{[\s\S]*?\.mk-overlay-backdrop\s*\{([^}]*)\}/,
+  )
+  return {
+    mobileBackdropPointerNone: Boolean(mobileBackdrop?.[1] && /pointer-events:\s*none/.test(mobileBackdrop[1])),
+    overlayCapturesPointer: /\.mk-overlay\s*\{[^}]*pointer-events:\s*auto/.test(css),
+    singleScrollBody: /\.mk-sheet-body\s*\{[^}]*overflow-y:\s*auto/.test(css),
+    safeAreaAware:
+      /\.mk-overlay\s*\{[^}]*safe-area-inset-top/.test(css) || /\.mk-sheet\s*\{[^}]*safe-area-inset-top/.test(css),
+    keyboardAware: /\.mk-overlay\s*\{[^}]*--mk-keyboard/.test(css),
+    hasSheetTabs: /\.mk-sheet-tabs\s*\{/.test(css),
+    hasSwitchRow: /\.mk-switch-row\s*\{/.test(css),
+    hasFormGrid: /\.mk-form-grid\s*\{/.test(css),
+    hasStackedFooter: /\.mk-sheet-footer-actions\s*\{/.test(css),
+  }
+}
