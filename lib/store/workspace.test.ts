@@ -14,8 +14,11 @@ import {
   resetCorruptWorkspace,
   saveWorkspace,
   serializeBackup,
+  clearWorkspace,
   type KeyValueStore,
 } from "./workspace"
+import { DIALER_KEY, createEmptyDialer, queueMessage, saveDialer } from "@/lib/dialer/dialer"
+import { NEW_CHAT_TARGET } from "@/lib/dialer/types"
 
 class MemoryStore implements KeyValueStore {
   private readonly data = new Map<string, string>()
@@ -324,6 +327,7 @@ describe("workspace store", () => {
     expect(parsed.ok).toBe(true)
     if (parsed.ok) {
       expect(parsed.workspace.tasks[0]?.title).toBe("Backup me")
+      expect(parsed.dialer).toBeUndefined()
     }
 
     const invalid = parseBackup("not-json")
@@ -431,5 +435,24 @@ describe("workspace store", () => {
     expect(loaded.labels.some((label) => label.name === "sarah" && label.kind === "person")).toBe(true)
     const people = loaded.labels.filter((label) => label.kind === "person")
     expect(loaded.tasks[0]?.labelIds).toEqual(expect.arrayContaining(people.map((label) => label.id)))
+  })
+
+  it("includes the dialer in backups and removes it on wipe", () => {
+    const storage = new MemoryStore()
+    const queued = queueMessage(createEmptyDialer(), NEW_CHAT_TARGET, "secret prompt", "2026-08-28T10:00:00.000Z")!
+    saveDialer(storage, queued.state)
+    saveWorkspace(storage, createEmptyWorkspace())
+
+    const backup = serializeBackup(createEmptyWorkspace(), queued.state)
+    const parsed = parseBackup(backup)
+    expect(parsed.ok).toBe(true)
+    if (parsed.ok) {
+      expect(parsed.dialer?.outbox[0]?.text).toBe("secret prompt")
+    }
+
+    expect(storage.getItem(DIALER_KEY)).not.toBeNull()
+    clearWorkspace(storage)
+    expect(storage.getItem(DIALER_KEY)).toBeNull()
+    expect(storage.getItem(WORKSPACE_KEY)).not.toBeNull()
   })
 })

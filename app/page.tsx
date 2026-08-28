@@ -21,6 +21,7 @@ import {
   Activity,
   Home,
   Download,
+  MessageCircle,
 } from "lucide-react"
 import { ChatComposer } from "@/components/chat-composer"
 import { FloatingToggle } from "@/components/floating-toggle"
@@ -41,6 +42,7 @@ import { TodaySection } from "@/components/workspace/today-section"
 import { TaskList } from "@/components/workspace/task-list"
 import { NoteList } from "@/components/workspace/note-list"
 import { HabitList } from "@/components/workspace/habit-list"
+import { ChatsView } from "@/components/workspace/chats-view"
 import type { Habit, LabelKind, Note, Task, WorkspaceLabel } from "@/lib/domain/types"
 import { attachUnknownTokensAsTags, parseAtTokens, uniqueLabelIds, upsertLabel } from "@/lib/labels/book"
 import { matchesLabelSearch } from "@/lib/labels/query"
@@ -54,6 +56,8 @@ import { completeRecurringTask } from "@/lib/reminders/due"
 import { useLocalReminders } from "@/lib/reminders/use-local-reminders"
 import { createIndexedDbVoiceStore, deleteVoice, putVoice, voiceRef } from "@/lib/media/voice-store"
 import { parseWorkspaceSearch, serializeWorkspaceSearch, type WorkspaceView } from "@/lib/navigation/workspace-url"
+import { COMPOSER_OPEN_EVENT } from "@/lib/dialer/dialer"
+import type { ComposerOpenDetail } from "@/lib/dialer/types"
 import { filterTasks, type TaskListFilter } from "@/lib/tasks/filter"
 
 function clipTitle(content: string, limit: number) {
@@ -73,11 +77,13 @@ export default function Dashboard() {
 
   const initialSearch =
     typeof window === "undefined"
-      ? { view: "overview" as const, q: "", filter: "all" as const }
+      ? { view: "overview" as const, q: "", filter: "all" as const, session: "" }
       : parseWorkspaceSearch(window.location.search)
   const [currentView, setCurrentView] = useState<WorkspaceView>(initialSearch.view)
   const [searchQuery, setSearchQuery] = useState(initialSearch.q)
   const [taskFilter, setTaskFilter] = useState<TaskListFilter>(initialSearch.filter)
+  const [chatSession, setChatSession] = useState(initialSearch.session)
+  const [composerExpanded, setComposerExpanded] = useState(false)
   const [selectedTasks, setSelectedTasks] = useState<number[]>([])
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [taskModal, setTaskModal] = useState<{ isOpen: boolean; mode: "create" | "edit"; task?: Task }>({
@@ -106,9 +112,23 @@ export default function Dashboard() {
   const todayKey = localDateKey()
 
   useEffect(() => {
-    const next = serializeWorkspaceSearch(currentView, searchQuery, taskFilter)
+    const next = serializeWorkspaceSearch(currentView, searchQuery, taskFilter, chatSession)
     window.history.replaceState(null, "", `${window.location.pathname}${next}`)
-  }, [currentView, searchQuery, taskFilter])
+  }, [currentView, searchQuery, taskFilter, chatSession])
+
+  useEffect(() => {
+    const onComposer = (event: Event) => {
+      const detail = (event as CustomEvent<ComposerOpenDetail>).detail
+      if (detail?.openTab) {
+        setCurrentView("chats")
+        if (detail.target) {
+          setChatSession(detail.target)
+        }
+      }
+    }
+    window.addEventListener(COMPOSER_OPEN_EVENT, onComposer)
+    return () => window.removeEventListener(COMPOSER_OPEN_EVENT, onComposer)
+  }, [])
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -578,7 +598,18 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="mb-4 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2">
+        <div className="mb-4 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+          <Button
+            variant="ghost"
+            className="modern-card rounded-xl h-14 flex-col gap-1"
+            onClick={() => {
+              setCurrentView("chats")
+              setChatSession("")
+            }}
+          >
+            <MessageCircle className="h-4 w-4" />
+            <span className="text-xs">Chats</span>
+          </Button>
           <Button variant="ghost" className="modern-card rounded-xl h-14 flex-col gap-1" onClick={() => setHabitDashboard(true)}>
             <Activity className="h-4 w-4" />
             <span className="text-xs">Habits</span>
@@ -609,7 +640,7 @@ export default function Dashboard() {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             id="workspace-search"
-            placeholder="Search tasks, notes, and habits..."
+            placeholder="Search tasks, notes, habits, and chats..."
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             className="pl-10 rounded-xl sm:rounded-2xl bg-card/95"
@@ -708,15 +739,25 @@ export default function Dashboard() {
             onEditHabit={(habit) => setHabitModal({ isOpen: true, mode: "edit", habit })}
           />
         )}
+
+        {currentView === "chats" && (
+          <ChatsView
+            sessionId={chatSession}
+            searchQuery={searchQuery}
+            onOpenSession={setChatSession}
+            onBack={() => setChatSession("")}
+          />
+        )}
       </div>
 
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background/95 pb-[env(safe-area-inset-bottom,0px)] sm:hidden">
-        <div className="grid grid-cols-4">
+        <div className="grid grid-cols-5">
           {(
             [
               ["overview", "Home", Home],
               ["tasks", "Tasks", CheckSquare],
               ["notes", "Notes", FileText],
+              ["chats", "Chats", MessageCircle],
               ["habits", "Habits", Activity],
             ] as const
           ).map(([view, label, Icon]) => (
@@ -724,7 +765,12 @@ export default function Dashboard() {
               key={view}
               type="button"
               className={`flex min-h-11 flex-col items-center gap-1 py-3 text-xs ${currentView === view ? "text-primary" : "text-muted-foreground"}`}
-              onClick={() => setCurrentView(view)}
+              onClick={() => {
+                setCurrentView(view)
+                if (view === "chats") {
+                  setChatSession("")
+                }
+              }}
             >
               <Icon className="h-4 w-4" />
               {label}
@@ -738,9 +784,14 @@ export default function Dashboard() {
         onAddNote={() => setNoteModal({ isOpen: true, mode: "create" })}
         onVoiceNote={handleVoiceNote}
         onCreateTaskFromVoice={handleVoiceTask}
+        suppressed={composerExpanded}
       />
 
-      <ChatComposer onVoice={() => setVoiceRecorderOpen(true)} />
+      <ChatComposer
+        onVoice={() => setVoiceRecorderOpen(true)}
+        onExpandedChange={setComposerExpanded}
+        preferredTarget={chatSession || undefined}
+      />
 
       <TaskModal
         isOpen={taskModal.isOpen}

@@ -12,6 +12,8 @@ import { GoogleIntegration } from "./google-integration"
 import { ConfirmSheet, type ConfirmRequest } from "@/components/confirm-sheet"
 import { MobileSheet } from "@/components/mobile-sheet"
 import type { AppSettings, Workspace } from "@/lib/domain/types"
+import type { DialerState } from "@/lib/dialer/types"
+import { loadDialer, notifyDialerChanged, persistDialer } from "@/lib/dialer/dialer"
 import { applyAppearance } from "@/lib/theme/apply-theme"
 import {
   APP_VERSION,
@@ -46,7 +48,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [activeSection, setActiveSection] = useState<string>("notifications")
   const [localEvents, setLocalEvents] = useState<LocalEvent[]>([])
   const [confirmKind, setConfirmKind] = useState<
-    { kind: "import"; workspace: Workspace } | { kind: "clear-1" } | { kind: "clear-2" } | null
+    { kind: "import"; workspace: Workspace; dialer?: DialerState } | { kind: "clear-1" } | { kind: "clear-2" } | null
   >(null)
 
   useEffect(() => {
@@ -92,8 +94,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   }
 
   const exportData = () => {
-    const workspace = loadWorkspace(browserStorage())
-    const blob = new Blob([serializeBackup({ ...workspace, settings })], { type: "application/json" })
+    const storage = browserStorage()
+    const workspace = loadWorkspace(storage)
+    const blob = new Blob([serializeBackup({ ...workspace, settings }, loadDialer(storage))], { type: "application/json" })
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement("a")
     anchor.href = url
@@ -122,16 +125,19 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           toast.error(parsed.error)
           return
         }
-        setConfirmKind({ kind: "import", workspace: parsed.workspace })
+        setConfirmKind({ kind: "import", workspace: parsed.workspace, dialer: parsed.dialer })
       }
       reader.readAsText(file)
     }
     input.click()
   }
 
-  const applyImportedWorkspace = (workspace: Workspace) => {
+  const applyImportedWorkspace = (workspace: Workspace, dialer?: DialerState) => {
     const storage = browserStorage()
     replaceWorkspace(storage, workspace)
+    if (dialer) {
+      persistDialer(storage, dialer)
+    }
     setSettings(workspace.settings)
     applyAppearance(workspace.settings)
     recordEvent(storage, "import", { kind: "backup" })
@@ -148,6 +154,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     applyAppearance(empty.settings)
     setLocalEvents(listEvents(storage))
     notifyWorkspaceChanged()
+    notifyDialerChanged()
     toast.success("This device's workspace was cleared.")
   }
 
@@ -173,7 +180,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       case "clear-2":
         return {
           title: "Are you absolutely sure?",
-          message: "Tasks, notes, habits, goals, and settings will be removed.",
+          message: "Tasks, notes, habits, goals, chats, and settings will be removed.",
           confirmLabel: "Clear everything",
           tone: "danger",
         }
@@ -190,7 +197,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
     switch (confirmKind.kind) {
       case "import":
-        applyImportedWorkspace(confirmKind.workspace)
+        applyImportedWorkspace(confirmKind.workspace, confirmKind.dialer)
         setConfirmKind(null)
         return
       case "clear-1":

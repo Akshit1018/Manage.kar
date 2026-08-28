@@ -1,14 +1,19 @@
 import type { KeyValueStore } from "@/lib/store/workspace"
 import {
   NEW_CHAT_TARGET,
+  type ChatListItem,
+  type ComposerOpenDetail,
   type DialerState,
   type HermesSession,
   type OutboxMessage,
+  type QueueCopyInput,
   type SessionPresence,
+  type SessionSource,
   type WheelItem,
 } from "./types"
 
 export const DIALER_KEY = "managekar.dialer.v1"
+export const DIALER_CHANGED_EVENT = "managekar:dialer-changed"
 export const WHEEL_ITEM_HEIGHT = 48
 /** Window event asking the chat composer to expand (fired by the orb's Chats icon). */
 export const COMPOSER_OPEN_EVENT = "managekar:composer-open"
@@ -19,15 +24,44 @@ export function createEmptyDialer(): DialerState {
 
 /**
  * Placeholder sessions so the dialer is usable before Hermes pairing lands.
- * Real sessions will replace these when the pairing flow syncs from the agent.
+ * These stay in memory. Pairing replaces them; they are not written on first load.
  */
 export function demoSessions(now = new Date()): HermesSession[] {
   const minutesAgo = (minutes: number) => new Date(now.getTime() - minutes * 60_000).toISOString()
   return [
-    { id: "demo-local", title: "Hermes · local", presence: "active", lastActivityAt: minutesAgo(4) },
-    { id: "demo-vps", title: "Hermes · VPS", presence: "idle", lastActivityAt: minutesAgo(35) },
-    { id: "demo-research", title: "Research bot", presence: "offline", lastActivityAt: minutesAgo(60 * 26) },
+    {
+      id: "demo-local",
+      title: "Hermes · local",
+      presence: "active",
+      lastActivityAt: minutesAgo(4),
+      source: "demo",
+    },
+    {
+      id: "demo-vps",
+      title: "Hermes · VPS",
+      presence: "idle",
+      lastActivityAt: minutesAgo(35),
+      source: "demo",
+    },
+    {
+      id: "demo-research",
+      title: "Research bot",
+      presence: "offline",
+      lastActivityAt: minutesAgo(60 * 26),
+      source: "demo",
+    },
   ]
+}
+
+export function visibleSessions(state: DialerState, now = new Date()): HermesSession[] {
+  const paired = state.sessions.filter((session) => session.source === "paired")
+  if (paired.length > 0) {
+    return paired
+  }
+  if (state.sessions.length > 0) {
+    return state.sessions
+  }
+  return demoSessions(now)
 }
 
 export function wheelItems(sessions: HermesSession[]): WheelItem[] {
@@ -76,18 +110,28 @@ export function queuedCountFor(state: DialerState, target: string): number {
   return state.outbox.filter((message) => message.target === target && message.status === "queued").length
 }
 
+export function resolveSession(state: DialerState, target: string): HermesSession | undefined {
+  if (target === NEW_CHAT_TARGET) {
+    return undefined
+  }
+  return state.sessions.find((item) => item.id === target) ?? demoSessions().find((item) => item.id === target)
+}
+
 export function queueMessage(
   state: DialerState,
   target: string,
   text: string,
   nowIso: string,
+  options?: { deliver?: boolean },
 ): { state: DialerState; message: OutboxMessage } | null {
   const trimmed = text.trim()
   if (!trimmed) {
     return null
   }
-  const session = state.sessions.find((item) => item.id === target)
-  const deliverable = session?.presence === "active"
+  const known = resolveSession(state, target)
+  const sessions =
+    known && !state.sessions.some((item) => item.id === known.id) ? [...state.sessions, known] : state.sessions
+  const deliverable = Boolean(options?.deliver) && known?.source === "paired" && known.presence === "active"
   const nextId = state.outbox.reduce((max, message) => Math.max(max, message.id), 0) + 1
   const message: OutboxMessage = {
     id: nextId,
@@ -98,7 +142,7 @@ export function queueMessage(
     ...(deliverable ? { sentAt: nowIso } : {}),
   }
   return {
-    state: { ...state, outbox: [...state.outbox, message] },
+    state: { ...state, sessions, outbox: [...state.outbox, message] },
     message,
   }
 }
@@ -114,17 +158,105 @@ export function flushOutbox(state: DialerState, target: string, nowIso: string):
   }
 }
 
+export function queueCopy(input: QueueCopyInput): string {
+  if (input.status === "sent") {
+    return "Sent"
+  }
+  if (input.source === "demo" || input.source === undefined) {
+    return "Saved locally — will send after pairing"
+  }
+  switch (input.presence) {
+    case "active":
+    case "idle":
+    case "offline":
+      return "Queued — sends when the agent is back online"
+    case undefined:
+      return "Saved locally — will send after pairing"
+    default: {
+      const _exhaustive: never = input.presence
+      throw new Error(`Unhandled presence: ${_exhaustive}`)
+    }
+  }
+}
+
+export function messagesForTarget(state: DialerState, target: string): OutboxMessage[] {
+  return state.outbox
+    .filter((message) => message.target === target)
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id - b.id)
+}
+
+export function chatListItems(state: DialerState, query = ""): ChatListItem[] {
+  const sessions = visibleSessions(state)
+  const newChatMessages = messagesForTarget(state, NEW_CHAT_TARGET)
+  const items: ChatListItem[] = [
+    {
+      id: NEW_CHAT_TARGET,
+      title: "New chat",
+      queuedCount: queuedCountFor(state, NEW_CHAT_TARGET),
+      preview: newChatMessages.at(-1)?.text ?? "Start a conversation",
+      lastAt: newChatMessages.at(-1)?.createdAt ?? "",
+    },
+    ...[...sessions]
+      .sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt))
+      .map((session) => {
+        const rows = messagesForTarget(state, session.id)
+        return {
+          id: session.id,
+          title: session.title,
+          presence: session.presence,
+          source: session.source,
+          queuedCount: queuedCountFor(state, session.id),
+          preview: rows.at(-1)?.text ?? "No messages yet",
+          lastAt: rows.at(-1)?.createdAt ?? session.lastActivityAt,
+        }
+      }),
+  ]
+  const needle = query.trim().toLowerCase()
+  if (!needle) {
+    return items
+  }
+  return items.filter(
+    (item) => item.title.toLowerCase().includes(needle) || item.preview.toLowerCase().includes(needle),
+  )
+}
+
 export function centeredWheelIndex(scrollTop: number, itemHeight: number, count: number): number {
   const index = Math.round(scrollTop / itemHeight)
   return Math.max(0, Math.min(count - 1, index))
+}
+
+export function dispatchComposerOpen(detail: ComposerOpenDetail = {}): void {
+  if (typeof window === "undefined") {
+    return
+  }
+  window.dispatchEvent(new CustomEvent<ComposerOpenDetail>(COMPOSER_OPEN_EVENT, { detail }))
+}
+
+export function notifyDialerChanged(): void {
+  if (typeof window === "undefined") {
+    return
+  }
+  window.dispatchEvent(new Event(DIALER_CHANGED_EVENT))
+}
+
+export function persistDialer(storage: KeyValueStore, state: DialerState): void {
+  saveDialer(storage, state)
+  notifyDialerChanged()
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
+function asSource(value: unknown): SessionSource {
+  return value === "demo" ? "demo" : "paired"
+}
+
 function asSession(value: unknown): HermesSession | null {
   if (!isRecord(value) || typeof value.id !== "string" || typeof value.title !== "string") {
+    return null
+  }
+  if (value.id === NEW_CHAT_TARGET || value.id.trim() === "") {
     return null
   }
   const presence =
@@ -132,10 +264,11 @@ function asSession(value: unknown): HermesSession | null {
       ? value.presence
       : "offline"
   return {
-    id: value.id,
-    title: value.title,
+    id: value.id.slice(0, 128),
+    title: value.title.slice(0, 200),
     presence,
     lastActivityAt: typeof value.lastActivityAt === "string" ? value.lastActivityAt : new Date(0).toISOString(),
+    source: asSource(value.source),
   }
 }
 
@@ -150,45 +283,47 @@ function asOutboxMessage(value: unknown): OutboxMessage | null {
   }
   return {
     id: value.id,
-    target: value.target,
-    text: value.text,
+    target: value.target.slice(0, 128),
+    text: value.text.slice(0, 20_000),
     createdAt: typeof value.createdAt === "string" ? value.createdAt : new Date(0).toISOString(),
     status: value.status === "sent" ? "sent" : "queued",
     ...(typeof value.sentAt === "string" ? { sentAt: value.sentAt } : {}),
   }
 }
 
+export function parseDialer(value: unknown): DialerState {
+  if (!isRecord(value)) {
+    return createEmptyDialer()
+  }
+  const sessions = Array.isArray(value.sessions)
+    ? value.sessions.map(asSession).filter((item): item is HermesSession => item !== null)
+    : []
+  const outbox = Array.isArray(value.outbox)
+    ? value.outbox.map(asOutboxMessage).filter((item): item is OutboxMessage => item !== null)
+    : []
+  return { schemaVersion: 1, sessions, outbox }
+}
+
 export function loadDialer(storage: KeyValueStore): DialerState {
   const raw = storage.getItem(DIALER_KEY)
   if (!raw) {
-    const seeded = { ...createEmptyDialer(), sessions: demoSessions() }
-    saveDialer(storage, seeded)
-    return seeded
+    return createEmptyDialer()
   }
   let parsed: unknown
   try {
     parsed = JSON.parse(raw)
   } catch {
-    parsed = null
+    const empty = createEmptyDialer()
+    saveDialer(storage, empty)
+    return empty
   }
-  if (!isRecord(parsed)) {
-    const seeded = { ...createEmptyDialer(), sessions: demoSessions() }
-    saveDialer(storage, seeded)
-    return seeded
-  }
-  const sessions = Array.isArray(parsed.sessions)
-    ? parsed.sessions.map(asSession).filter((item): item is HermesSession => item !== null)
-    : []
-  const outbox = Array.isArray(parsed.outbox)
-    ? parsed.outbox.map(asOutboxMessage).filter((item): item is OutboxMessage => item !== null)
-    : []
-  return {
-    schemaVersion: 1,
-    sessions: sessions.length > 0 ? sessions : demoSessions(),
-    outbox,
-  }
+  return parseDialer(parsed)
 }
 
 export function saveDialer(storage: KeyValueStore, state: DialerState): void {
   storage.setItem(DIALER_KEY, JSON.stringify(state))
+}
+
+export function clearDialer(storage: KeyValueStore): void {
+  storage.removeItem(DIALER_KEY)
 }

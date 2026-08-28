@@ -20,6 +20,8 @@ import { localDateKey, normalizeDueDate } from "@/lib/dates/due-date"
 import { hydrateHabit } from "@/lib/habits/streak"
 import { sanitizeAvatarUrl } from "@/lib/profile/avatar"
 import { ANALYTICS_KEY } from "@/lib/analytics/local-events"
+import { DIALER_KEY, parseDialer } from "@/lib/dialer/dialer"
+import type { DialerState } from "@/lib/dialer/types"
 
 export const WORKSPACE_KEY = "managekar.workspace.v1"
 export const WORKSPACE_CHANGED_EVENT = "managekar:workspace-changed"
@@ -714,7 +716,7 @@ export function migrateLegacyWorkspace(storage: KeyValueStore): Workspace {
   return saveWorkspace(storage, workspace)
 }
 
-export function serializeBackup(workspace: Workspace): string {
+export function serializeBackup(workspace: Workspace, dialer?: DialerState): string {
   return JSON.stringify(
     {
       appName: "Manage.kar",
@@ -722,13 +724,16 @@ export function serializeBackup(workspace: Workspace): string {
       exportDate: new Date().toISOString(),
       ...workspace,
       schemaVersion: 1,
+      ...(dialer ? { dialer } : {}),
     },
     null,
     2,
   )
 }
 
-export function parseBackup(raw: string): { ok: true; workspace: Workspace } | { ok: false; error: string } {
+export function parseBackup(
+  raw: string,
+): { ok: true; workspace: Workspace; dialer?: DialerState } | { ok: false; error: string } {
   const parsed = parseJson(raw)
   if (!isRecord(parsed)) {
     return { ok: false, error: "Invalid Manage.kar backup file." }
@@ -741,7 +746,8 @@ export function parseBackup(raw: string): { ok: true; workspace: Workspace } | {
   if (!normalized.workspace) {
     return { ok: false, error: "Invalid Manage.kar backup file." }
   }
-  return { ok: true, workspace: normalized.workspace }
+  const dialer = parsed.dialer === undefined ? undefined : parseDialer(parsed.dialer)
+  return { ok: true, workspace: normalized.workspace, ...(dialer ? { dialer } : {}) }
 }
 
 export function replaceWorkspace(storage: KeyValueStore, workspace: Workspace): Workspace {
@@ -761,6 +767,7 @@ export function clearWorkspace(storage: KeyValueStore): Workspace {
   storage.removeItem("importedTasks")
   storage.removeItem(WORKSPACE_DROPPED_KEY)
   storage.removeItem(ANALYTICS_KEY)
+  storage.removeItem(DIALER_KEY)
   return saveWorkspace(storage, empty)
 }
 
