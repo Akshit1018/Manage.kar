@@ -115,7 +115,10 @@ function ChatRow({ item, onOpen }: { item: ChatListItem; onOpen: () => void }) {
             ) : null}
             <h4 className="truncate font-semibold">{item.title}</h4>
             {item.source === "demo" ? (
-              <span className="rounded-full bg-secondary px-1.5 text-[10px] font-medium text-muted-foreground">
+              <span
+                aria-label="Demo session"
+                className="rounded-full bg-secondary px-1.5 text-[10px] font-medium text-muted-foreground"
+              >
                 Demo
               </span>
             ) : null}
@@ -161,7 +164,10 @@ function ChatThread({
             ) : null}
             <h3 className="truncate text-xl font-bold">{title}</h3>
             {session?.source === "demo" ? (
-              <span className="rounded-full bg-secondary px-1.5 text-[10px] font-medium text-muted-foreground">
+              <span
+                aria-label="Demo session"
+                className="rounded-full bg-secondary px-1.5 text-[10px] font-medium text-muted-foreground"
+              >
                 Demo
               </span>
             ) : null}

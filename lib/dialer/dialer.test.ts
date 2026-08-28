@@ -258,7 +258,21 @@ describe("visibleSessions and chat list", () => {
 
   it("uses honest copy until a real send exists", () => {
     expect(queueCopy({ status: "queued", source: "demo" })).toMatch(/pairing/i)
+    expect(queueCopy({ status: "sent", source: "demo" })).toMatch(/pairing/i)
     expect(queueCopy({ status: "queued", source: "paired", presence: "offline" })).toMatch(/online/i)
     expect(queueCopy({ status: "sent" })).toMatch(/sent/i)
+  })
+
+  it("treats leftover demo machine ids as demo even without a source field", () => {
+    const store = new MemoryStore()
+    store.setItem(
+      DIALER_KEY,
+      JSON.stringify({
+        schemaVersion: 1,
+        sessions: [{ id: "demo-local", title: "Hermes · local", presence: "active" }],
+        outbox: [],
+      }),
+    )
+    expect(loadDialer(store).sessions[0]?.source).toBe("demo")
   })
 })

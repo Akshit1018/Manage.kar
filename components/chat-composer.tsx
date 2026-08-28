@@ -131,28 +131,23 @@ export function ChatComposer({ onVoice, onExpandedChange, preferredTarget }: Cha
       return
     }
     sendingRef.current = true
+    const base = dialer ?? loadDialer(window.localStorage)
+    const result = queueMessage(base, target, draft, new Date().toISOString())
+    if (!result) {
+      sendingRef.current = false
+      return
+    }
     setText("")
-    let toasted = false
-    setDialer((previous) => {
-      const base = previous ?? loadDialer(window.localStorage)
-      const result = queueMessage(base, target, draft, new Date().toISOString())
-      if (!result) {
-        return base
-      }
-      persistDialer(window.localStorage, result.state)
-      if (!toasted) {
-        toasted = true
-        const session = resolveSession(result.state, target)
-        const title = targetTitle(visibleSessions(result.state), target)
-        const copy = queueCopy({
-          status: result.message.status,
-          source: session?.source,
-          presence: session?.presence,
-        })
-        toast(result.message.status === "sent" ? `Sent to ${title}` : `${copy} · ${title}`)
-      }
-      return result.state
+    persistDialer(window.localStorage, result.state)
+    setDialer(result.state)
+    const session = resolveSession(result.state, target)
+    const title = targetTitle(visibleSessions(result.state), target)
+    const copy = queueCopy({
+      status: result.message.status,
+      source: session?.source,
+      presence: session?.presence,
     })
+    toast(result.message.status === "sent" ? `Sent to ${title}` : `${copy} · ${title}`)
     sendingRef.current = false
   }
 

@@ -159,11 +159,11 @@ export function flushOutbox(state: DialerState, target: string, nowIso: string):
 }
 
 export function queueCopy(input: QueueCopyInput): string {
+  if (input.source === "demo") {
+    return "Saved locally — will send after pairing"
+  }
   if (input.status === "sent") {
     return "Sent"
-  }
-  if (input.source === "demo" || input.source === undefined) {
-    return "Saved locally — will send after pairing"
   }
   switch (input.presence) {
     case "active":
@@ -241,6 +241,10 @@ export function notifyDialerChanged(): void {
 
 export function persistDialer(storage: KeyValueStore, state: DialerState): void {
   saveDialer(storage, state)
+  if (typeof queueMicrotask === "function") {
+    queueMicrotask(() => notifyDialerChanged())
+    return
+  }
   notifyDialerChanged()
 }
 
@@ -248,8 +252,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
 
-function asSource(value: unknown): SessionSource {
-  return value === "demo" ? "demo" : "paired"
+const DEMO_SESSION_IDS = new Set(demoSessions(new Date(0)).map((session) => session.id))
+
+function asSource(value: unknown, id: string): SessionSource {
+  if (value === "demo" || DEMO_SESSION_IDS.has(id)) {
+    return "demo"
+  }
+  return "paired"
 }
 
 function asSession(value: unknown): HermesSession | null {
@@ -268,7 +277,7 @@ function asSession(value: unknown): HermesSession | null {
     title: value.title.slice(0, 200),
     presence,
     lastActivityAt: typeof value.lastActivityAt === "string" ? value.lastActivityAt : new Date(0).toISOString(),
-    source: asSource(value.source),
+    source: asSource(value.source, value.id),
   }
 }
 
