@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest"
+import { readGlobalsCss } from "./editorial-surface-contract"
 import {
+  DESKTOP_DIALOG_MIN_WIDTH,
   IPHONE_VIEWPORTS,
+  formGridColumns,
+  mobileBackdropIsDismissible,
+  overlayBlocksWorkspace,
   overlayContainingBlockIsSafe,
-  overlayPositioning,
+  overlayCssContract,
   overlayPlacement,
+  overlayPositioning,
+  sectionTabsShouldWrap,
+  sheetFooterOrientation,
 } from "./sheet-layout"
 
 describe("iPhone 17 family overlay placement", () => {
@@ -37,5 +45,37 @@ describe("iPhone 17 family overlay placement", () => {
     expect(overlayContainingBlockIsSafe({ backdropFilter: "none", filter: "none", transform: "translateZ(0)" })).toBe(
       false,
     )
+  })
+})
+
+describe("overlay pointer and form layout contracts", () => {
+  it("keeps the backdrop dismissible on mobile while the overlay still blocks the workspace", () => {
+    expect(mobileBackdropIsDismissible("auto")).toBe(true)
+    expect(mobileBackdropIsDismissible("none")).toBe(false)
+    expect(overlayBlocksWorkspace("auto")).toBe(true)
+    expect(overlayBlocksWorkspace("none")).toBe(false)
+  })
+
+  it("wraps section tabs, stacks footers, and uses a single form column at 320", () => {
+    expect(sectionTabsShouldWrap(320)).toBe(true)
+    expect(sectionTabsShouldWrap(DESKTOP_DIALOG_MIN_WIDTH)).toBe(false)
+    expect(formGridColumns(320)).toBe(1)
+    expect(formGridColumns(360)).toBe(2)
+    expect(sheetFooterOrientation(320)).toBe("stack")
+    expect(sheetFooterOrientation(360)).toBe("row")
+  })
+
+  it("restores mobile backdrop dismissal and one scrolling safe-area body in CSS", () => {
+    const contract = overlayCssContract(readGlobalsCss())
+    expect(contract.mobileBackdropPointerNone).toBe(false)
+    expect(contract.overlayCapturesPointer).toBe(true)
+    expect(contract.singleScrollBody).toBe(true)
+    expect(contract.safeAreaAware).toBe(true)
+    expect(contract.keyboardAware).toBe(true)
+    expect(contract.hasSheetTabs).toBe(true)
+    expect(contract.hasSwitchRow).toBe(true)
+    expect(contract.hasFormGrid).toBe(true)
+    expect(contract.hasStackedFooter).toBe(true)
+    expect(contract.noDuplicateBottomSafeArea).toBe(true)
   })
 })

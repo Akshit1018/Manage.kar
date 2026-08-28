@@ -61,13 +61,45 @@ import { hydrateHabit, toggleHabitOnDate } from "@/lib/habits/streak"
 import { completeRecurringTask } from "@/lib/reminders/due"
 import { useLocalReminders } from "@/lib/reminders/use-local-reminders"
 import { createIndexedDbVoiceStore, deleteVoice, putVoice, voiceRef } from "@/lib/media/voice-store"
-import { parseWorkspaceSearch, serializeWorkspaceSearch, type WorkspaceView } from "@/lib/navigation/workspace-url"
+import {
+  parseWorkspaceSearch,
+  serializeWorkspaceSearch,
+  workspaceViewTitle,
+  type WorkspaceView,
+} from "@/lib/navigation/workspace-url"
 import { COMPOSER_OPEN_EVENT } from "@/lib/dialer/dialer"
 import type { ComposerOpenDetail } from "@/lib/dialer/types"
 import { filterTasks, type TaskListFilter } from "@/lib/tasks/filter"
 
 function clipTitle(content: string, limit: number) {
   return content.length > limit ? `${content.slice(0, limit).trim()}…` : content.trim()
+}
+
+const WORKSPACE_TABS = [
+  ["overview", "Home", Home],
+  ["tasks", "Tasks", CheckSquare],
+  ["notes", "Notes", FileText],
+  ["chats", "Chats", MessageCircle],
+  ["habits", "Habits", Activity],
+] as const
+
+function workspaceViewSupport(view: WorkspaceView, greeting: string): string {
+  switch (view) {
+    case "overview":
+      return `${greeting}. Local workspace on this device. Export if you want a backup.`
+    case "tasks":
+      return "Board, list, and follow-ups stay on this device."
+    case "notes":
+      return "Pinned notes, labels, and Ask stay on this device."
+    case "chats":
+      return "Pair a machine, then message an agent from here."
+    case "habits":
+      return "Streaks and schedules stay on this device."
+    default: {
+      const _exhaustive: never = view
+      throw new Error(`Unhandled workspace view: ${_exhaustive}`)
+    }
+  }
 }
 
 interface DashboardProps {
@@ -578,8 +610,16 @@ export function Dashboard({ initialSearch }: DashboardProps) {
     (habit) => habit.name.toLowerCase().includes(query) || habit.description?.toLowerCase().includes(query),
   )
 
+  const selectView = (view: WorkspaceView) => {
+    setCurrentView(view)
+    if (view === "chats") {
+      setChatSession("")
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 pb-[calc(7rem+env(safe-area-inset-bottom,0px))]">
+    <div className="mk-workspace">
+      <div className="mk-bottom-chrome-probe" data-mk-bottom-chrome="" aria-hidden />
       <ClipboardMonitor
         onCreateTask={handleClipboardTask}
         onCreateNote={handleClipboardNote}
@@ -609,175 +649,166 @@ export function Dashboard({ initialSearch }: DashboardProps) {
         </Card>
       )}
 
-      <div className="mb-6 pt-2 sm:mb-8 sm:pt-4">
-        <div className="flex items-center justify-between gap-2 mb-4 sm:mb-6">
-          <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="modern-card rounded-2xl h-10 w-10 sm:h-12 sm:w-12"
-              onClick={() => setProfileModal(true)}
-              aria-label="Open profile"
-            >
-              <User className="h-5 w-5 sm:h-6 sm:w-6" />
-            </Button>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold font-sans">{greeting}</h1>
-              <p className="text-muted-readable font-serif text-xs sm:text-sm">
-                Local workspace on this device. Export if you want a backup.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
+      <header className="mk-workspace-header pt-1 sm:pt-3">
+        <div className="flex items-start justify-between gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="modern-card rounded-2xl"
+            onClick={() => setProfileModal(true)}
+            aria-label="Open profile"
+          >
+            <User className="h-5 w-5" />
+          </Button>
+          <div className="flex shrink-0 items-center gap-2">
             <Button
               variant="outline"
-              className="rounded-2xl h-10 sm:h-12 bg-transparent"
+              size="icon"
+              className="rounded-2xl bg-transparent sm:w-auto sm:px-4"
               onClick={() => setShareModal(true)}
+              aria-label="Export workspace"
             >
-              <Download className="h-4 w-4 mr-2" />
-              Export
+              <Download className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Export</span>
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              className="modern-card rounded-2xl h-10 w-10 sm:h-12 sm:w-12"
+              className="modern-card rounded-2xl"
               onClick={() => setSettingsModal(true)}
               aria-label="Open settings"
             >
-              <Settings className="h-5 w-5 sm:h-6 sm:w-6" />
+              <Settings className="h-5 w-5" />
             </Button>
           </div>
         </div>
 
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Button onClick={() => setTaskModal({ isOpen: true, mode: "create" })} className="rounded-2xl h-12 sm:h-11">
-            <Plus className="h-4 w-4 mr-2" />
+        <div className="min-w-0">
+          <h1 className="mk-workspace-heading">{workspaceViewTitle(currentView)}</h1>
+          <p className="mk-section-support mt-2">{workspaceViewSupport(currentView, greeting)}</p>
+        </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Button onClick={() => setTaskModal({ isOpen: true, mode: "create" })} className="w-full rounded-2xl sm:w-auto">
+            <Plus className="h-4 w-4" />
             Add task
           </Button>
-          <div className="grid grid-cols-2 sm:flex gap-2 flex-1">
+          <div className="grid flex-1 grid-cols-2 gap-2">
             <Button variant="outline" className="rounded-xl bg-transparent" onClick={() => setNoteModal({ isOpen: true, mode: "create" })}>
-              <StickyNote className="h-4 w-4 mr-2" />
+              <StickyNote className="h-4 w-4" />
               Note
             </Button>
             <Button variant="outline" className="rounded-xl bg-transparent" onClick={() => setHabitModal({ isOpen: true, mode: "create" })}>
-              <Activity className="h-4 w-4 mr-2" />
+              <Activity className="h-4 w-4" />
               Habit
             </Button>
           </div>
         </div>
 
-        <div className="mb-4 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+        <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
           <Button
             variant="ghost"
-            className="modern-card rounded-xl h-14 flex-col gap-1"
-            onClick={() => {
-              setCurrentView("chats")
-              setChatSession("")
-            }}
+            className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14"
+            onClick={() => selectView("chats")}
+            aria-label="Chats"
           >
             <MessageCircle className="h-4 w-4" />
-            <span className="text-xs">Chats</span>
+            <span className="hidden text-xs min-[375px]:inline">Chats</span>
           </Button>
-          <Button variant="ghost" className="modern-card rounded-xl h-14 flex-col gap-1" onClick={() => setHabitDashboard(true)}>
+          <Button variant="ghost" className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14" onClick={() => setHabitDashboard(true)} aria-label="Habits dashboard">
             <Activity className="h-4 w-4" />
-            <span className="text-xs">Habits</span>
+            <span className="hidden text-xs min-[375px]:inline">Habits</span>
           </Button>
-          <Button variant="ghost" className="modern-card rounded-xl h-14 flex-col gap-1" onClick={() => setGoalManagerModal(true)}>
+          <Button variant="ghost" className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14" onClick={() => setGoalManagerModal(true)} aria-label="Goals">
             <Target className="h-4 w-4" />
-            <span className="text-xs">Goals</span>
+            <span className="hidden text-xs min-[375px]:inline">Goals</span>
           </Button>
-          <Button variant="ghost" className="modern-card rounded-xl h-14 flex-col gap-1" onClick={() => setTimeTrackerModal(true)}>
+          <Button variant="ghost" className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14" onClick={() => setTimeTrackerModal(true)} aria-label="Time">
             <Clock className="h-4 w-4" />
-            <span className="text-xs">Time</span>
+            <span className="hidden text-xs min-[375px]:inline">Time</span>
           </Button>
-          <Button variant="ghost" className="modern-card rounded-xl h-14 flex-col gap-1" onClick={() => setFocusModal(true)}>
+          <Button variant="ghost" className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14" onClick={() => setFocusModal(true)} aria-label="Focus">
             <Zap className="h-4 w-4" />
-            <span className="text-xs">Focus</span>
+            <span className="hidden text-xs min-[375px]:inline">Focus</span>
           </Button>
-          <Button variant="ghost" className="modern-card rounded-xl h-14 flex-col gap-1" onClick={() => setShareModal(true)}>
+          <Button variant="ghost" className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14" onClick={() => setShareModal(true)} aria-label="Share">
             <Share2 className="h-4 w-4" />
-            <span className="text-xs">Share</span>
+            <span className="hidden text-xs min-[375px]:inline">Share</span>
           </Button>
-          <Button variant="ghost" className="modern-card rounded-xl h-14 flex-col gap-1" onClick={() => setAnalyticsModal(true)}>
+          <Button variant="ghost" className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14" onClick={() => setAnalyticsModal(true)} aria-label="Counts">
             <BarChart3 className="h-4 w-4" />
-            <span className="text-xs">Counts</span>
+            <span className="hidden text-xs min-[375px]:inline">Counts</span>
           </Button>
         </div>
 
-        <div className="relative mb-4 sm:mb-6">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             id="workspace-search"
             placeholder="Search tasks, notes, habits, and chats..."
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            className="pl-10 rounded-xl sm:rounded-2xl bg-card/95"
+            className="rounded-xl bg-card/95 pl-10 sm:rounded-2xl"
             aria-label="Search workspace"
           />
         </div>
-      </div>
+      </header>
 
-      <div className="mb-10">
+      <main className="mb-10">
         {currentView === "overview" && (
           <div className="space-y-6">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <button type="button" className="text-left" onClick={() => setCurrentView("tasks")} aria-label={`${pendingTasksCount} pending tasks`}>
-                <Card className="modern-card p-4">
-                  <p className="text-2xl font-bold">{pendingTasksCount}</p>
-                  <p className="text-xs text-muted-readable">Pending</p>
-                </Card>
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <button type="button" className="col-span-2 text-left lg:col-span-2" onClick={() => selectView("tasks")} aria-label={`${pendingTasksCount} pending tasks`}>
+                <div className="mk-featured-surface p-5">
+                  <p className="mk-featured-numeral">{pendingTasksCount}</p>
+                  <p className="mt-2 text-sm">pending tasks</p>
+                </div>
               </button>
-              <button type="button" className="text-left" onClick={() => setCurrentView("tasks")} aria-label={`${completedTasksCount} completed tasks`}>
-                <Card className="modern-card p-4">
+              <button type="button" className="text-left" onClick={() => selectView("tasks")} aria-label={`${completedTasksCount} completed tasks`}>
+                <Card className="mk-editorial-card p-4">
                   <p className="text-2xl font-bold">{completedTasksCount}</p>
-                  <p className="text-xs text-muted-readable">Done</p>
+                  <p className="mk-section-support text-xs">Done</p>
                 </Card>
               </button>
-              <button type="button" className="text-left" onClick={() => setCurrentView("habits")} aria-label={`${habits.filter((habit) => habit.completedToday).length} of ${habits.length} habits done today`}>
-                <Card className="modern-card p-4">
+              <button type="button" className="text-left" onClick={() => selectView("habits")} aria-label={`${habits.filter((habit) => habit.completedToday).length} of ${habits.length} habits done today`}>
+                <Card className="mk-editorial-card p-4">
                   <p className="text-2xl font-bold">{habits.filter((habit) => habit.completedToday).length}/{habits.length}</p>
-                  <p className="text-xs text-muted-readable">Habits today</p>
+                  <p className="mk-section-support text-xs">Habits today</p>
                 </Card>
               </button>
-              <button type="button" className="text-left" onClick={() => setCurrentView("notes")} aria-label={`${notes.length} notes`}>
-                <Card className="modern-card p-4">
+              <button type="button" className="text-left" onClick={() => selectView("notes")} aria-label={`${notes.length} notes`}>
+                <Card className="mk-editorial-card p-4">
                   <p className="text-2xl font-bold">{notes.length}</p>
-                  <p className="text-xs text-muted-readable">Notes</p>
+                  <p className="mk-section-support text-xs">Notes</p>
                 </Card>
               </button>
-            </div>
-
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <button type="button" className="text-left" onClick={() => setCurrentView("tasks")} aria-label={`${doingTasksCount} tasks in progress`}>
-                <Card className="modern-card p-4">
+              <button type="button" className="text-left" onClick={() => selectView("tasks")} aria-label={`${doingTasksCount} tasks in progress`}>
+                <Card className="mk-editorial-card p-4">
                   <p className="text-2xl font-bold">{doingTasksCount}</p>
-                  <p className="text-xs text-muted-readable">Doing</p>
+                  <p className="mk-section-support text-xs">Doing</p>
                 </Card>
               </button>
-              <button type="button" className="text-left" onClick={() => setCurrentView("tasks")} aria-label={`${followUpsDue.length} follow-ups due`}>
-                <Card className="modern-card p-4">
+              <button type="button" className="text-left" onClick={() => selectView("tasks")} aria-label={`${followUpsDue.length} follow-ups due`}>
+                <Card className="mk-editorial-card p-4">
                   <p className="text-2xl font-bold">{followUpsDue.length}</p>
-                  <p className="text-xs text-muted-readable">Follow-ups due</p>
+                  <p className="mk-section-support text-xs">Follow-ups due</p>
                 </Card>
               </button>
-              <button type="button" className="text-left" onClick={() => setCurrentView("notes")} aria-label={`${pinnedNotesCount} pinned notes`}>
-                <Card className="modern-card p-4">
+              <button type="button" className="text-left" onClick={() => selectView("notes")} aria-label={`${pinnedNotesCount} pinned notes`}>
+                <Card className="mk-editorial-card p-4">
                   <p className="text-2xl font-bold">{pinnedNotesCount}</p>
-                  <p className="text-xs text-muted-readable">Pinned notes</p>
+                  <p className="mk-section-support text-xs">Pinned notes</p>
                 </Card>
               </button>
               <button
                 type="button"
                 className="text-left"
-                onClick={() => {
-                  setCurrentView("chats")
-                  setChatSession("")
-                }}
+                onClick={() => selectView("chats")}
                 aria-label={`${pairedMachineCount} paired machines`}
               >
-                <Card className="modern-card p-4">
+                <Card className="mk-editorial-card p-4">
                   <p className="text-2xl font-bold">{pairedMachineCount}</p>
-                  <p className="text-xs text-muted-readable">Machines paired</p>
+                  <p className="mk-section-support text-xs">Machines paired</p>
                 </Card>
               </button>
             </div>
@@ -856,32 +887,20 @@ export function Dashboard({ initialSearch }: DashboardProps) {
             onBack={() => setChatSession("")}
           />
         )}
-      </div>
+      </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-40 border-t bg-background/95 pb-[env(safe-area-inset-bottom,0px)] sm:hidden">
-        <div className="grid grid-cols-5">
-          {(
-            [
-              ["overview", "Home", Home],
-              ["tasks", "Tasks", CheckSquare],
-              ["notes", "Notes", FileText],
-              ["chats", "Chats", MessageCircle],
-              ["habits", "Habits", Activity],
-            ] as const
-          ).map(([view, label, Icon]) => (
+      <nav className="mk-bottom-chrome" aria-label="Workspace sections">
+        <div className="mk-pill-nav">
+          {WORKSPACE_TABS.map(([view, label, Icon]) => (
             <button
               key={view}
               type="button"
-              className={`flex min-h-11 flex-col items-center gap-1 py-3 text-xs ${currentView === view ? "text-primary" : "text-muted-foreground"}`}
-              onClick={() => {
-                setCurrentView(view)
-                if (view === "chats") {
-                  setChatSession("")
-                }
-              }}
+              aria-label={label}
+              aria-current={currentView === view ? "page" : undefined}
+              onClick={() => selectView(view)}
             >
               <Icon className="h-4 w-4" />
-              {label}
+              <span>{label}</span>
             </button>
           ))}
         </div>

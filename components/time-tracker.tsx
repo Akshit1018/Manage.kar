@@ -150,29 +150,29 @@ export function TimeTracker({ isOpen, onClose, workspace, persist }: TimeTracker
   return (
     <MobileSheet open={isOpen} onClose={onClose} title="Time tracker" wide>
         <div className="space-y-6">
-          <Card className="glass-card p-6 rounded-2xl">
+          <Card className="mk-editorial-card p-6">
             <div className="text-center space-y-4">
-              <div className="text-6xl font-mono font-bold text-primary">
+              <div className="mk-timer-clock text-primary">
                 {formatTime(currentEntry ? runningDuration(currentEntry, now) : 0)}
               </div>
 
               {currentEntry && !currentEntry.endTime ? (
                 <div className="space-y-2">
-                  <h3 className="text-lg font-semibold">{currentEntry.taskName}</h3>
+                  <h3 className="truncate text-lg font-semibold">{currentEntry.taskName}</h3>
                   <Badge variant="outline">{currentEntry.project}</Badge>
-                  <div className="flex justify-center gap-2">
+                  <div className="mk-sheet-footer-actions justify-center">
                     {currentEntry.isRunning ? (
-                      <Button onClick={pauseTimer} variant="outline" size="sm">
+                      <Button onClick={pauseTimer} variant="outline" size="sm" className="mk-touch">
                         <Pause className="h-4 w-4 mr-2" />
                         Pause
                       </Button>
                     ) : (
-                      <Button onClick={resumeTimer} size="sm">
+                      <Button onClick={resumeTimer} size="sm" className="mk-touch">
                         <Play className="h-4 w-4 mr-2" />
                         Resume
                       </Button>
                     )}
-                    <Button onClick={stopTimer} variant="destructive" size="sm">
+                    <Button onClick={stopTimer} variant="destructive" size="sm" className="mk-touch">
                       <Square className="h-4 w-4 mr-2" />
                       Stop
                     </Button>
@@ -180,7 +180,7 @@ export function TimeTracker({ isOpen, onClose, workspace, persist }: TimeTracker
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="mk-form-grid gap-4 text-left">
                     <div className="space-y-1">
                       <Label className="text-sm">Task name</Label>
                       <Input
@@ -204,7 +204,7 @@ export function TimeTracker({ isOpen, onClose, workspace, persist }: TimeTracker
                       </Select>
                     </div>
                   </div>
-                  <Button onClick={startTimer} disabled={!newTaskName.trim()} className="w-full">
+                  <Button onClick={startTimer} disabled={!newTaskName.trim()} className="mk-touch w-full">
                     <Play className="h-4 w-4 mr-2" />
                     Start timer
                   </Button>
@@ -213,8 +213,8 @@ export function TimeTracker({ isOpen, onClose, workspace, persist }: TimeTracker
             </div>
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="glass-card p-4 rounded-2xl">
+          <div className="mk-metric-grid">
+            <Card className="mk-editorial-card p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-primary/10 rounded-xl">
                   <Timer className="h-5 w-5 text-primary" />
@@ -225,7 +225,7 @@ export function TimeTracker({ isOpen, onClose, workspace, persist }: TimeTracker
                 </div>
               </div>
             </Card>
-            <Card className="glass-card p-4 rounded-2xl">
+            <Card className="mk-editorial-card p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-green-500/10 rounded-xl">
                   <BarChart3 className="h-5 w-5 text-green-500" />
@@ -236,7 +236,7 @@ export function TimeTracker({ isOpen, onClose, workspace, persist }: TimeTracker
                 </div>
               </div>
             </Card>
-            <Card className="glass-card p-4 rounded-2xl">
+            <Card className="mk-editorial-card p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-500/10 rounded-xl">
                   <Calendar className="h-5 w-5 text-blue-500" />
@@ -249,16 +249,16 @@ export function TimeTracker({ isOpen, onClose, workspace, persist }: TimeTracker
             </Card>
           </div>
 
-          <Card className="glass-card p-6 rounded-2xl">
+          <Card className="mk-editorial-card p-6">
             <h3 className="text-lg font-semibold font-sans mb-4">Recent entries</h3>
             <div className="space-y-3">
               {timeEntries.slice(0, 5).map((entry) => (
-                <div key={entry.id} className="flex items-center justify-between p-3 bg-accent/20 rounded-xl">
-                  <div>
-                    <p className="font-medium">{entry.taskName}</p>
+                <div key={entry.id} className="flex items-center justify-between gap-3 p-3 bg-accent/20 rounded-xl">
+                  <div className="mk-entity-copy">
+                    <p className="mk-entity-title font-medium">{entry.taskName}</p>
                     <p className="text-sm text-muted-foreground">{entry.project}</p>
                   </div>
-                  <p className="font-mono text-sm">{formatTime(entry.id === currentEntry?.id ? runningDuration(entry, now) : entry.duration)}</p>
+                  <p className="shrink-0 font-mono text-sm">{formatTime(entry.id === currentEntry?.id ? runningDuration(entry, now) : entry.duration)}</p>
                 </div>
               ))}
               {timeEntries.length === 0 && (

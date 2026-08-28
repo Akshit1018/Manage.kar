@@ -1,10 +1,22 @@
 "use client"
 
-import { useEffect, useId, useState, type ReactNode } from "react"
+import { useEffect, useId, useRef, useState, type PointerEvent, type ReactNode } from "react"
 import { createPortal } from "react-dom"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import {
+  backdropPointerDown,
+  installGhostEventShield,
+  overlayPointerGuardAfterOpenChange,
+} from "@/lib/ui/overlay-pointer"
+import {
+  overlaySelectOrListboxOpen,
+  popOverlay,
+  pushOverlay,
+  shouldHandleOverlayEscape,
+  type OverlayId,
+} from "@/lib/ui/overlay-stack"
 import { useBodyScrollLock } from "@/lib/ui/use-body-scroll-lock"
 import { useVisualViewportInset } from "@/lib/ui/use-visual-viewport"
 
@@ -34,6 +46,9 @@ export function MobileSheet({
   const titleId = useId()
   const descriptionId = useId()
   const [mounted, setMounted] = useState(false)
+  const overlayId = useRef<OverlayId | null>(null)
+  const overlayRef = useRef<HTMLDivElement>(null)
+  const pointerGuard = useRef<(() => void) | null>(null)
   useBodyScrollLock(open)
   useVisualViewportInset(open)
 
@@ -41,15 +56,51 @@ export function MobileSheet({
     setMounted(true)
   }, [])
 
+  const disposePointerGuard = () => {
+    pointerGuard.current?.()
+    pointerGuard.current = null
+  }
+
+  useEffect(() => {
+    return () => {
+      disposePointerGuard()
+    }
+  }, [])
+
+  useEffect(() => {
+    if (overlayPointerGuardAfterOpenChange(open) === "dispose") {
+      disposePointerGuard()
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+    const id = pushOverlay()
+    overlayId.current = id
+    return () => {
+      popOverlay(id)
+      overlayId.current = null
+    }
+  }, [open])
+
   useEffect(() => {
     if (!open) {
       return
     }
     const onKey = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") {
+      const id = overlayId.current
+      if (!id) {
         return
       }
-      if (document.querySelector('[data-slot="select-content"], [role="listbox"]')) {
+      if (
+        !shouldHandleOverlayEscape({
+          overlayId: id,
+          key: event.key,
+          selectOrListboxOpen: overlaySelectOrListboxOpen(overlayRef.current),
+        })
+      ) {
         return
       }
       onClose()
@@ -58,13 +109,41 @@ export function MobileSheet({
     return () => window.removeEventListener("keydown", onKey, true)
   }, [open, onClose])
 
+  const dismissFromBackdrop = (event: PointerEvent<HTMLButtonElement>) => {
+    if (backdropPointerDown(event) !== "dismiss") {
+      return
+    }
+    pointerGuard.current?.()
+    pointerGuard.current = installGhostEventShield(document, {
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
+    })
+    onClose()
+  }
+
   if (!open || !mounted) {
     return null
   }
 
   return createPortal(
-    <div className={cn("mk-overlay", variant === "full" && "mk-overlay-full")} data-testid="mobile-sheet">
-      <button type="button" className="mk-overlay-backdrop" aria-label="Close" onClick={onClose} />
+    <div
+      ref={overlayRef}
+      className={cn("mk-overlay", variant === "full" && "mk-overlay-full")}
+      data-testid="mobile-sheet"
+    >
+      <button
+        type="button"
+        className="mk-overlay-backdrop"
+        data-testid="overlay-backdrop"
+        aria-label="Close"
+        onPointerDown={dismissFromBackdrop}
+        onClick={(event) => {
+          if (event.detail === 0) {
+            onClose()
+          }
+        }}
+      />
       <div
         role="dialog"
         aria-modal="true"
@@ -79,7 +158,7 @@ export function MobileSheet({
         ) : (
           <header className="mk-sheet-header">
             <div className="min-w-0">
-              <h2 id={titleId} className="truncate text-lg font-semibold">
+              <h2 id={titleId} className="mk-sheet-title truncate">
                 {title}
               </h2>
               {description ? (
@@ -99,7 +178,9 @@ export function MobileSheet({
             </Button>
           </header>
         )}
-        <div className="mk-sheet-body">{children}</div>
+        <div className="mk-sheet-body" data-testid="sheet-body">
+          {children}
+        </div>
         {footer ? <footer className="mk-sheet-footer">{footer}</footer> : null}
       </div>
     </div>,

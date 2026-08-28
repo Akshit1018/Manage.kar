@@ -168,34 +168,34 @@ export function FocusModal({ isOpen, onClose, workspace, persist }: FocusModalPr
   return (
     <MobileSheet open={isOpen} onClose={onClose} title="Focus">
         <div className="space-y-6">
-          <div className="grid grid-cols-3 gap-3">
-            <Card className="glass-card p-3 rounded-xl text-center">
+          <div className="mk-metric-grid">
+            <Card className="mk-editorial-card p-3 text-center">
               <div className="text-lg font-bold text-primary">{todaysSessions.filter((session) => session.completed).length}</div>
               <div className="text-xs text-muted-foreground">Sessions</div>
             </Card>
-            <Card className="glass-card p-3 rounded-xl text-center">
+            <Card className="mk-editorial-card p-3 text-center">
               <div className="text-lg font-bold text-blue-500">
                 {Math.round(todaysSessions.filter((session) => session.completed).reduce((total, session) => total + session.durationSeconds, 0) / 60)}
               </div>
               <div className="text-xs text-muted-foreground">Minutes</div>
             </Card>
-            <Card className="glass-card p-3 rounded-xl text-center">
+            <Card className="mk-editorial-card p-3 text-center">
               <div className="text-lg font-bold text-green-500">{sessions.filter((session) => session.completed).length}</div>
               <div className="text-xs text-muted-foreground">Total</div>
             </Card>
           </div>
 
           {active ? (
-            <Card className="glass-card p-6 rounded-2xl text-center">
+            <Card className="mk-editorial-card p-6 text-center">
               <Badge className="mb-2 capitalize">{active.type.replace("-", " ")}</Badge>
-              <div className="text-4xl font-bold mb-2">{formatClock(left)}</div>
+              <div className="mk-timer-clock mb-2">{formatClock(left)}</div>
               <Progress value={((active.durationSeconds - left) / active.durationSeconds) * 100} className="h-2" />
-              <div className="flex gap-2 mt-4">
-                <Button variant="outline" className="flex-1 bg-transparent" onClick={active.isRunning ? pauseSession : resumeSession}>
+              <div className="mk-sheet-footer-actions mt-4">
+                <Button variant="outline" className="mk-touch bg-transparent" onClick={active.isRunning ? pauseSession : resumeSession}>
                   {active.isRunning ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
                   {active.isRunning ? "Pause" : "Resume"}
                 </Button>
-                <Button variant="destructive" className="flex-1" onClick={stopSession}>
+                <Button variant="destructive" className="mk-touch" onClick={stopSession}>
                   <Square className="h-4 w-4 mr-2" />
                   Stop
                 </Button>
@@ -207,33 +207,35 @@ export function FocusModal({ isOpen, onClose, workspace, persist }: FocusModalPr
                 {focusTypes.map((focus) => {
                   const Icon = focus.icon
                   return (
-                    <Card
+                    <button
                       key={focus.type}
-                      className={`glass-card p-4 rounded-xl cursor-pointer ${selectedType === focus.type ? "ring-2 ring-primary" : ""}`}
+                      type="button"
+                      aria-pressed={selectedType === focus.type}
+                      className={`mk-editorial-card mk-touch p-4 text-center ${selectedType === focus.type ? "ring-2 ring-primary" : ""}`}
                       onClick={() => {
                         setSelectedType(focus.type)
                         setSelectedDuration(focus.duration)
                       }}
                     >
-                      <div className="text-center space-y-2">
+                      <div className="space-y-2">
                         <div className={`w-10 h-10 rounded-xl ${focus.color} flex items-center justify-center mx-auto`}>
                           <Icon className="h-5 w-5" />
                         </div>
                         <div className="font-semibold text-sm">{focus.name}</div>
                         <div className="text-xs text-muted-foreground">{focus.duration}min</div>
                       </div>
-                    </Card>
+                    </button>
                   )
                 })}
               </div>
               {selectedType === "custom" && (
-                <div className="flex gap-2">
+                <div className="mk-duration-rail">
                   {[15, 30, 45, 60, 90].map((duration) => (
                     <Button
                       key={duration}
                       variant={selectedDuration === duration ? "default" : "outline"}
                       size="sm"
-                      className="flex-1"
+                      className="mk-touch"
                       onClick={() => setSelectedDuration(duration)}
                     >
                       {duration}
@@ -241,7 +243,7 @@ export function FocusModal({ isOpen, onClose, workspace, persist }: FocusModalPr
                   ))}
                 </div>
               )}
-              <Button size="lg" className="w-full" onClick={() => startSession(selectedType, selectedDuration)}>
+              <Button size="lg" className="mk-touch w-full" onClick={() => startSession(selectedType, selectedDuration)}>
                 <Play className="h-5 w-5 mr-2" />
                 Start {selectedType.replace("-", " ")} ({selectedDuration}min)
               </Button>
@@ -258,10 +260,10 @@ export function FocusModal({ isOpen, onClose, workspace, persist }: FocusModalPr
                 .slice(-3)
                 .reverse()
                 .map((session) => (
-                  <Card key={session.id} className="glass-card p-3 rounded-xl">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm capitalize">{session.type.replace("-", " ")}</span>
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Card key={session.id} className="mk-editorial-card p-3">
+                    <div className="mk-meta-row justify-between">
+                      <span className="min-w-0 truncate text-sm capitalize">{session.type.replace("-", " ")}</span>
+                      <span className="shrink-0 text-xs text-muted-foreground flex items-center gap-1">
                         <Clock className="h-3 w-3" />
                         {Math.round(session.durationSeconds / 60)}min
                         {session.completed ? " ✓" : ""}

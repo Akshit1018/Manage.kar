@@ -138,22 +138,19 @@ export function NoteModal({ isOpen, onClose, onSave, onDelete, note, mode, label
         onClose={onClose}
         title={mode === "create" ? "Create note" : "Edit note"}
         footer={
-          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="mk-sheet-footer-actions">
             {mode === "edit" && onDelete ? (
               <Button variant="destructive" onClick={handleDelete} className="mk-touch rounded-xl">
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete note
               </Button>
             ) : null}
-            <div className="flex-1" />
-            <div className="grid grid-cols-2 gap-2 sm:flex">
-              <Button variant="outline" onClick={onClose} className="mk-touch rounded-xl bg-transparent">
-                Cancel
-              </Button>
-              <Button onClick={handleSave} className="mk-touch rounded-xl bg-green-500 hover:bg-green-600 text-white">
-                {mode === "create" ? "Create note" : "Save changes"}
-              </Button>
-            </div>
+            <Button variant="outline" onClick={onClose} className="mk-touch rounded-xl bg-transparent">
+              Cancel
+            </Button>
+            <Button onClick={handleSave} className="mk-touch rounded-xl bg-green-500 hover:bg-green-600 text-white">
+              {mode === "create" ? "Create note" : "Save changes"}
+            </Button>
           </div>
         }
       >
@@ -188,7 +185,7 @@ export function NoteModal({ isOpen, onClose, onSave, onDelete, note, mode, label
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <Label htmlFor="note-content">Content</Label>
               {formData.content ? (
                 <Button variant="ghost" size="sm" onClick={handlePlayAudio} className="mk-touch">

@@ -168,22 +168,19 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode, label
       onClose={onClose}
       title={mode === "create" ? "Create task" : "Edit task"}
       footer={
-        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="mk-sheet-footer-actions">
           {mode === "edit" && onDelete ? (
             <Button variant="destructive" onClick={handleDelete} className="mk-touch rounded-xl">
               <Trash2 className="h-4 w-4 mr-2" />
               Delete task
             </Button>
           ) : null}
-          <div className="flex-1" />
-          <div className="grid grid-cols-2 gap-2 sm:flex">
-            <Button variant="outline" onClick={onClose} className="mk-touch rounded-xl bg-transparent">
-              Cancel
-            </Button>
-            <Button onClick={handleSave} className="mk-touch rounded-xl">
-              {mode === "create" ? "Create task" : "Save changes"}
-            </Button>
-          </div>
+          <Button variant="outline" onClick={onClose} className="mk-touch rounded-xl bg-transparent">
+            Cancel
+          </Button>
+          <Button onClick={handleSave} className="mk-touch rounded-xl">
+            {mode === "create" ? "Create task" : "Save changes"}
+          </Button>
         </div>
       }
     >
@@ -248,7 +245,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode, label
               />
             ) : null}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="mk-form-grid gap-4">
               <div className="space-y-2">
                 <Label className="responsive-text-sm font-medium text-readable">Status</Label>
                 <Select
@@ -303,7 +300,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode, label
               <button
                 type="button"
                 onClick={() => setShowAdvanced(!showAdvanced)}
-                className="flex items-center justify-between w-full p-3 rounded-xl bg-accent/10 border border-border/30"
+                className="mk-touch flex w-full items-center justify-between rounded-xl border border-border/30 bg-accent/10 p-3"
               >
                 <div className="flex items-center gap-2">
                   <Settings className="h-4 w-4 text-primary" />
@@ -314,7 +311,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode, label
 
               {showAdvanced && (
                 <div className="space-y-3 pl-4 border-l-2 border-primary/20">
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-accent/10 border border-border/30">
+                  <div className="mk-switch-row rounded-xl border border-border/30 bg-accent/10 p-3">
                     <div className="flex items-center gap-2">
                       <Repeat className="h-4 w-4 text-primary" />
                       <Label className="responsive-text-sm text-readable">Repeat</Label>
@@ -338,7 +335,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode, label
                     Completing a repeating task creates the next copy with a new due date.
                   </p>
 
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-accent/10 border border-border/30">
+                  <div className="mk-switch-row rounded-xl border border-border/30 bg-accent/10 p-3">
                     <div className="flex items-center gap-2">
                       <Bell className="h-4 w-4 text-primary" />
                       <Label className="responsive-text-sm text-readable">Remind me when due</Label>
@@ -352,7 +349,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode, label
                     Requires notification permission. The tab must be open.
                   </p>
 
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-accent/10 border border-border/30">
+                  <div className="mk-switch-row rounded-xl border border-border/30 bg-accent/10 p-3">
                     <div className="flex items-center gap-2">
                       <Repeat className="h-4 w-4 text-primary" />
                       <Label className="responsive-text-sm text-readable">Follow up until done</Label>
@@ -380,7 +377,7 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode, label
                     A local nudge on the Home tab while the app is open — not a push notification.
                   </p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="mk-form-grid gap-3">
                     <div className="space-y-2">
                       <Label htmlFor="task-owner" className="responsive-text-sm text-readable">
                         Owner
@@ -434,23 +431,24 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode, label
                 </Button>
               </div>
               {formData.checklist && formData.checklist.length > 0 && (
-                <div className="space-y-2 max-h-32 overflow-y-auto">
+                <div className="space-y-2">
                   {formData.checklist.map((item) => (
-                    <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl bg-accent/10 border border-border/30">
-                      <input
-                        type="checkbox"
-                        checked={item.completed}
-                        onChange={() => toggleChecklistItem(item.id)}
-                        aria-label={item.text}
-                      />
-                      <span className={cn("flex-1 responsive-text-sm", item.completed && "line-through text-muted-readable")}>
+                    <div key={item.id} className="flex items-center gap-3 rounded-xl border border-border/30 bg-accent/10 p-3">
+                      <label className="mk-chip-action">
+                        <input
+                          type="checkbox"
+                          checked={item.completed}
+                          onChange={() => toggleChecklistItem(item.id)}
+                          aria-label={item.text}
+                        />
+                      </label>
+                      <span className={cn("min-w-0 flex-1 responsive-text-sm", item.completed && "line-through text-muted-readable")}>
                         {item.text}
                       </span>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => removeChecklistItem(item.id)}
-                        className="h-6 w-6"
                         aria-label={`Remove ${item.text}`}
                       >
                         <X className="h-3 w-3" />

@@ -70,11 +70,11 @@ function QrPlaceholder({ code }: { code: string }) {
   return (
     <div
       aria-hidden="true"
-      className="mx-auto grid w-fit gap-[2px] rounded-lg border border-border/50 bg-background p-2"
-      style={{ gridTemplateColumns: `repeat(${size}, 8px)` }}
+      className="mk-pairing-qr"
+      style={{ gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))` }}
     >
       {cells.map((filled, index) => (
-        <span key={index} className={cn("h-2 w-2 rounded-[1px]", filled ? "bg-foreground" : "bg-transparent")} />
+        <span key={index} className={cn(filled ? "bg-foreground" : "bg-transparent")} />
       ))}
     </div>
   )
@@ -169,7 +169,7 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
               {pairing.machines.map((machine) => {
                 const session = dialer?.sessions.find((item) => item.id === machineSessionId(machine.id))
                 return (
-                  <Card key={machine.id} className="p-4">
+                  <Card key={machine.id} className="mk-editorial-card p-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
                         {machine.kind === "vps" ? (
@@ -207,7 +207,7 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
               })}
             </div>
           ) : (
-            <Card className="p-4">
+            <Card className="mk-editorial-card p-4">
               <div className="flex items-start gap-3">
                 <Cable className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">
@@ -219,9 +219,9 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
           )}
 
           {draft ? (
-            <Card className="space-y-4 p-4">
+            <Card className="mk-editorial-card space-y-4 p-4">
               <h4 className="font-semibold">Add a machine</h4>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="mk-form-grid gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="machine-name">Name</Label>
                   <Input
@@ -251,25 +251,25 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
 
               <div className="space-y-2 rounded-xl border border-border/50 bg-accent/10 p-4">
                 <QrPlaceholder code={draft.code} />
-                <p className="text-center font-mono text-lg tracking-widest">{draft.code}</p>
-                <p className="break-all text-center font-mono text-xs text-muted-foreground">
+                <p className="mk-pairing-code text-lg tracking-widest">{draft.code}</p>
+                <p className="mk-pairing-code text-xs text-muted-foreground">
                   {pairingLink(draft.code)}
                 </p>
                 <p className="text-center text-xs text-muted-foreground">
                   QR placeholder — generated on this device. Nothing is listening for this code until a
                   Hermes backend is connected.
                 </p>
-                <Button variant="outline" size="sm" className="w-full bg-transparent" onClick={copyCode}>
+                <Button variant="outline" size="sm" className="mk-touch w-full bg-transparent" onClick={copyCode}>
                   <Copy className="mr-2 h-4 w-4" />
                   Copy link
                 </Button>
               </div>
 
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Button variant="outline" className="mk-touch flex-1 bg-transparent" onClick={() => setDraft(null)}>
+              <div className="mk-sheet-footer-actions">
+                <Button variant="outline" className="mk-touch bg-transparent" onClick={() => setDraft(null)}>
                   Cancel
                 </Button>
-                <Button className="mk-touch flex-1" onClick={simulatePairing}>
+                <Button className="mk-touch" onClick={simulatePairing}>
                   <FlaskConical className="mr-2 h-4 w-4" />
                   Simulate pairing (dev)
                 </Button>

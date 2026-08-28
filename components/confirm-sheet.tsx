@@ -26,7 +26,7 @@ export function ConfirmSheet({
       title={request?.title ?? "Confirm"}
       footer={
         request ? (
-          <div className="flex gap-2">
+          <div className="mk-sheet-footer-actions">
             <button
               type="button"
               className="mk-touch flex-1 rounded-xl border border-border bg-background text-sm font-medium"

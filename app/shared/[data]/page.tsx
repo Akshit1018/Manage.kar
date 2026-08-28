@@ -91,7 +91,7 @@ export default function SharedTasksPage() {
   if (needsPassword && !sharedData) {
     return (
       <div className="min-h-screen p-4 flex items-center justify-center">
-        <Card className="glass-card p-8 rounded-2xl max-w-md w-full">
+        <Card className="mk-editorial-card w-full max-w-md p-8">
           <h1 className="text-xl font-semibold font-sans mb-2">Password required</h1>
           <p className="text-muted-foreground font-serif mb-4 text-sm">
             This share link is encrypted. Enter the password the sender gave you separately.
@@ -102,14 +102,20 @@ export default function SharedTasksPage() {
             onChange={(event) => setPassword(event.target.value)}
             placeholder="Share password"
             className="mb-3"
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && password.trim() && !unlocking) {
+                event.preventDefault()
+                void handleUnlock()
+              }
+            }}
           />
           {error ? <p className="text-sm text-destructive mb-3">{error}</p> : null}
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => router.push("/")} className="rounded-xl">
+          <div className="mk-sheet-footer-actions">
+            <Button variant="outline" onClick={() => router.push("/")} className="mk-touch rounded-xl">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Dashboard
             </Button>
-            <Button onClick={handleUnlock} disabled={unlocking || !password.trim()} className="rounded-xl">
+            <Button onClick={handleUnlock} disabled={unlocking || !password.trim()} className="mk-touch rounded-xl">
               Unlock
             </Button>
           </div>
@@ -121,14 +127,14 @@ export default function SharedTasksPage() {
   if (error || !sharedData) {
     return (
       <div className="min-h-screen p-4 flex items-center justify-center">
-        <Card className="glass-card p-8 rounded-2xl text-center max-w-md">
+        <Card className="mk-editorial-card max-w-md p-8 text-center">
           <h1 className="text-xl font-semibold font-sans mb-2">
             {error === SHARE_EXPIRED_ERROR ? "This share link has expired" : "Invalid share link"}
           </h1>
           <p className="text-muted-foreground font-serif mb-6">
             {error || "This share link is invalid. It may be corrupted, truncated, or past its client-side expiry."}
           </p>
-          <Button onClick={() => router.push("/")} className="rounded-xl">
+          <Button onClick={() => router.push("/")} className="mk-touch rounded-xl">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Go to dashboard
           </Button>
@@ -142,11 +148,11 @@ export default function SharedTasksPage() {
 
   return (
     <div className="min-h-screen p-4 pb-24">
-      <div className="flex items-center gap-4 mb-8">
-        <Button variant="ghost" size="icon" onClick={() => router.push("/")} className="rounded-full" aria-label="Back to dashboard">
+      <div className="mk-share-header">
+        <Button variant="ghost" size="icon" onClick={() => router.push("/")} className="mk-touch rounded-full" aria-label="Back to dashboard">
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="flex-1">
+        <div className="mk-share-header-copy">
           <h1 className="text-2xl font-bold font-sans text-foreground">{sharedData.userName}&apos;s tasks</h1>
           <p className="text-muted-foreground font-serif">
             Shared {new Date(sharedData.sharedAt).toLocaleDateString()} • {sharedData.tasks.length} tasks
@@ -161,14 +167,16 @@ export default function SharedTasksPage() {
               : "Anyone with this URL can read these tasks. Importing copies them onto this device."}
           </p>
         </div>
-        <Button onClick={handleImportTasks} className="rounded-xl">
-          <Download className="h-4 w-4 mr-2" />
-          Import tasks
-        </Button>
+        <div className="mk-share-header-actions">
+          <Button onClick={handleImportTasks} className="mk-touch rounded-xl">
+            <Download className="h-4 w-4 mr-2" />
+            Import tasks
+          </Button>
+        </div>
       </div>
 
       {sharedData.customMessage && (
-        <Card className="glass-card p-4 rounded-2xl mb-6">
+        <Card className="mk-editorial-card mb-6 p-4">
           <p className="text-sm font-medium mb-1">Message from {sharedData.userName}</p>
           <p className="text-sm text-muted-foreground">{sharedData.customMessage}</p>
         </Card>
@@ -179,12 +187,12 @@ export default function SharedTasksPage() {
           <h2 className="text-xl font-semibold mb-4">Pending ({pendingTasks.length})</h2>
           <div className="space-y-3">
             {pendingTasks.map((task) => (
-              <Card key={task.id} className="glass-card p-4 rounded-2xl">
+              <Card key={task.id} className="mk-editorial-card p-4">
                 <div className="flex items-center gap-3">
-                  <Circle className="h-5 w-5 text-orange-500" />
-                  <div className="flex-1">
-                    <p>{task.title}</p>
-                    <div className="flex items-center gap-2 mt-2">
+                  <Circle className="h-5 w-5 shrink-0 text-orange-500" />
+                  <div className="mk-entity-copy">
+                    <p className="mk-entity-title">{task.title}</p>
+                    <div className="mk-meta-row mt-2">
                       <Badge variant="secondary">{task.priority}</Badge>
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
@@ -204,10 +212,10 @@ export default function SharedTasksPage() {
           <h2 className="text-xl font-semibold mb-4">Completed ({completedTasks.length})</h2>
           <div className="space-y-3">
             {completedTasks.map((task) => (
-              <Card key={task.id} className="glass-card p-4 rounded-2xl opacity-60">
+              <Card key={task.id} className="mk-editorial-card p-4 opacity-60">
                 <div className="flex items-center gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-primary" />
-                  <p className="line-through text-muted-foreground">{task.title}</p>
+                  <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" />
+                  <p className="mk-entity-copy mk-entity-title line-through text-muted-foreground">{task.title}</p>
                 </div>
               </Card>
             ))}

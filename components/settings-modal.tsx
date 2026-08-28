@@ -233,9 +233,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   return (
     <>
     <MobileSheet open={isOpen} onClose={onClose} title="Settings" wide>
-          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 min-h-0">
-            <div className="w-full sm:w-48 border-b sm:border-b-0 sm:border-r border-border/50 pb-4 sm:pb-0">
-              <div className="flex sm:flex-col gap-2 sm:gap-1 overflow-x-auto sm:overflow-x-visible pb-2 sm:pb-0">
+          <div className="mk-sheet-split">
+            <nav className="mk-sheet-tabs" aria-label="Settings sections">
                 {SETTINGS_SECTIONS.map((section) => {
                   const Icon = section.icon
                   return (
@@ -243,7 +242,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       key={section.id}
                       type="button"
                       onClick={() => setActiveSection(section.id)}
-                      className={`flex items-center gap-2 sm:gap-3 px-3 py-2 rounded-xl text-left transition-colors whitespace-nowrap mobile-touch-target ${
+                      className={`mk-touch flex items-center gap-2 rounded-xl px-3 py-2 transition-colors ${
                         activeSection === section.id
                           ? "bg-primary/10 text-primary"
                           : "text-muted-readable hover:text-readable hover:bg-accent/20"
@@ -254,10 +253,9 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     </button>
                   )
                 })}
-              </div>
-            </div>
+            </nav>
 
-            <div className="flex-1 overflow-y-auto space-y-4 sm:space-y-6 responsive-container">
+            <div className="min-w-0 flex-1 space-y-4 sm:space-y-6">
               {activeSection === "notifications" && (
                 <Card className="bg-card/95 backdrop-blur-xl border border-border/50 responsive-card">
                   <h4 className="font-semibold font-sans mb-3 sm:mb-4 flex items-center gap-2 text-readable">
@@ -269,8 +267,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       Reminders stay on this device. An open tab checks every minute. A service worker may also
                       check from a snapshot if the browser allows it. There is no push server.
                     </p>
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex-1">
+                    <div className="mk-switch-row">
+                      <div>
                         <Label className="responsive-text-sm font-medium text-readable">Enable notifications</Label>
                         {notificationPermission === "denied" && (
                           <p className="responsive-text-xs text-destructive mt-1">Permission denied in the browser</p>
@@ -297,21 +295,21 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
                     {settings.notifications.enabled && (
                       <>
-                        <div className="flex items-center justify-between gap-4">
+                        <div className="mk-switch-row">
                           <Label className="responsive-text-sm text-readable">Task reminders</Label>
                           <Switch
                             checked={settings.notifications.taskReminders}
                             onCheckedChange={(checked) => updateSettings("notifications", "taskReminders", checked)}
                           />
                         </div>
-                        <div className="flex items-center justify-between gap-4">
+                        <div className="mk-switch-row">
                           <Label className="responsive-text-sm text-readable">Habit reminders</Label>
                           <Switch
                             checked={settings.notifications.habitReminders}
                             onCheckedChange={(checked) => updateSettings("notifications", "habitReminders", checked)}
                           />
                         </div>
-                        <div className="flex items-center justify-between gap-4">
+                        <div className="mk-switch-row">
                           <Label className="responsive-text-sm text-readable">Focus session complete</Label>
                           <Switch
                             checked={settings.notifications.focusBreaks}
@@ -391,7 +389,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       </Select>
                     </div>
 
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="mk-switch-row">
                       <Label className="responsive-text-sm text-readable">Animations</Label>
                       <Switch
                         checked={settings.appearance.animations}
@@ -422,8 +420,8 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     <p className="responsive-text-sm text-muted-readable">
                       Manage.kar is local-first. Tasks, notes, and habits stay in this browser unless you export them.
                     </p>
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
+                    <div className="mk-switch-row">
+                      <div>
                         <Label className="responsive-text-sm text-readable">Clipboard suggestions</Label>
                         <p className="responsive-text-xs text-muted-readable mt-1">
                           Off by default. When on, the app may read clipboard text to offer a task or note. Text is
@@ -483,11 +481,11 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       files are rejected.
                     </p>
 
-                    <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="mk-form-grid">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1 bg-transparent responsive-button"
+                        className="bg-transparent"
                         onClick={exportData}
                       >
                         <Download className="h-4 w-4 mr-2" />
@@ -496,7 +494,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1 bg-transparent responsive-button"
+                        className="bg-transparent"
                         onClick={importData}
                       >
                         <Upload className="h-4 w-4 mr-2" />

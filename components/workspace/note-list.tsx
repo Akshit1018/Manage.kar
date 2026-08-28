@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { EmptyState } from "@/components/empty-state"
 import type { Note, WorkspaceLabel } from "@/lib/domain/types"
@@ -52,26 +51,25 @@ export function NoteList({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-xl font-bold">Notes</h3>
-        <div className="flex gap-2">
+      <div className="mk-section-toolbar">
+        <div className="mk-section-toolbar-actions">
           {onRecordVoice ? (
-            <Button variant="outline" className="mk-touch bg-transparent" onClick={onRecordVoice}>
-              <Mic className="h-4 w-4 mr-2" />
-              Record
+            <Button variant="outline" className="mk-touch bg-transparent" onClick={onRecordVoice} aria-label="Record">
+              <Mic className="h-4 w-4 min-[375px]:mr-2" />
+              <span className="hidden min-[375px]:inline">Record</span>
             </Button>
           ) : null}
-          <Button className="mk-touch" onClick={onAddNote}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add note
+          <Button className="mk-touch" onClick={onAddNote} aria-label="Add note">
+            <Plus className="h-4 w-4 min-[375px]:mr-2" />
+            <span className="hidden min-[375px]:inline">Add note</span>
           </Button>
         </div>
       </div>
 
-      <Card className="modern-card p-4">
+      <div className="mk-editorial-card p-4">
         <div className="flex items-center gap-2">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <h4 className="font-semibold">Ask my notes</h4>
+          <h2 className="font-semibold">Ask my notes</h2>
         </div>
         <Input
           value={question}
@@ -92,8 +90,9 @@ export function NoteList({
                 <button
                   key={answer.note.id}
                   type="button"
-                  className="block w-full rounded-xl border border-border/50 bg-accent/10 p-3 text-left"
+                  className="block min-h-11 w-full rounded-xl border border-border/50 bg-accent/10 p-3 text-left"
                   onClick={() => onEditNote(answer.note)}
+                  aria-label={`Open note ${answer.note.title}`}
                 >
                   <p className="truncate text-sm font-medium">{answer.note.title}</p>
                   {answer.snippet ? (
@@ -104,25 +103,25 @@ export function NoteList({
             </div>
           )
         ) : null}
-      </Card>
+      </div>
 
       {usedLabels.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter notes by label">
+        <div className="mk-filter-rail" role="group" aria-label="Filter notes by label">
           <Button
             type="button"
             size="sm"
             variant={activeLabelId === null ? "default" : "outline"}
-            className={activeLabelId === null ? "" : "bg-transparent"}
+            className={activeLabelId === null ? "rounded-full" : "rounded-full bg-transparent"}
             onClick={() => setActiveLabelId(null)}
             aria-pressed={activeLabelId === null}
           >
             All
           </Button>
           {usedLabels.map((label) => (
-            <span key={label.id} className="inline-flex items-center">
+            <span key={label.id} className="mk-label-filter">
               <button
                 type="button"
-                className="mr-1 flex h-6 w-6 items-center justify-center rounded-full border border-border/50"
+                className="mk-chip-action rounded-full border border-border/50"
                 onClick={() => onCycleLabelColor(label.id)}
                 aria-label={`Change color of ${displayLabelName(label)}`}
                 title="Tap to change color"
@@ -133,7 +132,7 @@ export function NoteList({
                 type="button"
                 size="sm"
                 variant={activeLabelId === label.id ? "default" : "outline"}
-                className={activeLabelId === label.id ? "" : "bg-transparent"}
+                className={activeLabelId === label.id ? "rounded-full" : "rounded-full bg-transparent"}
                 onClick={() => setActiveLabelId((current) => (current === label.id ? null : label.id))}
                 aria-pressed={activeLabelId === label.id}
               >
@@ -160,17 +159,26 @@ export function NoteList({
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {visibleNotes.map((note) => (
-            <Card key={note.id} className="p-4 cursor-pointer" onClick={() => onEditNote(note)}>
-              <div className="flex items-start justify-between gap-2">
-                <h4 className="min-w-0 flex-1 font-semibold truncate">{note.title}</h4>
+            <article key={note.id} className="mk-editorial-card p-4">
+              <div className="flex items-start gap-2">
+                <button
+                  type="button"
+                  className="min-w-0 flex-1 rounded-xl text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  onClick={() => onEditNote(note)}
+                  aria-label={`Edit ${note.title}`}
+                >
+                  <h3 className="truncate font-semibold">{note.title}</h3>
+                  <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{note.content}</p>
+                  <div className="mt-2">
+                    <LabelChips labels={labelsForIds(labels, note.labelIds)} />
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">{formatTimestamp(note.createdAt, dateFormat)}</p>
+                </button>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0"
-                  onClick={(event) => {
-                    event.stopPropagation()
-                    onTogglePin(note.id)
-                  }}
+                  className="shrink-0"
+                  onClick={() => onTogglePin(note.id)}
                   aria-label={note.pinned ? `Unpin ${note.title}` : `Pin ${note.title}`}
                   aria-pressed={Boolean(note.pinned)}
                 >
@@ -179,12 +187,7 @@ export function NoteList({
                   />
                 </Button>
               </div>
-              <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{note.content}</p>
-              <div className="mt-2">
-                <LabelChips labels={labelsForIds(labels, note.labelIds)} />
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">{formatTimestamp(note.createdAt, dateFormat)}</p>
-            </Card>
+            </article>
           ))}
         </div>
       )}

@@ -77,7 +77,7 @@ export function ProfileModal({ isOpen, onClose, stats, onProfileChange }: Profil
       title="Profile"
       footer={
         isEditing ? (
-          <div className="flex w-full gap-2">
+          <div className="mk-sheet-footer-actions">
             <Button variant="outline" className="mk-touch flex-1 rounded-xl bg-transparent" onClick={handleCancel}>
               Cancel
             </Button>
@@ -86,10 +86,12 @@ export function ProfileModal({ isOpen, onClose, stats, onProfileChange }: Profil
             </Button>
           </div>
         ) : (
-          <Button className="mk-touch w-full rounded-xl" onClick={() => setIsEditing(true)}>
-            <Edit className="h-4 w-4 mr-2" />
-            Edit profile
-          </Button>
+          <div className="mk-sheet-footer-actions">
+            <Button className="mk-touch w-full rounded-xl" onClick={() => setIsEditing(true)}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit profile
+            </Button>
+          </div>
         )
       }
     >

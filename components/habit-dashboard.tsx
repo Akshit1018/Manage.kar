@@ -91,8 +91,8 @@ export function HabitDashboard({
       title="Habit tracker"
       wide
       footer={
-        <div className="flex w-full gap-2">
-          <Button variant="outline" onClick={onClose} className="mk-touch flex-1 rounded-xl bg-transparent">
+        <div className="mk-sheet-footer-actions">
+          <Button variant="outline" onClick={onClose} className="mk-touch rounded-xl bg-transparent">
             Close
           </Button>
           <Button onClick={onAddHabit} className="mk-touch rounded-xl">
@@ -103,58 +103,57 @@ export function HabitDashboard({
       }
     >
       <div>
-          <div className="flex border-b border-border/20 mb-6">
+          <nav className="mk-sheet-tabs mb-6" aria-label="Habit tracker sections">
             <button
+              type="button"
               onClick={() => setActiveTab("overview")}
+              aria-current={activeTab === "overview" ? "page" : undefined}
               className={cn(
-                "flex-1 p-3 text-sm font-medium transition-colors",
+                "mk-touch flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
                 activeTab === "overview"
-                  ? "text-primary bg-primary/10 border-b-2 border-primary"
+                  ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <div className="flex items-center justify-center gap-2">
-                <Target className="h-4 w-4" />
-                Overview
-              </div>
+              <Target className="h-4 w-4 shrink-0" />
+              Overview
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("habits")}
+              aria-current={activeTab === "habits" ? "page" : undefined}
               className={cn(
-                "flex-1 p-3 text-sm font-medium transition-colors",
+                "mk-touch flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
                 activeTab === "habits"
-                  ? "text-primary bg-primary/10 border-b-2 border-primary"
+                  ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <div className="flex items-center justify-center gap-2">
-                <CheckCircle2 className="h-4 w-4" />
-                Habits ({habits.length})
-              </div>
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              Habits ({habits.length})
             </button>
             <button
+              type="button"
               onClick={() => setActiveTab("analytics")}
+              aria-current={activeTab === "analytics" ? "page" : undefined}
               className={cn(
-                "flex-1 p-3 text-sm font-medium transition-colors",
+                "mk-touch flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
                 activeTab === "analytics"
-                  ? "text-primary bg-primary/10 border-b-2 border-primary"
+                  ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <div className="flex items-center justify-center gap-2">
-                <BarChart3 className="h-4 w-4" />
-                Analytics
-              </div>
+              <BarChart3 className="h-4 w-4 shrink-0" />
+              Analytics
             </button>
-          </div>
+          </nav>
 
-          {/* Content */}
-          <div className="max-h-96 overflow-y-auto">
+          <div>
             {activeTab === "overview" && (
               <div className="space-y-6">
                 {/* Stats Cards */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <Card className="bg-card/95 backdrop-blur-xl border border-border/50 shadow-xl p-4 rounded-xl">
+                <div className="mk-metric-grid">
+                  <Card className="mk-editorial-card p-4">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-primary/20 rounded-xl">
                         <CheckCircle2 className="h-4 w-4 text-primary" />
@@ -166,7 +165,7 @@ export function HabitDashboard({
                     </div>
                   </Card>
 
-                  <Card className="bg-card/95 backdrop-blur-xl border border-border/50 shadow-xl p-4 rounded-xl">
+                  <Card className="mk-editorial-card p-4">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-blue-500/20 rounded-xl">
                         <Target className="h-4 w-4 text-blue-500" />
@@ -178,7 +177,7 @@ export function HabitDashboard({
                     </div>
                   </Card>
 
-                  <Card className="bg-card/95 backdrop-blur-xl border border-border/50 shadow-xl p-4 rounded-xl">
+                  <Card className="mk-editorial-card p-4">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-orange-500/20 rounded-xl">
                         <TrendingUp className="h-4 w-4 text-orange-500" />
@@ -190,7 +189,7 @@ export function HabitDashboard({
                     </div>
                   </Card>
 
-                  <Card className="bg-card/95 backdrop-blur-xl border border-border/50 shadow-xl p-4 rounded-xl">
+                  <Card className="mk-editorial-card p-4">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-purple-500/20 rounded-xl">
                         <Calendar className="h-4 w-4 text-purple-500" />
@@ -204,8 +203,8 @@ export function HabitDashboard({
                 </div>
 
                 {/* Progress Overview */}
-                <Card className="bg-card/95 backdrop-blur-xl border border-border/50 shadow-xl p-4 rounded-xl">
-                  <div className="flex items-center justify-between mb-3">
+                <Card className="mk-editorial-card p-4">
+                  <div className="flex items-center justify-between gap-3 mb-3">
                     <h3 className="font-medium font-sans">Today&apos;s Progress</h3>
                     <span className="text-sm text-muted-foreground">
                       {completedToday}/{totalHabits}
@@ -221,14 +220,19 @@ export function HabitDashboard({
                     {habits.slice(0, 5).map((habit) => (
                       <Card
                         key={habit.id}
-                        className="bg-card/95 backdrop-blur-xl border border-border/50 shadow-xl p-3 rounded-xl"
+                        className="mk-editorial-card p-3"
                       >
                         <div className="flex items-center gap-3">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-6 w-6 rounded-full"
+                            className="mk-touch shrink-0 rounded-full"
                             onClick={() => onHabitToggle(habit.id)}
+                            aria-label={
+                              habit.completedToday
+                                ? `Unmark ${habit.name} for today`
+                                : `Complete ${habit.name} today`
+                            }
                           >
                             {habit.completedToday ? (
                               <CheckCircle2 className="h-4 w-4 text-primary" />
@@ -236,9 +240,9 @@ export function HabitDashboard({
                               <Circle className="h-4 w-4 text-muted-foreground" />
                             )}
                           </Button>
-                          <div className="flex-1">
-                            <p className="text-sm font-serif text-foreground">{habit.name}</p>
-                            <div className="flex items-center gap-2 mt-1">
+                          <div className="mk-entity-copy">
+                            <p className="mk-entity-title text-sm font-serif text-foreground">{habit.name}</p>
+                            <div className="mk-meta-row mt-1">
                               <span className="text-xs">{getCategoryIcon(habit.category)}</span>
                               <span className={cn("text-xs font-medium", getStreakColor(habit.streak))}>
                                 {habit.streak} day streak
@@ -256,8 +260,8 @@ export function HabitDashboard({
             {activeTab === "habits" && (
               <div className="space-y-4">
                 {/* Controls */}
-                <div className="flex gap-3">
-                  <div className="relative flex-1">
+                <div className="mk-aux-toolbar">
+                  <div className="relative min-w-0">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       value={searchQuery}
@@ -267,7 +271,7 @@ export function HabitDashboard({
                     />
                   </div>
                   <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger className="w-48 glass rounded-xl">
+                    <SelectTrigger className="glass rounded-xl">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -281,7 +285,7 @@ export function HabitDashboard({
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button onClick={onAddHabit} className="rounded-xl">
+                  <Button onClick={onAddHabit} className="mk-touch rounded-xl">
                     <Plus className="h-4 w-4 mr-2" />
                     Add Habit
                   </Button>
@@ -293,14 +297,19 @@ export function HabitDashboard({
                     filteredHabits.map((habit) => (
                       <Card
                         key={habit.id}
-                        className="bg-card/95 backdrop-blur-xl border border-border/50 shadow-xl p-4 rounded-xl"
+                        className="mk-editorial-card p-4"
                       >
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-start gap-3">
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 rounded-full"
+                            className="mk-touch shrink-0 rounded-full"
                             onClick={() => onHabitToggle(habit.id)}
+                            aria-label={
+                              habit.completedToday
+                                ? `Unmark ${habit.name} for today`
+                                : `Complete ${habit.name} today`
+                            }
                           >
                             {habit.completedToday ? (
                               <CheckCircle2 className="h-5 w-5 text-primary" />
@@ -309,10 +318,10 @@ export function HabitDashboard({
                             )}
                           </Button>
 
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
+                          <div className="mk-entity-copy">
+                            <div className="mk-meta-row mb-1">
                               <span className="text-sm">{getCategoryIcon(habit.category)}</span>
-                              <p className="font-medium font-sans text-foreground">{habit.name}</p>
+                              <p className="mk-entity-title font-medium font-sans text-foreground">{habit.name}</p>
                               <Badge variant="secondary" className="text-xs">
                                 {habit.frequency}
                               </Badge>
@@ -320,7 +329,7 @@ export function HabitDashboard({
                             {habit.description && (
                               <p className="text-sm text-muted-foreground font-serif mb-2">{habit.description}</p>
                             )}
-                            <div className="flex items-center gap-4">
+                            <div className="mk-meta-row">
                               <span className={cn("text-sm font-medium", getStreakColor(habit.streak))}>
                                 🔥 {habit.streak} day streak
                               </span>
@@ -336,8 +345,9 @@ export function HabitDashboard({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="rounded-full h-8 w-8"
+                            className="mk-touch shrink-0 rounded-full"
                             onClick={() => onEditHabit(habit)}
+                            aria-label={`Edit ${habit.name}`}
                           >
                             <Edit className="h-4 w-4 text-muted-foreground" />
                           </Button>
@@ -361,7 +371,7 @@ export function HabitDashboard({
             {activeTab === "analytics" && (
               <div className="space-y-6">
                 {/* Category Breakdown */}
-                <Card className="bg-card/95 backdrop-blur-xl border border-border/50 shadow-xl p-4 rounded-xl">
+                <Card className="mk-editorial-card p-4">
                   <h3 className="font-medium font-sans mb-4">Habits by Category</h3>
                   <div className="space-y-3">
                     {categoryOptions.slice(1).map((category) => {
@@ -385,7 +395,7 @@ export function HabitDashboard({
                 </Card>
 
                 {/* Streak Leaderboard */}
-                <Card className="bg-card/95 backdrop-blur-xl border border-border/50 shadow-xl p-4 rounded-xl">
+                <Card className="mk-editorial-card p-4">
                   <h3 className="font-medium font-sans mb-4">Longest Streaks</h3>
                   <div className="space-y-2">
                     {habits
@@ -397,8 +407,8 @@ export function HabitDashboard({
                             {index + 1}
                           </div>
                           <span className="text-sm">{getCategoryIcon(habit.category)}</span>
-                          <div className="flex-1">
-                            <p className="text-sm font-serif text-foreground">{habit.name}</p>
+                          <div className="mk-entity-copy">
+                            <p className="mk-entity-title text-sm font-serif text-foreground">{habit.name}</p>
                           </div>
                           <span className={cn("text-sm font-medium", getStreakColor(habit.streak))}>
                             {habit.streak} days
