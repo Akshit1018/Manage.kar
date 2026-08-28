@@ -60,29 +60,39 @@ function sameCoordinates(event: GhostPointerEvent, origin: GhostPointerOrigin): 
   return dx * dx + dy * dy <= COORD_SLOP_PX * COORD_SLOP_PX
 }
 
+export function overlayPointerGuardAfterOpenChange(open: boolean): "keep" | "dispose" {
+  return open ? "keep" : "dispose"
+}
+
 export function createGhostEventShield(origin: GhostPointerOrigin) {
   let armed = true
+
+  const disarm = () => {
+    armed = false
+  }
 
   return {
     get armed() {
       return armed
     },
+    disarm,
     consume(event: GhostPointerEvent): "block" | "ignore" {
       if (!armed) {
         return "ignore"
       }
-      if (event.type === "pointerdown" && event.pointerId != null && event.pointerId !== origin.pointerId) {
-        armed = false
+      if (event.type === "pointerdown") {
+        disarm()
         return "ignore"
       }
       if (event.type === "pointerup") {
         if (event.pointerId != null && event.pointerId !== origin.pointerId) {
           return "ignore"
         }
+        disarm()
         return "block"
       }
       if (event.type === "click" && sameCoordinates(event, origin)) {
-        armed = false
+        disarm()
         return "block"
       }
       return "ignore"

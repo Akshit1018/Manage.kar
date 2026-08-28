@@ -5,7 +5,11 @@ import { createPortal } from "react-dom"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { backdropPointerDown, installGhostEventShield } from "@/lib/ui/overlay-pointer"
+import {
+  backdropPointerDown,
+  installGhostEventShield,
+  overlayPointerGuardAfterOpenChange,
+} from "@/lib/ui/overlay-pointer"
 import { popOverlay, pushOverlay, shouldHandleOverlayEscape, type OverlayId } from "@/lib/ui/overlay-stack"
 import { useBodyScrollLock } from "@/lib/ui/use-body-scroll-lock"
 import { useVisualViewportInset } from "@/lib/ui/use-visual-viewport"
@@ -45,12 +49,22 @@ export function MobileSheet({
     setMounted(true)
   }, [])
 
+  const disposePointerGuard = () => {
+    pointerGuard.current?.()
+    pointerGuard.current = null
+  }
+
   useEffect(() => {
     return () => {
-      pointerGuard.current?.()
-      pointerGuard.current = null
+      disposePointerGuard()
     }
   }, [])
+
+  useEffect(() => {
+    if (overlayPointerGuardAfterOpenChange(open) === "dispose") {
+      disposePointerGuard()
+    }
+  }, [open])
 
   useEffect(() => {
     if (!open) {
