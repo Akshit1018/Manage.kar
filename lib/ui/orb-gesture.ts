@@ -1,11 +1,21 @@
+import { keyboardOverlap } from "@/lib/ui/visual-viewport"
+
 export const LONG_PRESS_MS = 2000
 export const ICON_BAR_MS = 3000
 export const DRAG_THRESHOLD_PX = 10
 export const ORB_SIZE = 56
 export const ORB_INSET = 8
 export const ORB_BOTTOM_RESERVE = 76
+export const ORB_NUDGE_PX = 16
+export const ORB_SNAP_MS = 180
 
 export type OrbReleaseAction = "show-icons" | "record" | "ignore"
+export type OrbGestureOutcome = "show-icons" | "record" | "snap" | "idle"
+
+export type OrbKeyboardIntent =
+  | { type: "activate" }
+  | { type: "nudge"; dx: number; dy: number }
+  | { type: "park"; edge: "left" | "right" }
 
 export type OrbBounds = {
   width: number
@@ -26,6 +36,95 @@ export function orbReleaseAction(input: { moved: boolean; longPressFired: boolea
     return "record"
   }
   return "show-icons"
+}
+
+export function orbGestureOutcome(input: {
+  moved: boolean
+  longPressFired: boolean
+  cancelled?: boolean
+}): OrbGestureOutcome {
+  if (input.moved) {
+    return "snap"
+  }
+  if (input.cancelled) {
+    return "idle"
+  }
+  const action = orbReleaseAction(input)
+  switch (action) {
+    case "show-icons":
+    case "record":
+      return action
+    case "ignore":
+      return "idle"
+    default: {
+      const _exhaustive: never = action
+      throw new Error(`Unhandled orb release: ${_exhaustive}`)
+    }
+  }
+}
+
+export function orbKeyboardIntent(key: string): OrbKeyboardIntent | null {
+  switch (key) {
+    case "Enter":
+    case " ":
+      return { type: "activate" }
+    case "ArrowLeft":
+      return { type: "nudge", dx: -ORB_NUDGE_PX, dy: 0 }
+    case "ArrowRight":
+      return { type: "nudge", dx: ORB_NUDGE_PX, dy: 0 }
+    case "ArrowUp":
+      return { type: "nudge", dx: 0, dy: -ORB_NUDGE_PX }
+    case "ArrowDown":
+      return { type: "nudge", dx: 0, dy: ORB_NUDGE_PX }
+    case "Home":
+      return { type: "park", edge: "left" }
+    case "End":
+      return { type: "park", edge: "right" }
+    default:
+      return null
+  }
+}
+
+export function applyOrbKeyboardIntent(
+  position: { x: number; y: number },
+  intent: Exclude<OrbKeyboardIntent, { type: "activate" }>,
+  bounds: OrbBounds,
+): { x: number; y: number } {
+  switch (intent.type) {
+    case "nudge":
+      return clampOrbPosition(position.x + intent.dx, position.y + intent.dy, bounds)
+    case "park":
+      return snapOrbToEdge(
+        { x: intent.edge === "left" ? 0 : bounds.width, y: position.y },
+        bounds,
+      )
+    default: {
+      const _exhaustive: never = intent
+      throw new Error(`Unhandled orb keyboard intent: ${_exhaustive}`)
+    }
+  }
+}
+
+export function orbViewportBounds(input: {
+  width: number
+  height: number
+  visualHeight?: number
+  visualOffsetTop?: number
+}): OrbBounds {
+  const overlap = keyboardOverlap(
+    input.height,
+    input.visualHeight ?? input.height,
+    input.visualOffsetTop ?? 0,
+  )
+  return {
+    width: input.width,
+    height: input.height,
+    bottomReserve: Math.max(ORB_BOTTOM_RESERVE, overlap + ORB_INSET),
+  }
+}
+
+export function orbPlacementTransitionMs(prefersReducedMotion: boolean): number {
+  return prefersReducedMotion ? 0 : ORB_SNAP_MS
 }
 
 function resolveBounds(bounds: OrbBounds) {

@@ -1,12 +1,20 @@
 import { describe, expect, it } from "vitest"
 import {
   ICON_BAR_WIDTH,
+  ORB_BOTTOM_RESERVE,
+  ORB_INSET,
+  ORB_NUDGE_PX,
   ORB_SIZE,
+  applyOrbKeyboardIntent,
   clampOrbPosition,
   defaultOrbPosition,
   iconBarPosition,
   movementExceeded,
+  orbGestureOutcome,
+  orbKeyboardIntent,
+  orbPlacementTransitionMs,
   orbReleaseAction,
+  orbViewportBounds,
   snapOrbToEdge,
   type OrbBounds,
 } from "./orb-gesture"
@@ -132,5 +140,106 @@ describe("orb placement", () => {
     const snapped = snapOrbToEdge({ x: 20, y: 40 }, tiny)
     expect(snapped.x).toBeGreaterThanOrEqual(0)
     expect(snapped).toEqual(clampOrbPosition(20, 40, tiny))
+  })
+})
+
+describe("orbGestureOutcome", () => {
+  it("keeps a short tap as show-icons", () => {
+    expect(orbGestureOutcome({ moved: false, longPressFired: false })).toBe("show-icons")
+  })
+
+  it("records on release after a stationary long-press", () => {
+    expect(orbGestureOutcome({ moved: false, longPressFired: true })).toBe("record")
+  })
+
+  it("snaps after a drag instead of opening actions", () => {
+    expect(orbGestureOutcome({ moved: true, longPressFired: false })).toBe("snap")
+    expect(orbGestureOutcome({ moved: true, longPressFired: true })).toBe("snap")
+  })
+
+  it("does not treat a cancelled press as a tap", () => {
+    expect(orbGestureOutcome({ moved: false, longPressFired: false, cancelled: true })).toBe("idle")
+  })
+
+  it("still parks after a cancelled drag", () => {
+    expect(orbGestureOutcome({ moved: true, longPressFired: false, cancelled: true })).toBe("snap")
+  })
+})
+
+describe("orbKeyboardIntent", () => {
+  it("activates the tray with Enter or Space", () => {
+    expect(orbKeyboardIntent("Enter")).toEqual({ type: "activate" })
+    expect(orbKeyboardIntent(" ")).toEqual({ type: "activate" })
+  })
+
+  it("nudges by 16px on arrow keys", () => {
+    expect(ORB_NUDGE_PX).toBe(16)
+    expect(orbKeyboardIntent("ArrowLeft")).toEqual({ type: "nudge", dx: -16, dy: 0 })
+    expect(orbKeyboardIntent("ArrowRight")).toEqual({ type: "nudge", dx: 16, dy: 0 })
+    expect(orbKeyboardIntent("ArrowUp")).toEqual({ type: "nudge", dx: 0, dy: -16 })
+    expect(orbKeyboardIntent("ArrowDown")).toEqual({ type: "nudge", dx: 0, dy: 16 })
+  })
+
+  it("parks Home on the left edge and End on the right", () => {
+    expect(orbKeyboardIntent("Home")).toEqual({ type: "park", edge: "left" })
+    expect(orbKeyboardIntent("End")).toEqual({ type: "park", edge: "right" })
+  })
+
+  it("ignores unrelated keys", () => {
+    expect(orbKeyboardIntent("Escape")).toBeNull()
+    expect(orbKeyboardIntent("Tab")).toBeNull()
+  })
+})
+
+describe("applyOrbKeyboardIntent", () => {
+  it("clamps a nudge that would leave the viewport", () => {
+    expect(applyOrbKeyboardIntent({ x: 8, y: 400 }, { type: "nudge", dx: -16, dy: 0 }, IPHONE_390)).toEqual({
+      x: 8,
+      y: 400,
+    })
+  })
+
+  it("parks Home and End on opposite edges without changing y", () => {
+    expect(applyOrbKeyboardIntent({ x: 200, y: 400 }, { type: "park", edge: "left" }, IPHONE_390)).toEqual({
+      x: 8,
+      y: 400,
+    })
+    expect(applyOrbKeyboardIntent({ x: 200, y: 400 }, { type: "park", edge: "right" }, IPHONE_390)).toEqual({
+      x: 326,
+      y: 400,
+    })
+  })
+})
+
+describe("orbViewportBounds", () => {
+  it("keeps the 76px chrome reserve when the keyboard is closed", () => {
+    expect(orbViewportBounds({ width: 390, height: 844 })).toEqual({
+      width: 390,
+      height: 844,
+      bottomReserve: ORB_BOTTOM_RESERVE,
+    })
+  })
+
+  it("raises the reserve so a 56px orb stays above an iOS keyboard", () => {
+    const bounds = orbViewportBounds({
+      width: 390,
+      height: 844,
+      visualHeight: 520,
+      visualOffsetTop: 0,
+    })
+    const overlap = 844 - 520
+    expect(bounds.bottomReserve).toBe(overlap + ORB_INSET)
+    const pos = clampOrbPosition(200, 800, bounds)
+    expect(pos.y + ORB_SIZE).toBeLessThanOrEqual(844 - overlap - ORB_INSET)
+  })
+})
+
+describe("orbPlacementTransitionMs", () => {
+  it("places immediately when the user prefers reduced motion", () => {
+    expect(orbPlacementTransitionMs(true)).toBe(0)
+  })
+
+  it("allows a short snap animation otherwise", () => {
+    expect(orbPlacementTransitionMs(false)).toBe(180)
   })
 })

@@ -9,12 +9,19 @@ import { dispatchComposerOpen } from "@/lib/dialer/dialer"
 import {
   ICON_BAR_MS,
   LONG_PRESS_MS,
+  applyOrbKeyboardIntent,
   clampOrbPosition,
   defaultOrbPosition,
   iconBarPosition,
   movementExceeded,
-  orbReleaseAction,
+  orbGestureOutcome,
+  orbKeyboardIntent,
+  orbPlacementTransitionMs,
+  orbViewportBounds,
+  snapOrbToEdge,
 } from "@/lib/ui/orb-gesture"
+
+const POSITION_KEY = "floating-toggle-position"
 
 interface FloatingToggleProps {
   onAddTask?: () => void
@@ -22,6 +29,42 @@ interface FloatingToggleProps {
   onVoiceNote?: (audioBlob: Blob, transcription: string, duration?: number) => void
   onCreateTaskFromVoice?: (text: string) => void
   suppressed?: boolean
+}
+
+function readBounds() {
+  const visual = window.visualViewport
+  return orbViewportBounds({
+    width: window.innerWidth,
+    height: window.innerHeight,
+    visualHeight: visual?.height,
+    visualOffsetTop: visual?.offsetTop,
+  })
+}
+
+function persistPosition(position: { x: number; y: number }) {
+  localStorage.setItem(POSITION_KEY, JSON.stringify(position))
+}
+
+function parseSavedPosition(raw: string | null): { x: number; y: number } | null {
+  if (!raw) {
+    return null
+  }
+  try {
+    const parsed = JSON.parse(raw) as { x: number; y: number }
+    if (typeof parsed.x === "number" && typeof parsed.y === "number") {
+      return parsed
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
+function samePoint(
+  a: { x: number; y: number } | null,
+  b: { x: number; y: number },
+): boolean {
+  return a != null && a.x === b.x && a.y === b.y
 }
 
 export function FloatingToggle({
@@ -36,6 +79,7 @@ export function FloatingToggle({
   const [showIconBar, setShowIconBar] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
   const [position, setPosition] = useState<{ x: number; y: number } | null>(null)
+  const [reducedMotion, setReducedMotion] = useState(false)
   const longPressTimer = useRef<number | null>(null)
   const hideTimer = useRef<number | null>(null)
   const dragStartRef = useRef({ x: 0, y: 0 })
@@ -43,33 +87,50 @@ export function FloatingToggle({
   const movedRef = useRef(false)
   const longPressFiredRef = useRef(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const activePointerRef = useRef<number | null>(null)
+  const gestureEndedRef = useRef(true)
+  const pendingPosRef = useRef<{ x: number; y: number } | null>(null)
+  const latestPosRef = useRef<{ x: number; y: number } | null>(null)
+  const rafRef = useRef<number | null>(null)
+  const positionRef = useRef(position)
+  positionRef.current = position
 
   useEffect(() => {
-    const saved = localStorage.getItem("floating-toggle-position")
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as { x: number; y: number }
-        if (typeof parsed.x === "number" && typeof parsed.y === "number") {
-          setPosition(
-            clampOrbPosition(parsed.x, parsed.y, {
-              width: window.innerWidth,
-              height: window.innerHeight,
-            }),
-          )
-          return
+    const syncPlacement = (reason: "hydrate" | "viewport") => {
+      const bounds = readBounds()
+      setPosition((prev) => {
+        const saved = parseSavedPosition(localStorage.getItem(POSITION_KEY))
+        const source = prev ?? saved ?? defaultOrbPosition(bounds)
+        const next = clampOrbPosition(source.x, source.y, bounds)
+        const changed = next.x !== source.x || next.y !== source.y
+        if (changed && (reason === "viewport" || (reason === "hydrate" && saved))) {
+          persistPosition(next)
         }
-      } catch {
-        // Fall through to the default corner.
-      }
+        latestPosRef.current = next
+        return samePoint(prev, next) ? prev : next
+      })
     }
-    setPosition(defaultOrbPosition({ width: window.innerWidth, height: window.innerHeight }))
+
+    syncPlacement("hydrate")
+
+    const onViewport = () => syncPlacement("viewport")
+    window.addEventListener("resize", onViewport)
+    window.addEventListener("orientationchange", onViewport)
+    window.visualViewport?.addEventListener("resize", onViewport)
+    return () => {
+      window.removeEventListener("resize", onViewport)
+      window.removeEventListener("orientationchange", onViewport)
+      window.visualViewport?.removeEventListener("resize", onViewport)
+    }
   }, [])
 
   useEffect(() => {
-    if (position) {
-      localStorage.setItem("floating-toggle-position", JSON.stringify(position))
-    }
-  }, [position])
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const apply = () => setReducedMotion(media.matches)
+    apply()
+    media.addEventListener("change", apply)
+    return () => media.removeEventListener("change", apply)
+  }, [])
 
   const clearLongPress = () => {
     if (longPressTimer.current) {
@@ -82,6 +143,13 @@ export function FloatingToggle({
     if (hideTimer.current) {
       window.clearTimeout(hideTimer.current)
       hideTimer.current = null
+    }
+  }
+
+  const flushRaf = () => {
+    if (rafRef.current != null) {
+      window.cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
     }
   }
 
@@ -101,21 +169,42 @@ export function FloatingToggle({
   }
 
   const resolvePosition = () => {
-    if (position) {
-      return position
+    if (latestPosRef.current) {
+      return latestPosRef.current
     }
-    return defaultOrbPosition({ width: window.innerWidth, height: window.innerHeight })
+    if (positionRef.current) {
+      return positionRef.current
+    }
+    return defaultOrbPosition(readBounds())
+  }
+
+  const schedulePosition = (next: { x: number; y: number }) => {
+    pendingPosRef.current = next
+    latestPosRef.current = next
+    if (rafRef.current != null) {
+      return
+    }
+    rafRef.current = window.requestAnimationFrame(() => {
+      rafRef.current = null
+      const pending = pendingPosRef.current
+      if (pending) {
+        setPosition(pending)
+      }
+    })
   }
 
   const handleStart = (clientX: number, clientY: number) => {
     const origin = resolvePosition()
     originRef.current = origin
-    if (!position) {
+    latestPosRef.current = origin
+    if (!positionRef.current) {
       setPosition(origin)
     }
     setIsDragging(true)
     movedRef.current = false
     longPressFiredRef.current = false
+    gestureEndedRef.current = false
+    pendingPosRef.current = null
     dragStartRef.current = { x: clientX - origin.x, y: clientY - origin.y }
     longPressTimer.current = window.setTimeout(() => {
       if (!movedRef.current) {
@@ -136,23 +225,31 @@ export function FloatingToggle({
     }
     movedRef.current = true
     clearLongPress()
-    setPosition(
-      clampOrbPosition(next.x, next.y, {
-        width: window.innerWidth,
-        height: window.innerHeight,
-      }),
-    )
+    setShowIconBar(false)
+    setArmed(false)
+    schedulePosition(clampOrbPosition(next.x, next.y, readBounds()))
   }
 
-  const handleEnd = () => {
+  const finishGesture = (cancelled: boolean) => {
+    if (gestureEndedRef.current) {
+      return
+    }
+    gestureEndedRef.current = true
+    activePointerRef.current = null
     clearLongPress()
+    flushRaf()
     setIsDragging(false)
-    const action = orbReleaseAction({
+
+    const live = pendingPosRef.current ?? latestPosRef.current ?? resolvePosition()
+    pendingPosRef.current = null
+    const outcome = orbGestureOutcome({
       moved: movedRef.current,
       longPressFired: longPressFiredRef.current,
+      cancelled,
     })
     setArmed(false)
-    switch (action) {
+
+    switch (outcome) {
       case "show-icons":
         revealIconBar()
         break
@@ -160,44 +257,27 @@ export function FloatingToggle({
         setShowIconBar(false)
         setRecorderOpen(true)
         break
-      case "ignore":
+      case "snap": {
+        const snapped = snapOrbToEdge(live, readBounds())
+        latestPosRef.current = snapped
+        setPosition(snapped)
+        persistPosition(snapped)
+        break
+      }
+      case "idle":
         break
       default: {
-        const _exhaustive: never = action
-        throw new Error(`Unhandled orb release: ${_exhaustive}`)
+        const _exhaustive: never = outcome
+        throw new Error(`Unhandled orb outcome: ${_exhaustive}`)
       }
     }
   }
 
   useEffect(() => {
-    if (!isDragging) {
-      return
-    }
-    const onMouseMove = (event: MouseEvent) => handleMove(event.clientX, event.clientY)
-    const onTouchMove = (event: TouchEvent) => {
-      const touch = event.touches[0]
-      if (touch) {
-        event.preventDefault()
-        handleMove(touch.clientX, touch.clientY)
-      }
-    }
-    const end = () => handleEnd()
-    document.addEventListener("mousemove", onMouseMove)
-    document.addEventListener("mouseup", end)
-    document.addEventListener("touchmove", onTouchMove, { passive: false })
-    document.addEventListener("touchend", end)
-    return () => {
-      document.removeEventListener("mousemove", onMouseMove)
-      document.removeEventListener("mouseup", end)
-      document.removeEventListener("touchmove", onTouchMove)
-      document.removeEventListener("touchend", end)
-    }
-  }, [isDragging])
-
-  useEffect(() => {
     return () => {
       clearLongPress()
       clearHideTimer()
+      flushRaf()
     }
   }, [])
 
@@ -209,12 +289,14 @@ export function FloatingToggle({
 
   const icons =
     position && showIconBar && !recorderOpen && !suppressed
-      ? iconBarPosition(position, { width: window.innerWidth, height: window.innerHeight })
+      ? iconBarPosition(position, readBounds())
       : null
 
   if (suppressed && !recorderOpen) {
     return null
   }
+
+  const snapMs = orbPlacementTransitionMs(reducedMotion)
 
   return (
     <>
@@ -228,7 +310,7 @@ export function FloatingToggle({
           <Button
             size="icon"
             variant="ghost"
-            className="h-10 w-10 rounded-full hover:bg-red-500/20"
+            className="rounded-full hover:bg-red-500/20"
             onClick={() => pick(() => setRecorderOpen(true))}
             title="Record"
             aria-label="Record voice note"
@@ -238,7 +320,7 @@ export function FloatingToggle({
           <Button
             size="icon"
             variant="ghost"
-            className="h-10 w-10 rounded-full hover:bg-primary/20"
+            className="rounded-full hover:bg-primary/20"
             onClick={() => pick(onAddTask)}
             title="Quick Task"
             aria-label="Add task"
@@ -248,7 +330,7 @@ export function FloatingToggle({
           <Button
             size="icon"
             variant="ghost"
-            className="h-10 w-10 rounded-full hover:bg-green-500/20"
+            className="rounded-full hover:bg-green-500/20"
             onClick={() => pick(onAddNote)}
             title="Quick Note"
             aria-label="Add note"
@@ -258,7 +340,7 @@ export function FloatingToggle({
           <Button
             size="icon"
             variant="ghost"
-            className="h-10 w-10 rounded-full hover:bg-primary/20"
+            className="rounded-full hover:bg-primary/20"
             onClick={() => pick(() => dispatchComposerOpen({ openTab: true }))}
             title="Chats"
             aria-label="Open chats"
@@ -272,17 +354,54 @@ export function FloatingToggle({
         ref={buttonRef}
         size="icon"
         aria-label="Record, add a task or note, or open chats"
+        aria-expanded={showIconBar}
+        aria-haspopup="true"
         onClick={(event) => {
           event.preventDefault()
         }}
-        onMouseDown={(event) => {
+        onPointerDown={(event) => {
+          if (event.button !== 0 || activePointerRef.current !== null) {
+            return
+          }
+          activePointerRef.current = event.pointerId
+          event.currentTarget.setPointerCapture(event.pointerId)
           handleStart(event.clientX, event.clientY)
         }}
-        onTouchStart={(event) => {
-          const touch = event.touches[0]
-          if (touch) {
-            handleStart(touch.clientX, touch.clientY)
+        onPointerMove={(event) => {
+          if (event.pointerId !== activePointerRef.current) {
+            return
           }
+          handleMove(event.clientX, event.clientY)
+        }}
+        onPointerUp={(event) => {
+          if (event.pointerId !== activePointerRef.current) {
+            return
+          }
+          finishGesture(false)
+        }}
+        onPointerCancel={(event) => {
+          if (event.pointerId !== activePointerRef.current) {
+            return
+          }
+          finishGesture(true)
+        }}
+        onKeyDown={(event) => {
+          const intent = orbKeyboardIntent(event.key)
+          if (!intent) {
+            return
+          }
+          event.preventDefault()
+          if (intent.type === "activate") {
+            if (!recorderOpen) {
+              revealIconBar()
+            }
+            return
+          }
+          const next = applyOrbKeyboardIntent(resolvePosition(), intent, readBounds())
+          latestPosRef.current = next
+          setPosition(next)
+          persistPosition(next)
+          setShowIconBar(false)
         }}
         onContextMenu={(event) => event.preventDefault()}
         onMouseEnter={() => {
@@ -294,16 +413,25 @@ export function FloatingToggle({
         className={cn(
           "mk-touch fixed z-[80] h-14 w-14 cursor-move rounded-full border-2 shadow-lg select-none",
           "bg-primary/20 text-primary-foreground backdrop-blur-md border-primary/20",
-          "shadow-[0_0_20px_rgba(59,130,246,0.3)]",
+          "shadow-[0_0_20px_rgba(59,130,246,0.3)] [touch-action:none]",
           isDragging || showIconBar ? "scale-105 bg-primary/80 border-primary/30" : "",
           armed || recorderOpen ? "scale-110 animate-pulse bg-red-500/95 border-red-400/50 text-white" : "",
+          isDragging ? "cursor-grabbing" : "",
         )}
         style={
           position
-            ? { left: position.x, top: position.y, right: "auto", bottom: "auto" }
+            ? {
+                left: position.x,
+                top: position.y,
+                right: "auto",
+                bottom: "auto",
+                touchAction: "none",
+                transition: isDragging ? "none" : `left ${snapMs}ms ease, top ${snapMs}ms ease`,
+              }
             : {
                 right: "1rem",
                 bottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))",
+                touchAction: "none",
               }
         }
       >
