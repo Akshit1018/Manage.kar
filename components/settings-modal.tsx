@@ -14,6 +14,8 @@ import { MobileSheet } from "@/components/mobile-sheet"
 import type { AppSettings, Workspace } from "@/lib/domain/types"
 import type { DialerState } from "@/lib/dialer/types"
 import { loadDialer, notifyDialerChanged, persistDialer } from "@/lib/dialer/dialer"
+import type { PairingState } from "@/lib/pairing/types"
+import { loadPairing, notifyPairingChanged, persistPairing } from "@/lib/pairing/pairing"
 import { applyAppearance } from "@/lib/theme/apply-theme"
 import {
   APP_VERSION,
@@ -48,7 +50,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [activeSection, setActiveSection] = useState<string>("notifications")
   const [localEvents, setLocalEvents] = useState<LocalEvent[]>([])
   const [confirmKind, setConfirmKind] = useState<
-    { kind: "import"; workspace: Workspace; dialer?: DialerState } | { kind: "clear-1" } | { kind: "clear-2" } | null
+    | { kind: "import"; workspace: Workspace; dialer?: DialerState; pairing?: PairingState }
+    | { kind: "clear-1" }
+    | { kind: "clear-2" }
+    | null
   >(null)
 
   useEffect(() => {
@@ -96,7 +101,10 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const exportData = () => {
     const storage = browserStorage()
     const workspace = loadWorkspace(storage)
-    const blob = new Blob([serializeBackup({ ...workspace, settings }, loadDialer(storage))], { type: "application/json" })
+    const blob = new Blob(
+      [serializeBackup({ ...workspace, settings }, loadDialer(storage), loadPairing(storage))],
+      { type: "application/json" },
+    )
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement("a")
     anchor.href = url
@@ -125,18 +133,21 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           toast.error(parsed.error)
           return
         }
-        setConfirmKind({ kind: "import", workspace: parsed.workspace, dialer: parsed.dialer })
+        setConfirmKind({ kind: "import", workspace: parsed.workspace, dialer: parsed.dialer, pairing: parsed.pairing })
       }
       reader.readAsText(file)
     }
     input.click()
   }
 
-  const applyImportedWorkspace = (workspace: Workspace, dialer?: DialerState) => {
+  const applyImportedWorkspace = (workspace: Workspace, dialer?: DialerState, pairing?: PairingState) => {
     const storage = browserStorage()
     replaceWorkspace(storage, workspace)
     if (dialer) {
       persistDialer(storage, dialer)
+    }
+    if (pairing) {
+      persistPairing(storage, pairing)
     }
     setSettings(workspace.settings)
     applyAppearance(workspace.settings)
@@ -155,6 +166,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setLocalEvents(listEvents(storage))
     notifyWorkspaceChanged()
     notifyDialerChanged()
+    notifyPairingChanged()
     toast.success("This device's workspace was cleared.")
   }
 
@@ -197,7 +209,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     }
     switch (confirmKind.kind) {
       case "import":
-        applyImportedWorkspace(confirmKind.workspace, confirmKind.dialer)
+        applyImportedWorkspace(confirmKind.workspace, confirmKind.dialer, confirmKind.pairing)
         setConfirmKind(null)
         return
       case "clear-1":

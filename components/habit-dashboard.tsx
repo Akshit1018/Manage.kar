@@ -206,7 +206,7 @@ export function HabitDashboard({
                 {/* Progress Overview */}
                 <Card className="bg-card/95 backdrop-blur-xl border border-border/50 shadow-xl p-4 rounded-xl">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-medium font-sans">Today's Progress</h3>
+                    <h3 className="font-medium font-sans">Today&apos;s Progress</h3>
                     <span className="text-sm text-muted-foreground">
                       {completedToday}/{totalHabits}
                     </span>
@@ -216,7 +216,7 @@ export function HabitDashboard({
 
                 {/* Recent Habits */}
                 <div>
-                  <h3 className="font-medium font-sans mb-3">Today's Habits</h3>
+                  <h3 className="font-medium font-sans mb-3">Today&apos;s Habits</h3>
                   <div className="space-y-2">
                     {habits.slice(0, 5).map((habit) => (
                       <Card

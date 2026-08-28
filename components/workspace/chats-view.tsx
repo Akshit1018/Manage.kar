@@ -1,10 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ArrowLeft, MessageCircle, Plus } from "lucide-react"
+import { ArrowLeft, Cable, MessageCircle, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { EmptyState } from "@/components/empty-state"
+import { PairingSheet } from "@/components/pairing-sheet"
 import { cn } from "@/lib/utils"
 import {
   DIALER_CHANGED_EVENT,
@@ -29,6 +30,7 @@ interface ChatsViewProps {
 
 export function ChatsView({ sessionId, searchQuery, onOpenSession, onBack }: ChatsViewProps) {
   const [dialer, setDialer] = useState<DialerState | null>(null)
+  const [pairingOpen, setPairingOpen] = useState(false)
 
   useEffect(() => {
     const reload = () => setDialer(loadDialer(window.localStorage))
@@ -61,17 +63,28 @@ export function ChatsView({ sessionId, searchQuery, onOpenSession, onBack }: Cha
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-xl font-bold">Chats</h3>
-        <Button
-          className="mk-touch"
-          onClick={() => {
-            onOpenSession(NEW_CHAT_TARGET)
-            dispatchComposerOpen({ target: NEW_CHAT_TARGET })
-          }}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          New chat
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="mk-touch bg-transparent"
+            onClick={() => setPairingOpen(true)}
+          >
+            <Cable className="mr-2 h-4 w-4" />
+            Machines
+          </Button>
+          <Button
+            className="mk-touch"
+            onClick={() => {
+              onOpenSession(NEW_CHAT_TARGET)
+              dispatchComposerOpen({ target: NEW_CHAT_TARGET })
+            }}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            New chat
+          </Button>
+        </div>
       </div>
+      <PairingSheet open={pairingOpen} onClose={() => setPairingOpen(false)} />
       {items.length === 0 ? (
         <EmptyState
           title={searchQuery ? "No matching chats" : "No chats yet"}

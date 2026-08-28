@@ -1,4 +1,6 @@
 export type TaskPriority = "high" | "medium" | "low"
+export type TaskStatus = "todo" | "doing" | "done"
+export type FollowUpCadence = "daily" | "weekly"
 export type RecurringRule = "none" | "daily" | "weekly" | "monthly"
 export type HabitCategory = "health" | "productivity" | "learning" | "lifestyle" | "fitness" | "mindfulness"
 export type HabitFrequency = "daily" | "weekly" | "custom"
@@ -9,17 +11,25 @@ export type GoalStatus = "active" | "completed" | "paused"
 export type FocusType = "pomodoro" | "deep-work" | "break" | "custom"
 export type DateFormat = "MM/DD/YYYY" | "DD/MM/YYYY" | "YYYY-MM-DD"
 export type LabelKind = "place" | "tag" | "person"
+export type LabelColor = "slate" | "red" | "orange" | "amber" | "green" | "teal" | "blue" | "purple"
 
 export interface WorkspaceLabel {
   id: number
   name: string
   kind: LabelKind
+  color?: LabelColor
 }
 
 export interface TaskChecklistItem {
   id: number
   text: string
   completed: boolean
+}
+
+export interface TaskFollowUp {
+  cadence: FollowUpCadence
+  /** ISO timestamp of the last local nudge the user acknowledged. */
+  lastNudgedAt?: string
 }
 
 export interface Task {
@@ -33,6 +43,13 @@ export interface Task {
   reminders?: boolean
   checklist?: TaskChecklistItem[]
   labelIds?: number[]
+  /** Kanban column. `completed` stays the source of truth for done-ness. */
+  status?: TaskStatus
+  /** Human owner. Defaults to the device user ("me") when absent. */
+  owner?: string
+  /** Optional agent worker label for the future Hermes kanban integration. */
+  worker?: string
+  followUp?: TaskFollowUp
   updatedAt?: string
 }
 
@@ -48,6 +65,7 @@ export interface Note {
     duration: number
   }
   labelIds?: number[]
+  pinned?: boolean
 }
 
 export interface Habit {

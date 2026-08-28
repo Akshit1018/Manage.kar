@@ -8,6 +8,7 @@ import type {
   Habit,
   Note,
   Task,
+  TaskFollowUp,
   WorkspaceLabel,
   TimeEntry,
   UserProfile,
@@ -15,6 +16,9 @@ import type {
 } from "@/lib/domain/types"
 import { emptyDeletedIds, stampWorkspaceMutation } from "@/lib/store/merge"
 import { hydrateWorkspaceLabels, normalizeLabelName } from "@/lib/labels/book"
+import { isLabelColor } from "@/lib/labels/palette"
+import { isTaskStatus } from "@/lib/tasks/board"
+import { isFollowUpCadence } from "@/lib/tasks/follow-up"
 import { normalizeSkin } from "@/lib/theme/apply-theme"
 import { localDateKey, normalizeDueDate } from "@/lib/dates/due-date"
 import { hydrateHabit } from "@/lib/habits/streak"
@@ -22,6 +26,8 @@ import { sanitizeAvatarUrl } from "@/lib/profile/avatar"
 import { ANALYTICS_KEY } from "@/lib/analytics/local-events"
 import { DIALER_KEY, parseDialer } from "@/lib/dialer/dialer"
 import type { DialerState } from "@/lib/dialer/types"
+import { PAIRING_KEY, parsePairing } from "@/lib/pairing/pairing"
+import type { PairingState } from "@/lib/pairing/types"
 
 export const WORKSPACE_KEY = "managekar.workspace.v1"
 export const WORKSPACE_CHANGED_EVENT = "managekar:workspace-changed"
@@ -78,6 +84,10 @@ const taskSchema = z
       )
       .optional(),
     labelIds: z.array(z.number()).optional(),
+    status: z.unknown().optional(),
+    owner: z.unknown().optional(),
+    worker: z.unknown().optional(),
+    followUp: z.unknown().optional(),
   })
   .passthrough()
 
@@ -88,6 +98,7 @@ const noteSchema = z
     content: z.string(),
     createdAt: z.string(),
     labelIds: z.array(z.number()).optional(),
+    pinned: z.unknown().optional(),
   })
   .passthrough()
 
@@ -323,6 +334,24 @@ function parseArray<T>(
   return { items, dropped: rejected.length, rejected }
 }
 
+function asTrimmedString(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined
+  }
+  const trimmed = value.trim()
+  return trimmed ? trimmed.slice(0, 120) : undefined
+}
+
+function asFollowUp(value: unknown): TaskFollowUp | undefined {
+  if (!isRecord(value) || !isFollowUpCadence(value.cadence)) {
+    return undefined
+  }
+  return {
+    cadence: value.cadence,
+    ...(typeof value.lastNudgedAt === "string" ? { lastNudgedAt: value.lastNudgedAt } : {}),
+  }
+}
+
 function asTask(item: unknown, weekStartsOn: "sunday" | "monday"): Task | null {
   const parsed = taskSchema.safeParse(item)
   if (!parsed.success) {
@@ -334,6 +363,10 @@ function asTask(item: unknown, weekStartsOn: "sunday" | "monday"): Task | null {
     title: task.title.trim(),
     dueDate: normalizeDueDate(task.dueDate, new Date(), weekStartsOn),
     labelIds: asIdArray(task.labelIds),
+    status: isTaskStatus(parsed.data.status) ? parsed.data.status : undefined,
+    owner: asTrimmedString(parsed.data.owner),
+    worker: asTrimmedString(parsed.data.worker),
+    followUp: asFollowUp(parsed.data.followUp),
   }
 }
 
@@ -343,7 +376,12 @@ function asNote(item: unknown): Note | null {
     return null
   }
   const note = parsed.data as Note
-  return { ...note, title: note.title.trim(), labelIds: asIdArray(note.labelIds) }
+  return {
+    ...note,
+    title: note.title.trim(),
+    labelIds: asIdArray(note.labelIds),
+    pinned: parsed.data.pinned === true ? true : undefined,
+  }
 }
 
 function asLabel(item: unknown): WorkspaceLabel | null {
@@ -356,7 +394,7 @@ function asLabel(item: unknown): WorkspaceLabel | null {
   }
   const kind =
     item.kind === "place" || item.kind === "tag" || item.kind === "person" ? item.kind : "tag"
-  return { id: item.id, name, kind }
+  return { id: item.id, name, kind, ...(isLabelColor(item.color) ? { color: item.color } : {}) }
 }
 
 function asHabit(item: unknown, today: string, weekStartsOn: "sunday" | "monday"): Habit | null {
@@ -716,7 +754,7 @@ export function migrateLegacyWorkspace(storage: KeyValueStore): Workspace {
   return saveWorkspace(storage, workspace)
 }
 
-export function serializeBackup(workspace: Workspace, dialer?: DialerState): string {
+export function serializeBackup(workspace: Workspace, dialer?: DialerState, pairing?: PairingState): string {
   return JSON.stringify(
     {
       appName: "Manage.kar",
@@ -725,6 +763,7 @@ export function serializeBackup(workspace: Workspace, dialer?: DialerState): str
       ...workspace,
       schemaVersion: 1,
       ...(dialer ? { dialer } : {}),
+      ...(pairing ? { pairing } : {}),
     },
     null,
     2,
@@ -733,7 +772,9 @@ export function serializeBackup(workspace: Workspace, dialer?: DialerState): str
 
 export function parseBackup(
   raw: string,
-): { ok: true; workspace: Workspace; dialer?: DialerState } | { ok: false; error: string } {
+):
+  | { ok: true; workspace: Workspace; dialer?: DialerState; pairing?: PairingState }
+  | { ok: false; error: string } {
   const parsed = parseJson(raw)
   if (!isRecord(parsed)) {
     return { ok: false, error: "Invalid Manage.kar backup file." }
@@ -747,7 +788,13 @@ export function parseBackup(
     return { ok: false, error: "Invalid Manage.kar backup file." }
   }
   const dialer = parsed.dialer === undefined ? undefined : parseDialer(parsed.dialer)
-  return { ok: true, workspace: normalized.workspace, ...(dialer ? { dialer } : {}) }
+  const pairing = parsed.pairing === undefined ? undefined : parsePairing(parsed.pairing)
+  return {
+    ok: true,
+    workspace: normalized.workspace,
+    ...(dialer ? { dialer } : {}),
+    ...(pairing ? { pairing } : {}),
+  }
 }
 
 export function replaceWorkspace(storage: KeyValueStore, workspace: Workspace): Workspace {
@@ -768,6 +815,7 @@ export function clearWorkspace(storage: KeyValueStore): Workspace {
   storage.removeItem(WORKSPACE_DROPPED_KEY)
   storage.removeItem(ANALYTICS_KEY)
   storage.removeItem(DIALER_KEY)
+  storage.removeItem(PAIRING_KEY)
   return saveWorkspace(storage, empty)
 }
 

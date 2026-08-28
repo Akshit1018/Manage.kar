@@ -19,6 +19,7 @@ import {
 } from "./workspace"
 import { DIALER_KEY, createEmptyDialer, queueMessage, saveDialer } from "@/lib/dialer/dialer"
 import { NEW_CHAT_TARGET } from "@/lib/dialer/types"
+import { PAIRING_KEY, completeSimulatedPairing, createEmptyPairing, savePairing } from "@/lib/pairing/pairing"
 
 class MemoryStore implements KeyValueStore {
   private readonly data = new Map<string, string>()
@@ -437,6 +438,123 @@ describe("workspace store", () => {
     expect(loaded.tasks[0]?.labelIds).toEqual(expect.arrayContaining(people.map((label) => label.id)))
   })
 
+  it("round-trips note pins and label colors, and tolerates old data without them", () => {
+    const storage = new MemoryStore()
+    const workspace = createEmptyWorkspace()
+    const allocatedLabel = allocateEntityId(workspace)
+    allocatedLabel.workspace.labels.push({ id: allocatedLabel.id, name: "ideas", kind: "tag", color: "purple" })
+    const allocatedNote = allocateEntityId(allocatedLabel.workspace)
+    allocatedNote.workspace.notes.push({
+      id: allocatedNote.id,
+      title: "Pinned idea",
+      content: "Keep this on top",
+      createdAt: "2026-08-23T00:00:00.000Z",
+      pinned: true,
+      labelIds: [allocatedLabel.id],
+    })
+
+    saveWorkspace(storage, allocatedNote.workspace)
+    const loaded = loadWorkspace(storage)
+
+    expect(loaded.notes.find((note) => note.title === "Pinned idea")?.pinned).toBe(true)
+    expect(loaded.labels.find((label) => label.name === "ideas")?.color).toBe("purple")
+
+    storage.setItem(
+      WORKSPACE_KEY,
+      JSON.stringify({
+        schemaVersion: 1,
+        tasks: [],
+        notes: [
+          { id: 1, title: "Old note", content: "no pin field", createdAt: "2026-01-01T00:00:00.000Z" },
+          { id: 2, title: "Bad pin", content: "", createdAt: "2026-01-01T00:00:00.000Z", pinned: "yes" },
+        ],
+        habits: [],
+        labels: [{ id: 3, name: "legacy", kind: "tag", color: "not-a-color" }],
+      }),
+    )
+    const legacy = loadWorkspace(storage)
+    expect(legacy.notes.find((note) => note.id === 1)?.pinned).toBeUndefined()
+    expect(legacy.notes.find((note) => note.id === 2)?.pinned).toBeUndefined()
+    expect(legacy.labels.find((label) => label.name === "legacy")?.color).toBeUndefined()
+  })
+
+  it("round-trips task status, owner, worker, and follow-up metadata", () => {
+    const storage = new MemoryStore()
+    const workspace = createEmptyWorkspace()
+    workspace.tasks.push({
+      id: 1,
+      title: "Board task",
+      completed: false,
+      priority: "medium",
+      dueDate: "2026-08-28",
+      status: "doing",
+      owner: "me",
+      worker: "hermes",
+      followUp: { cadence: "daily", lastNudgedAt: "2026-08-27T10:00:00.000Z" },
+    })
+
+    saveWorkspace(storage, workspace)
+    const loaded = loadWorkspace(storage)
+    const task = loaded.tasks.find((item) => item.title === "Board task")
+
+    expect(task?.status).toBe("doing")
+    expect(task?.owner).toBe("me")
+    expect(task?.worker).toBe("hermes")
+    expect(task?.followUp).toEqual({ cadence: "daily", lastNudgedAt: "2026-08-27T10:00:00.000Z" })
+  })
+
+  it("keeps tasks with invalid status or follow-up data, dropping only the bad fields", () => {
+    const storage = new MemoryStore()
+    storage.setItem(
+      WORKSPACE_KEY,
+      JSON.stringify({
+        schemaVersion: 1,
+        tasks: [
+          {
+            id: 1,
+            title: "Odd metadata",
+            completed: false,
+            priority: "low",
+            dueDate: "2026-08-28",
+            status: "blocked",
+            owner: "  ",
+            worker: 42,
+            followUp: { cadence: "hourly" },
+          },
+        ],
+        notes: [],
+        habits: [],
+      }),
+    )
+
+    const loaded = loadWorkspace(storage)
+    const task = loaded.tasks.find((item) => item.title === "Odd metadata")
+    expect(task).toBeDefined()
+    expect(task?.status).toBeUndefined()
+    expect(task?.owner).toBeUndefined()
+    expect(task?.worker).toBeUndefined()
+    expect(task?.followUp).toBeUndefined()
+  })
+
+  it("keeps pins, colors, and task metadata through a backup round trip", () => {
+    const workspace = createEmptyWorkspace()
+    workspace.labels.push({ id: 90, name: "deep", kind: "tag", color: "teal" })
+    workspace.notes.push({
+      id: 91,
+      title: "Backup pin",
+      content: "still pinned",
+      createdAt: "2026-08-23T00:00:00.000Z",
+      pinned: true,
+    })
+
+    const parsed = parseBackup(serializeBackup(workspace))
+    expect(parsed.ok).toBe(true)
+    if (parsed.ok) {
+      expect(parsed.workspace.notes.find((note) => note.title === "Backup pin")?.pinned).toBe(true)
+      expect(parsed.workspace.labels.find((label) => label.name === "deep")?.color).toBe("teal")
+    }
+  })
+
   it("includes the dialer in backups and removes it on wipe", () => {
     const storage = new MemoryStore()
     const queued = queueMessage(createEmptyDialer(), NEW_CHAT_TARGET, "secret prompt", "2026-08-28T10:00:00.000Z")!
@@ -454,5 +572,35 @@ describe("workspace store", () => {
     clearWorkspace(storage)
     expect(storage.getItem(DIALER_KEY)).toBeNull()
     expect(storage.getItem(WORKSPACE_KEY)).not.toBeNull()
+  })
+
+  it("includes pairing state in backups and removes it on wipe", () => {
+    const storage = new MemoryStore()
+    const paired = completeSimulatedPairing(createEmptyPairing(), createEmptyDialer(), {
+      id: "m1",
+      name: "Home VPS",
+      kind: "vps",
+      nowIso: "2026-08-28T10:00:00.000Z",
+    })
+    savePairing(storage, paired.pairing)
+    saveWorkspace(storage, createEmptyWorkspace())
+
+    const backup = serializeBackup(createEmptyWorkspace(), paired.dialer, paired.pairing)
+    const parsed = parseBackup(backup)
+    expect(parsed.ok).toBe(true)
+    if (parsed.ok) {
+      expect(parsed.pairing?.machines[0]?.name).toBe("Home VPS")
+      expect(parsed.dialer?.sessions[0]?.source).toBe("paired")
+    }
+
+    const withoutPairing = parseBackup(serializeBackup(createEmptyWorkspace()))
+    expect(withoutPairing.ok).toBe(true)
+    if (withoutPairing.ok) {
+      expect(withoutPairing.pairing).toBeUndefined()
+    }
+
+    expect(storage.getItem(PAIRING_KEY)).not.toBeNull()
+    clearWorkspace(storage)
+    expect(storage.getItem(PAIRING_KEY)).toBeNull()
   })
 })

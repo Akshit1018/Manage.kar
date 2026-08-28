@@ -34,3 +34,6 @@ next-env.d.ts
 # local browser artifacts
 .playwright-mcp/
 .firecrawl/
+
+# Local capture artifacts
+/*.png
