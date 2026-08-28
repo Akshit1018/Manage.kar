@@ -4,26 +4,113 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Updated to blue, white, black brand theme */
-  --background: oklch(1 0 0); /* Pure white for main background */
-  --foreground: oklch(0.15 0 0); /* Deep black for text */
-  --card: oklch(1 0 0 / 0.85); /* Semi-transparent white for glassy cards */
+  /*
+   * Default skin: "hermes" — light mode is the Nous Blue palette from the
+   * Hermes dashboard (web/src/themes/presets.ts: nousBlueTheme). Surfaces are
+   * derived Hermes-style: midground mixed over background at fixed ratios.
+   */
+  --mk-canvas: #e8f2fd;
+  --mk-mid: #0053fd;
+  --mk-ink: #170d02;
+  --background: var(--mk-canvas);
+  --foreground: var(--mk-ink);
+  --card: color-mix(in srgb, var(--mk-mid) 4%, var(--mk-canvas));
+  --card-foreground: var(--mk-ink);
+  --popover: color-mix(in srgb, var(--mk-mid) 6%, var(--mk-canvas));
+  --popover-foreground: var(--mk-ink);
+  --primary: #0053fd;
+  --primary-foreground: #ffffff;
+  --secondary: color-mix(in srgb, var(--mk-mid) 6%, var(--mk-canvas));
+  --secondary-foreground: var(--mk-ink);
+  --muted: color-mix(in srgb, var(--mk-mid) 8%, var(--mk-canvas));
+  --muted-foreground: color-mix(in srgb, var(--mk-ink) 68%, var(--mk-canvas));
+  --accent: color-mix(in srgb, var(--mk-mid) 10%, var(--mk-canvas));
+  --accent-foreground: var(--mk-ink);
+  --destructive: #fb2c36;
+  --destructive-foreground: #ffffff;
+  --border: color-mix(in srgb, var(--mk-mid) 15%, transparent);
+  --input: color-mix(in srgb, var(--mk-mid) 6%, var(--mk-canvas));
+  --ring: color-mix(in srgb, var(--mk-mid) 50%, transparent);
+  --chart-1: #0053fd;
+  --chart-2: #001934;
+  --chart-3: #34d399;
+  --chart-4: #ffbd38;
+  --chart-5: #fb2c36;
+  --radius: 0.625rem;
+  --sidebar: color-mix(in srgb, var(--mk-mid) 4%, var(--mk-canvas));
+  --sidebar-foreground: var(--mk-ink);
+  --sidebar-primary: #0053fd;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: color-mix(in srgb, var(--mk-mid) 8%, var(--mk-canvas));
+  --sidebar-accent-foreground: var(--mk-ink);
+  --sidebar-border: color-mix(in srgb, var(--mk-mid) 15%, transparent);
+  --sidebar-ring: color-mix(in srgb, var(--mk-mid) 30%, transparent);
+}
+
+.dark {
+  /*
+   * Hermes skin, dark mode: the "Hermes Teal" LENS_0 canvas (#041c1c) with
+   * warm cream text (#ffe6cb) and the Nous blue lifted for contrast on dark.
+   */
+  --mk-canvas: #041c1c;
+  --mk-mid: #ffe6cb;
+  --mk-ink: #ffe6cb;
+  --mk-blue: #4a86ff;
+  --background: var(--mk-canvas);
+  --foreground: var(--mk-ink);
+  --card: color-mix(in srgb, var(--mk-mid) 4%, var(--mk-canvas));
+  --card-foreground: var(--mk-ink);
+  --popover: color-mix(in srgb, var(--mk-mid) 7%, var(--mk-canvas));
+  --popover-foreground: var(--mk-ink);
+  --primary: var(--mk-blue);
+  --primary-foreground: #ffffff;
+  --secondary: color-mix(in srgb, var(--mk-mid) 6%, var(--mk-canvas));
+  --secondary-foreground: var(--mk-ink);
+  --muted: color-mix(in srgb, var(--mk-mid) 8%, var(--mk-canvas));
+  --muted-foreground: color-mix(in srgb, var(--mk-ink) 72%, var(--mk-canvas));
+  --accent: color-mix(in srgb, var(--mk-mid) 10%, var(--mk-canvas));
+  --accent-foreground: var(--mk-ink);
+  --destructive: #fb2c36;
+  --destructive-foreground: #ffffff;
+  --border: color-mix(in srgb, var(--mk-mid) 15%, transparent);
+  --input: color-mix(in srgb, var(--mk-mid) 6%, var(--mk-canvas));
+  --ring: color-mix(in srgb, var(--mk-blue) 50%, transparent);
+  --chart-1: #4a86ff;
+  --chart-2: #34d399;
+  --chart-3: #ffbd38;
+  --chart-4: #ffe6cb;
+  --chart-5: #fb2c36;
+  --sidebar: color-mix(in srgb, var(--mk-mid) 4%, var(--mk-canvas));
+  --sidebar-foreground: var(--mk-ink);
+  --sidebar-primary: var(--mk-blue);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: color-mix(in srgb, var(--mk-mid) 8%, var(--mk-canvas));
+  --sidebar-accent-foreground: var(--mk-ink);
+  --sidebar-border: color-mix(in srgb, var(--mk-mid) 15%, transparent);
+  --sidebar-ring: color-mix(in srgb, var(--mk-blue) 30%, transparent);
+}
+
+html[data-skin="classic"] {
+  /* Original Manage.kar look: blue, white, black. */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.15 0 0);
+  --card: oklch(1 0 0 / 0.85);
   --card-foreground: oklch(0.15 0 0);
-  --popover: oklch(1 0 0 / 0.95); /* More opaque for popups */
+  --popover: oklch(1 0 0 / 0.95);
   --popover-foreground: oklch(0.15 0 0);
-  --primary: oklch(0.55 0.25 250); /* Rich blue for primary actions */
+  --primary: oklch(0.55 0.25 250);
   --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0 0); /* Light gray for secondary elements */
+  --secondary: oklch(0.95 0 0);
   --secondary-foreground: oklch(0.15 0 0);
-  --muted: oklch(0.9 0 0); /* Light gray for muted elements */
-  --muted-foreground: oklch(0.4 0 0); /* Dark gray for muted text - was white before */
-  --accent: oklch(0.65 0.2 240); /* Lighter blue for accents */
+  --muted: oklch(0.9 0 0);
+  --muted-foreground: oklch(0.4 0 0);
+  --accent: oklch(0.65 0.2 240);
   --accent-foreground: oklch(1 0 0);
-  --destructive: oklch(0.6 0.2 25); /* Orange-red for destructive actions */
+  --destructive: oklch(0.6 0.2 25);
   --destructive-foreground: oklch(1 0 0);
-  --border: oklch(0.85 0 0); /* Light gray borders */
-  --input: oklch(1 0 0 / 0.9); /* Clean input fields */
-  --ring: oklch(0.55 0.25 250 / 0.5); /* Blue focus ring */
+  --border: oklch(0.85 0 0);
+  --input: oklch(1 0 0 / 0.9);
+  --ring: oklch(0.55 0.25 250 / 0.5);
   --chart-1: oklch(0.55 0.25 250);
   --chart-2: oklch(0.65 0.2 240);
   --chart-3: oklch(0.45 0.3 260);
@@ -40,25 +127,24 @@
   --sidebar-ring: oklch(0.55 0.25 250 / 0.3);
 }
 
-.dark {
-  /* Updated dark theme with black, grey, white */
-  --background: oklch(0.08 0 0); /* Deep black background */
-  --foreground: oklch(0.95 0 0); /* Pure white text */
-  --card: oklch(0.12 0 0 / 0.85); /* Dark glassy cards */
+html[data-skin="classic"].dark {
+  --background: oklch(0.08 0 0);
+  --foreground: oklch(0.95 0 0);
+  --card: oklch(0.12 0 0 / 0.85);
   --card-foreground: oklch(0.95 0 0);
   --popover: oklch(0.12 0 0 / 0.95);
   --popover-foreground: oklch(0.95 0 0);
-  --primary: oklch(0.65 0.25 250); /* Brighter blue for dark mode */
+  --primary: oklch(0.65 0.25 250);
   --primary-foreground: oklch(0.08 0 0);
-  --secondary: oklch(0.2 0 0); /* Dark gray for secondary */
+  --secondary: oklch(0.2 0 0);
   --secondary-foreground: oklch(0.95 0 0);
-  --muted: oklch(0.4 0 0); /* Medium gray for muted */
+  --muted: oklch(0.4 0 0);
   --muted-foreground: oklch(0.95 0 0);
-  --accent: oklch(0.7 0.2 240); /* Bright blue accent */
+  --accent: oklch(0.7 0.2 240);
   --accent-foreground: oklch(0.08 0 0);
   --destructive: oklch(0.65 0.2 25);
   --destructive-foreground: oklch(0.95 0 0);
-  --border: oklch(0.25 0 0); /* Dark gray borders */
+  --border: oklch(0.25 0 0);
   --input: oklch(0.12 0 0 / 0.9);
   --ring: oklch(0.65 0.25 250 / 0.5);
   --chart-1: oklch(0.65 0.25 250);

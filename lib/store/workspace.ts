@@ -15,6 +15,7 @@ import type {
 } from "@/lib/domain/types"
 import { emptyDeletedIds, stampWorkspaceMutation } from "@/lib/store/merge"
 import { hydrateWorkspaceLabels, normalizeLabelName } from "@/lib/labels/book"
+import { normalizeSkin } from "@/lib/theme/apply-theme"
 import { localDateKey, normalizeDueDate } from "@/lib/dates/due-date"
 import { hydrateHabit } from "@/lib/habits/streak"
 import { sanitizeAvatarUrl } from "@/lib/profile/avatar"
@@ -186,6 +187,7 @@ export function defaultSettings(): AppSettings {
     },
     appearance: {
       theme: "system",
+      skin: "hermes",
       fontSize: "medium",
       animations: true,
     },
@@ -439,6 +441,7 @@ function mergeSettings(value: unknown): AppSettings {
         appearance.theme === "light" || appearance.theme === "dark" || appearance.theme === "system"
           ? appearance.theme
           : base.appearance.theme,
+      skin: normalizeSkin(appearance.skin),
       fontSize:
         appearance.fontSize === "small" || appearance.fontSize === "medium" || appearance.fontSize === "large"
           ? appearance.fontSize

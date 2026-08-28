@@ -3,6 +3,7 @@ export type RecurringRule = "none" | "daily" | "weekly" | "monthly"
 export type HabitCategory = "health" | "productivity" | "learning" | "lifestyle" | "fitness" | "mindfulness"
 export type HabitFrequency = "daily" | "weekly" | "custom"
 export type ThemePreference = "light" | "dark" | "system"
+export type AppearanceSkin = "hermes" | "classic"
 export type GoalCategory = "personal" | "work" | "health" | "learning" | "financial"
 export type GoalStatus = "active" | "completed" | "paused"
 export type FocusType = "pomodoro" | "deep-work" | "break" | "custom"
@@ -139,6 +140,7 @@ export interface AppSettings {
   }
   appearance: {
     theme: ThemePreference
+    skin: AppearanceSkin
     fontSize: "small" | "medium" | "large"
     animations: boolean
   }

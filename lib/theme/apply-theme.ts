@@ -1,4 +1,8 @@
-import type { AppSettings, ThemePreference } from "@/lib/domain/types"
+import type { AppearanceSkin, AppSettings, ThemePreference } from "@/lib/domain/types"
+
+export function normalizeSkin(value: unknown): AppearanceSkin {
+  return value === "classic" ? "classic" : "hermes"
+}
 
 export function resolveDarkMode(
   theme: ThemePreference,
@@ -30,6 +34,7 @@ export function applyAppearance(settings: AppSettings): void {
     return
   }
   applyThemePreference(settings.appearance.theme)
+  document.documentElement.dataset.skin = normalizeSkin(settings.appearance.skin)
   document.documentElement.dataset.fontSize = settings.appearance.fontSize
   document.documentElement.dataset.animations = settings.appearance.animations ? "on" : "off"
 }
