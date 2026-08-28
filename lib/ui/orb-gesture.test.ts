@@ -41,6 +41,16 @@ describe("orb placement", () => {
   })
 
   it("sits the icon bar above and left of the ball", () => {
-    expect(iconBarPosition({ x: 290, y: 744 })).toEqual({ x: 230, y: 684 })
+    expect(iconBarPosition({ x: 100, y: 744 }, { width: 390, height: 844 })).toEqual({ x: 40, y: 684 })
+  })
+
+  it("keeps all four icons on screen when the ball hugs the right edge", () => {
+    const bar = iconBarPosition({ x: 290, y: 744 }, { width: 390, height: 844 })
+    expect(bar.x + 176).toBeLessThanOrEqual(390 - 8)
+    expect(bar.x).toBeGreaterThanOrEqual(8)
+  })
+
+  it("never pushes the bar above the top edge", () => {
+    expect(iconBarPosition({ x: 100, y: 20 }, { width: 390, height: 844 }).y).toBe(8)
   })
 })
