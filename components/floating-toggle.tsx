@@ -118,6 +118,8 @@ export function FloatingToggle({
   const movedRef = useRef(false)
   const longPressFiredRef = useRef(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const trayRef = useRef<HTMLDivElement>(null)
+  const focusTrayAfterReveal = useRef(false)
   const activePointerRef = useRef<number | null>(null)
   const gestureEndedRef = useRef(true)
   const pendingPosRef = useRef<{ x: number; y: number } | null>(null)
@@ -331,6 +333,14 @@ export function FloatingToggle({
   }, [suppressed, recorderOpen])
 
   useEffect(() => {
+    if (!showIconBar || !focusTrayAfterReveal.current) {
+      return
+    }
+    focusTrayAfterReveal.current = false
+    trayRef.current?.querySelector("button")?.focus()
+  }, [showIconBar])
+
+  useEffect(() => {
     return () => {
       detachPointerFallback()
       clearLongPress()
@@ -360,6 +370,7 @@ export function FloatingToggle({
     <>
       {icons ? (
         <div
+          ref={trayRef}
           className="fixed z-[80] flex items-center gap-2 rounded-full border border-border/50 bg-card/95 p-2 shadow-2xl backdrop-blur-xl"
           style={{ left: icons.x, top: icons.y }}
           onMouseEnter={clearHideTimer}
@@ -477,6 +488,7 @@ export function FloatingToggle({
           event.preventDefault()
           if (intent.type === "activate") {
             if (!recorderOpen) {
+              focusTrayAfterReveal.current = true
               revealIconBar()
             }
             return
