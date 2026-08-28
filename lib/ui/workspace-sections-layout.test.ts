@@ -6,11 +6,15 @@ import { NARROW_FORM_MAX_WIDTH } from "./sheet-layout"
 import {
   COMPOSER_ORB_GUTTER_PX,
   PAIRING_QR_MAX_PX,
+  applyComposerExpandedChange,
+  applyComposerExpandedChangeLocksNotifyFirst,
   auxiliaryFooterOrientation,
   chatHeaderOrientation,
+  chatRowAccessibleName,
   chromeRectsOverlap,
   composerBottomOffset,
   composerLeavesOrbGutter,
+  composerNotifiesExpandedBeforeSetState,
   honestCopyContract,
   shareHeaderOrientation,
   workspaceSectionsCssContract,
@@ -89,8 +93,11 @@ describe("workspace section CSS contract", () => {
     expect(contract.chatHeaderStacksBelow360).toBe(true)
     expect(contract.hasComposerBar).toBe(true)
     expect(contract.composerBarAllowsShrink).toBe(true)
-    expect(contract.composerKeepsOrbGutter).toBe(true)
+    expect(contract.composerCollapsedKeepsOrbGutter).toBe(true)
+    expect(contract.composerExpandedDropsOrbGutter).toBe(true)
     expect(contract.composerSitsOnNavPlusKeyboard).toBe(true)
+    expect(contract.entityCopyParagraphsDoNotNowrap).toBe(true)
+    expect(contract.entityTitleTruncates).toBe(true)
     expect(contract.hasPairingCode).toBe(true)
     expect(contract.pairingCodeConstrained).toBe(true)
     expect(contract.hasPairingQr).toBe(true)
@@ -113,6 +120,11 @@ describe("workspace section source contract", () => {
     expect(contract.chatsUsesEditorialCard).toBe(true)
     expect(contract.chatsDropsCardOnClick).toBe(true)
     expect(contract.chatsKeepsAccessibleActions).toBe(true)
+    expect(contract.chatsRowHasNoHeadingInButton).toBe(true)
+    expect(contract.chatsPreviewUsesLineClamp).toBe(true)
+    expect(contract.chatsTitleUsesEntityTitle).toBe(true)
+    expect(contract.habitDescriptionWraps).toBe(true)
+    expect(contract.composerNotifiesExpandedBeforeSetState).toBe(true)
     expect(contract.composerUsesComposerBar).toBe(true)
     expect(contract.composerDropsShrunkTargets).toBe(true)
     expect(contract.pairingUsesFormGrid).toBe(true)
@@ -157,7 +169,82 @@ describe("workspace section source contract", () => {
     expect(sources.chatsView).toContain("queueCopy")
     expect(sources.composer).toContain("queueCopy")
     expect(sources.composer).toContain("queueMessage")
+    expect(composerNotifiesExpandedBeforeSetState(sources.composer)).toBe(true)
+    expect(applyComposerExpandedChangeLocksNotifyFirst(readComponent("lib/ui/workspace-sections-layout.ts"))).toBe(
+      true,
+    )
     expect(sources.pairingSheet).toContain("completeSimulatedPairing")
     expect(sources.sharedPage).toContain("importSharedTasks")
+  })
+})
+
+describe("chat row accessible name", () => {
+  it("announces title, Demo, queued count, and honest preview without repeating the title", () => {
+    expect(
+      chatRowAccessibleName({
+        title: "Hermes · local",
+        source: "paired",
+        queuedCount: 0,
+        preview: "Start a conversation",
+      }),
+    ).toBe("Hermes · local. Start a conversation")
+    expect(
+      chatRowAccessibleName({
+        title: "Hermes · local",
+        source: "demo",
+        queuedCount: 2,
+        preview: "Queued note",
+      }),
+    ).toBe("Hermes · local, Demo, 2 queued. Queued note")
+    expect(
+      chatRowAccessibleName({
+        title: "Same title",
+        source: "paired",
+        queuedCount: 0,
+        preview: "Same title",
+      }),
+    ).toBe("Same title")
+    expect(
+      chatRowAccessibleName({
+        title: "New chat",
+        queuedCount: 0,
+        preview: "   ",
+      }),
+    ).toBe("New chat")
+  })
+})
+
+describe("composer expanded notify order", () => {
+  it("notifies onExpandedChange before committing expanded state", () => {
+    const order: string[] = []
+    applyComposerExpandedChange(
+      true,
+      (next) => {
+        order.push(`notify:${next}`)
+      },
+      (next) => {
+        order.push(`set:${next}`)
+      },
+    )
+    expect(order).toEqual(["notify:true", "set:true"])
+  })
+
+  it("rejects a same-tick useEffect notify and a setter that commits before notifying", () => {
+    expect(
+      composerNotifiesExpandedBeforeSetState(`
+  const setExpandedAndNotify = (next: boolean) => {
+    setExpanded(next)
+    onExpandedChangeRef.current?.(next)
+  }
+`),
+    ).toBe(false)
+    expect(
+      composerNotifiesExpandedBeforeSetState(`
+  const setExpandedAndNotify = (next: boolean) => {
+    setExpanded(next)
+  }
+  useEffect(() => { onExpandedChange?.(expanded) }, [expanded])
+`),
+    ).toBe(false)
   })
 })

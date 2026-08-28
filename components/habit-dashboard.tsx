@@ -241,7 +241,7 @@ export function HabitDashboard({
                             )}
                           </Button>
                           <div className="mk-entity-copy">
-                            <p className="text-sm font-serif text-foreground">{habit.name}</p>
+                            <p className="mk-entity-title text-sm font-serif text-foreground">{habit.name}</p>
                             <div className="mk-meta-row mt-1">
                               <span className="text-xs">{getCategoryIcon(habit.category)}</span>
                               <span className={cn("text-xs font-medium", getStreakColor(habit.streak))}>
@@ -321,7 +321,7 @@ export function HabitDashboard({
                           <div className="mk-entity-copy">
                             <div className="mk-meta-row mb-1">
                               <span className="text-sm">{getCategoryIcon(habit.category)}</span>
-                              <p className="truncate font-medium font-sans text-foreground">{habit.name}</p>
+                              <p className="mk-entity-title font-medium font-sans text-foreground">{habit.name}</p>
                               <Badge variant="secondary" className="text-xs">
                                 {habit.frequency}
                               </Badge>
@@ -408,7 +408,7 @@ export function HabitDashboard({
                           </div>
                           <span className="text-sm">{getCategoryIcon(habit.category)}</span>
                           <div className="mk-entity-copy">
-                            <p className="text-sm font-serif text-foreground">{habit.name}</p>
+                            <p className="mk-entity-title text-sm font-serif text-foreground">{habit.name}</p>
                           </div>
                           <span className={cn("text-sm font-medium", getStreakColor(habit.streak))}>
                             {habit.streak} days

@@ -267,7 +267,9 @@ function TaskCard({
           {task.completed ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5" />}
         </Button>
         <div className="mk-entity-copy">
-          <p className={task.completed ? "line-through text-muted-foreground" : ""}>{task.title}</p>
+          <p className={task.completed ? "mk-entity-title line-through text-muted-foreground" : "mk-entity-title"}>
+            {task.title}
+          </p>
           <div className="mk-meta-row mt-1 text-xs text-muted-foreground">
             <Badge variant={task.priority === "high" ? "destructive" : "secondary"}>{task.priority}</Badge>
             <span className="flex items-center gap-1">

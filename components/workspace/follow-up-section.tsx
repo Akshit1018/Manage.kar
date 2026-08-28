@@ -37,7 +37,7 @@ export function FollowUpSection({ tasks, onToggleTask, onNudge }: FollowUpSectio
                 {task.completed ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5" />}
               </Button>
               <div className="mk-entity-copy">
-                <p>{task.title}</p>
+                <p className="mk-entity-title">{task.title}</p>
                 {task.followUp ? (
                   <p className="text-xs text-muted-readable">{followUpCopy(task.followUp.cadence)}</p>
                 ) : null}

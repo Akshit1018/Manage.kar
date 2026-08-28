@@ -19,6 +19,7 @@ import {
   visibleSessions,
 } from "@/lib/dialer/dialer"
 import { NEW_CHAT_TARGET, type ChatListItem, type DialerState, type OutboxMessage } from "@/lib/dialer/types"
+import { chatRowAccessibleName } from "@/lib/ui/workspace-sections-layout"
 
 interface ChatsViewProps {
   sessionId: string
@@ -114,29 +115,26 @@ function ChatRow({ item, onOpen }: { item: ChatListItem; onOpen: () => void }) {
         type="button"
         className="flex w-full items-start gap-3 rounded-xl text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
         onClick={onOpen}
-        aria-label={`Open ${item.title}`}
+        aria-label={chatRowAccessibleName(item)}
       >
-        <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
+        <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
           {item.id === NEW_CHAT_TARGET ? (
             <Plus className="h-4 w-4 text-primary" />
           ) : (
             <MessageCircle className="h-4 w-4 text-primary" />
           )}
-        </div>
-        <div className="mk-entity-copy">
-          <div className="mk-meta-row">
+        </span>
+        <span className="mk-entity-copy">
+          <span className="mk-meta-row">
             {item.presence ? (
               <span
                 className={cn("h-2 w-2 shrink-0 rounded-full", presenceDotClass(item.presence))}
                 title={presenceLabel(item.presence)}
               />
             ) : null}
-            <h3 className="truncate font-semibold">{item.title}</h3>
+            <span className="mk-entity-title font-semibold">{item.title}</span>
             {item.source === "demo" ? (
-              <span
-                aria-label="Demo session"
-                className="rounded-full bg-secondary px-1.5 text-[10px] font-medium text-muted-foreground"
-              >
+              <span className="rounded-full bg-secondary px-1.5 text-[10px] font-medium text-muted-foreground">
                 Demo
               </span>
             ) : null}
@@ -145,9 +143,9 @@ function ChatRow({ item, onOpen }: { item: ChatListItem; onOpen: () => void }) {
                 {item.queuedCount} queued
               </span>
             ) : null}
-          </div>
-          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.preview}</p>
-        </div>
+          </span>
+          <span className="mt-1 line-clamp-2 text-sm text-muted-foreground">{item.preview}</span>
+        </span>
       </button>
     </article>
   )

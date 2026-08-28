@@ -34,6 +34,89 @@ export function composerLeavesOrbGutter(viewportWidth: number, composerRightInse
   return composerRightInsetPx >= COMPOSER_ORB_GUTTER_PX && composerRightInsetPx < viewportWidth
 }
 
+export interface ChatRowNameInput {
+  title: string
+  source?: "demo" | "paired"
+  queuedCount: number
+  preview: string
+}
+
+export function chatRowAccessibleName(item: ChatRowNameInput): string {
+  const parts = [item.title]
+  switch (item.source) {
+    case "demo":
+      parts.push("Demo")
+      break
+    case "paired":
+    case undefined:
+      break
+    default: {
+      const _exhaustive: never = item.source
+      return _exhaustive
+    }
+  }
+  if (item.queuedCount > 0) {
+    parts.push(`${item.queuedCount} queued`)
+  }
+  const head = parts.join(", ")
+  const preview = item.preview.trim()
+  if (preview && preview !== item.title) {
+    return `${head}. ${preview}`
+  }
+  return head
+}
+
+export function applyComposerExpandedChange(
+  next: boolean,
+  notify: (expanded: boolean) => void,
+  commit: (expanded: boolean) => void,
+): void {
+  notify(next)
+  commit(next)
+}
+
+export function composerNotifiesExpandedBeforeSetState(source: string): boolean {
+  const setter = source.match(/const setExpandedAndNotify[\s\S]*?\n  \}/)
+  if (!setter) {
+    return false
+  }
+  const body = setter[0]
+  if (!body.includes("applyComposerExpandedChange")) {
+    return false
+  }
+  const notifyCall = body.indexOf("onExpandedChangeRef.current")
+  const setCall = body.lastIndexOf("setExpanded")
+  return (
+    notifyCall >= 0 &&
+    setCall >= 0 &&
+    notifyCall < setCall &&
+    !/useEffect\(\s*\(\)\s*=>\s*\{\s*onExpandedChange/.test(source)
+  )
+}
+
+export function applyComposerExpandedChangeLocksNotifyFirst(source: string): boolean {
+  const helper = source.match(/export function applyComposerExpandedChange[\s\S]*?\n\}/)
+  if (!helper) {
+    return false
+  }
+  const notifyIdx = helper[0].indexOf("notify(next)")
+  const commitIdx = helper[0].indexOf("commit(next)")
+  return notifyIdx >= 0 && commitIdx >= 0 && notifyIdx < commitIdx
+}
+
+export function chatsButtonContainsHeading(source: string): boolean {
+  const buttons = source.match(/<button[\s\S]*?<\/button>/g) ?? []
+  return buttons.some((block) => /<h[1-6][\s>]/.test(block))
+}
+
+export function habitDescriptionAllowsWrap(source: string): boolean {
+  const match = source.match(/habit\.description[\s\S]{0,240}<p className="([^"]*)"/)
+  if (!match) {
+    return false
+  }
+  return !/(?:truncate|whitespace-nowrap|line-clamp)/.test(match[1])
+}
+
 function ruleBlock(css: string, selector: string): string | null {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
   const match = css.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))
@@ -45,8 +128,11 @@ export interface WorkspaceSectionsCssContract {
   chatHeaderStacksBelow360: boolean
   hasComposerBar: boolean
   composerBarAllowsShrink: boolean
-  composerKeepsOrbGutter: boolean
+  composerCollapsedKeepsOrbGutter: boolean
+  composerExpandedDropsOrbGutter: boolean
   composerSitsOnNavPlusKeyboard: boolean
+  entityCopyParagraphsDoNotNowrap: boolean
+  entityTitleTruncates: boolean
   hasPairingCode: boolean
   pairingCodeConstrained: boolean
   hasPairingQr: boolean
@@ -67,8 +153,11 @@ export function workspaceSectionsCssContract(css: string): WorkspaceSectionsCssC
     /@media\s*\(\s*max-width:\s*359px\s*\)\s*\{\s*\.mk-chat-header\s*\{([^}]*)\}/,
   )
   const composerBar = ruleBlock(css, ".mk-composer-bar")
+  const composerCollapsed = ruleBlock(css, ".mk-composer-collapsed")
   const composerExpanded = ruleBlock(css, ".mk-composer-expanded")
   const composer = ruleBlock(css, ".mk-composer")
+  const entityCopyParagraph = ruleBlock(css, ".mk-entity-copy p")
+  const entityTitle = ruleBlock(css, ".mk-entity-title")
   const pairingCode = ruleBlock(css, ".mk-pairing-code")
   const pairingQr = ruleBlock(css, ".mk-pairing-qr")
   const metricGrid = ruleBlock(css, ".mk-metric-grid")
@@ -85,11 +174,22 @@ export function workspaceSectionsCssContract(css: string): WorkspaceSectionsCssC
     chatHeaderStacksBelow360: Boolean(chatHeaderStack?.[1] && /flex-direction:\s*column/.test(chatHeaderStack[1])),
     hasComposerBar: Boolean(composerBar),
     composerBarAllowsShrink: Boolean(composerBar && /min-width:\s*0/.test(composerBar)),
-    composerKeepsOrbGutter: Boolean(
-      composerExpanded && (/right:\s*4rem/.test(composerExpanded) || /right:\s*5rem/.test(composerExpanded)),
+    composerCollapsedKeepsOrbGutter: Boolean(composerCollapsed && /right:\s*5rem/.test(composerCollapsed)),
+    composerExpandedDropsOrbGutter: Boolean(
+      composerExpanded &&
+        !/right:\s*4rem/.test(composerExpanded) &&
+        !/right:\s*5rem/.test(composerExpanded) &&
+        /right:\s*0\.5rem/.test(composerExpanded),
     ),
     composerSitsOnNavPlusKeyboard: Boolean(
       composer && /var\(--mk-bottom-nav\)/.test(composer) && /var\(--mk-keyboard/.test(composer),
+    ),
+    entityCopyParagraphsDoNotNowrap: !entityCopyParagraph || !/white-space:\s*nowrap/.test(entityCopyParagraph),
+    entityTitleTruncates: Boolean(
+      entityTitle &&
+        /overflow:\s*hidden/.test(entityTitle) &&
+        /text-overflow:\s*ellipsis/.test(entityTitle) &&
+        /white-space:\s*nowrap/.test(entityTitle),
     ),
     hasPairingCode: Boolean(pairingCode),
     pairingCodeConstrained: Boolean(
@@ -117,6 +217,11 @@ export interface WorkspaceSectionsSourceContract {
   chatsUsesEditorialCard: boolean
   chatsDropsCardOnClick: boolean
   chatsKeepsAccessibleActions: boolean
+  chatsRowHasNoHeadingInButton: boolean
+  chatsPreviewUsesLineClamp: boolean
+  chatsTitleUsesEntityTitle: boolean
+  habitDescriptionWraps: boolean
+  composerNotifiesExpandedBeforeSetState: boolean
   composerUsesComposerBar: boolean
   composerDropsShrunkTargets: boolean
   pairingUsesFormGrid: boolean
@@ -168,7 +273,12 @@ export function workspaceSectionsSourceContract(sources: {
       sources.chatsView.includes('aria-label="Machines"') &&
       sources.chatsView.includes('aria-label="New chat"') &&
       sources.chatsView.includes('aria-label="Back to chats"') &&
-      /aria-label=\{`Open \$\{item\.title\}`\}/.test(sources.chatsView),
+      /aria-label=\{chatRowAccessibleName\(item\)\}/.test(sources.chatsView),
+    chatsRowHasNoHeadingInButton: !chatsButtonContainsHeading(sources.chatsView),
+    chatsPreviewUsesLineClamp: sources.chatsView.includes("line-clamp-2"),
+    chatsTitleUsesEntityTitle: sources.chatsView.includes("mk-entity-title"),
+    habitDescriptionWraps: habitDescriptionAllowsWrap(sources.habitDashboard),
+    composerNotifiesExpandedBeforeSetState: composerNotifiesExpandedBeforeSetState(sources.composer),
     composerUsesComposerBar: sources.composer.includes("mk-composer-bar"),
     composerDropsShrunkTargets: !sources.composer.includes("h-9 w-9"),
     pairingUsesFormGrid: sources.pairingSheet.includes("mk-form-grid"),

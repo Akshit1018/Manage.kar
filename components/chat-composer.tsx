@@ -24,6 +24,7 @@ import {
 } from "@/lib/dialer/dialer"
 import { NEW_CHAT_TARGET, type ComposerOpenDetail, type DialerState } from "@/lib/dialer/types"
 import { useVisualViewportInset } from "@/lib/ui/use-visual-viewport"
+import { applyComposerExpandedChange } from "@/lib/ui/workspace-sections-layout"
 
 interface ChatComposerProps {
   onVoice?: () => void
@@ -46,8 +47,7 @@ export function ChatComposer({ onVoice, onExpandedChange, preferredTarget }: Cha
   useVisualViewportInset(expanded)
 
   const setExpandedAndNotify = (next: boolean) => {
-    onExpandedChangeRef.current?.(next)
-    setExpanded(next)
+    applyComposerExpandedChange(next, (value) => onExpandedChangeRef.current?.(value), setExpanded)
   }
 
   useEffect(() => {

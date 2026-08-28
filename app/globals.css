@@ -1190,7 +1190,7 @@ html[data-skin="classic"].dark {
     flex: 1 1 auto;
   }
 
-  .mk-entity-copy p {
+  .mk-entity-title {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1359,8 +1359,8 @@ html[data-skin="classic"].dark {
 
   .mk-composer-expanded {
     left: 0.5rem;
-    right: 4rem;
-    max-width: calc(100% - 4.5rem);
+    right: 0.5rem;
+    max-width: none;
   }
 
   .mk-composer-bar {

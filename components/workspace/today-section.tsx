@@ -60,7 +60,7 @@ export function TodaySection({
                   {task.completed ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Circle className="h-5 w-5" />}
                 </Button>
                 <div className="mk-entity-copy">
-                  <p>{task.title}</p>
+                  <p className="mk-entity-title">{task.title}</p>
                   <p className="text-xs text-muted-readable">{formatDueDate(task.dueDate, dateFormat)}</p>
                   {task.checklist && task.checklist.length > 0 ? (
                     <p className="text-xs text-muted-readable">
@@ -93,7 +93,7 @@ export function TodaySection({
                   )}
                 </Button>
                 <div className="mk-entity-copy">
-                  <p>{habit.name}</p>
+                  <p className="mk-entity-title">{habit.name}</p>
                   <p className="text-xs text-muted-readable">Habit · streak {habit.streak}</p>
                 </div>
               </div>

@@ -255,7 +255,7 @@ export function TimeTracker({ isOpen, onClose, workspace, persist }: TimeTracker
               {timeEntries.slice(0, 5).map((entry) => (
                 <div key={entry.id} className="flex items-center justify-between gap-3 p-3 bg-accent/20 rounded-xl">
                   <div className="mk-entity-copy">
-                    <p className="font-medium">{entry.taskName}</p>
+                    <p className="mk-entity-title font-medium">{entry.taskName}</p>
                     <p className="text-sm text-muted-foreground">{entry.project}</p>
                   </div>
                   <p className="shrink-0 font-mono text-sm">{formatTime(entry.id === currentEntry?.id ? runningDuration(entry, now) : entry.duration)}</p>

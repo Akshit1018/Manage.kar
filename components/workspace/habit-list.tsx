@@ -62,7 +62,7 @@ export function HabitList({
                 )}
               </Button>
               <div className="mk-entity-copy">
-                <p>{habit.name}</p>
+                <p className="mk-entity-title">{habit.name}</p>
                 <p className="text-xs text-muted-foreground">
                   Streak {habit.streak}
                   {isHabitScheduledOn(habit, todayKey, weekStartsOn) ? "" : " · off today"}

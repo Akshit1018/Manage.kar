@@ -191,7 +191,7 @@ export default function SharedTasksPage() {
                 <div className="flex items-center gap-3">
                   <Circle className="h-5 w-5 shrink-0 text-orange-500" />
                   <div className="mk-entity-copy">
-                    <p>{task.title}</p>
+                    <p className="mk-entity-title">{task.title}</p>
                     <div className="mk-meta-row mt-2">
                       <Badge variant="secondary">{task.priority}</Badge>
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -215,7 +215,7 @@ export default function SharedTasksPage() {
               <Card key={task.id} className="mk-editorial-card p-4 opacity-60">
                 <div className="flex items-center gap-3">
                   <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" />
-                  <p className="mk-entity-copy line-through text-muted-foreground">{task.title}</p>
+                  <p className="mk-entity-copy mk-entity-title line-through text-muted-foreground">{task.title}</p>
                 </div>
               </Card>
             ))}
