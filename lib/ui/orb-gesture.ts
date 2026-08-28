@@ -144,7 +144,12 @@ export function parseSavedOrbPosition(raw: string | null): { x: number; y: numbe
   }
   try {
     const parsed = JSON.parse(raw) as { x?: unknown; y?: unknown }
-    if (Number.isFinite(parsed.x) && Number.isFinite(parsed.y)) {
+    if (
+      typeof parsed.x === "number" &&
+      typeof parsed.y === "number" &&
+      Number.isFinite(parsed.x) &&
+      Number.isFinite(parsed.y)
+    ) {
       return { x: parsed.x, y: parsed.y }
     }
   } catch {
