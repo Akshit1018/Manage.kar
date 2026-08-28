@@ -110,6 +110,7 @@ export function orbViewportBounds(input: {
   height: number
   visualHeight?: number
   visualOffsetTop?: number
+  chromeReserve?: number
 }): OrbBounds {
   const overlap = keyboardOverlap(
     input.height,
@@ -119,7 +120,11 @@ export function orbViewportBounds(input: {
   return {
     width: input.width,
     height: input.height,
-    bottomReserve: Math.max(ORB_BOTTOM_RESERVE, overlap + ORB_INSET),
+    bottomReserve: Math.max(
+      ORB_BOTTOM_RESERVE,
+      input.chromeReserve ?? 0,
+      overlap + ORB_INSET,
+    ),
   }
 }
 

@@ -240,6 +240,28 @@ describe("orbViewportBounds", () => {
     const pos = clampOrbPosition(200, 800, bounds)
     expect(pos.y + ORB_SIZE).toBeLessThanOrEqual(844 - overlap - ORB_INSET)
   })
+
+  it("raises the reserve to a shared nav and composer chrome height", () => {
+    const chromeReserve = 132
+    const bounds = orbViewportBounds({
+      width: 390,
+      height: 844,
+      chromeReserve,
+    })
+    expect(bounds.bottomReserve).toBe(chromeReserve)
+    const parked = defaultOrbPosition(bounds)
+    expect(parked.y + ORB_SIZE).toBeLessThanOrEqual(844 - chromeReserve)
+    expect(snapOrbToEdge({ x: 280, y: 800 }, bounds)).toEqual({
+      x: 326,
+      y: 844 - ORB_SIZE - chromeReserve,
+    })
+  })
+
+  it("does not shrink below the 76px floor when chrome is shorter", () => {
+    expect(
+      orbViewportBounds({ width: 390, height: 844, chromeReserve: 40 }).bottomReserve,
+    ).toBe(ORB_BOTTOM_RESERVE)
+  })
 })
 
 describe("orbPlacementTransitionMs", () => {

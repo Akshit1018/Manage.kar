@@ -33,4 +33,15 @@ describe("editorial surface CSS contract", () => {
     expect(BUTTON_TSX).toMatch(/sm:\s*"min-h-11 h-11/)
     expect(BUTTON_TSX).not.toMatch(/sm:\s*"min-h-11 h-10/)
   })
+
+  it("defines shared bottom chrome and a theme-compatible featured surface", () => {
+    expect(globalsCss).toMatch(/--mk-bottom-nav:/)
+    expect(globalsCss).toMatch(/--mk-composer-slot:/)
+    expect(globalsCss).toMatch(/--mk-bottom-chrome:/)
+    expect(globalsCss).toMatch(/--mk-featured:/)
+    expect(globalsCss).toMatch(/--mk-featured-foreground:/)
+    expect(globalsCss).toMatch(/\.mk-featured-surface\s*\{/)
+    expect(globalsCss).toMatch(/\.mk-pill-nav\s*\{/)
+    expect(globalsCss).toMatch(/\.mk-workspace\s*\{/)
+  })
 })

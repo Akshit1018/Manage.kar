@@ -9,6 +9,7 @@ import { dispatchComposerOpen } from "@/lib/dialer/dialer"
 import {
   ICON_BAR_MS,
   LONG_PRESS_MS,
+  ORB_BOTTOM_RESERVE,
   applyOrbKeyboardIntent,
   attachOrbPointerFallback,
   clampOrbPosition,
@@ -35,6 +36,12 @@ interface FloatingToggleProps {
   suppressed?: boolean
 }
 
+function readChromeReserve() {
+  const probe = document.querySelector("[data-mk-bottom-chrome]")
+  const height = probe instanceof HTMLElement ? Math.round(probe.getBoundingClientRect().height) : 0
+  return Math.max(ORB_BOTTOM_RESERVE, height)
+}
+
 function readBounds() {
   const visual = window.visualViewport
   return orbViewportBounds({
@@ -42,6 +49,7 @@ function readBounds() {
     height: window.innerHeight,
     visualHeight: visual?.height,
     visualOffsetTop: visual?.offsetTop,
+    chromeReserve: readChromeReserve(),
   })
 }
 
@@ -470,7 +478,7 @@ export function FloatingToggle({
               }
             : {
                 right: "1rem",
-                bottom: "calc(5.5rem + env(safe-area-inset-bottom, 0px))",
+                bottom: "var(--mk-bottom-chrome)",
                 touchAction: "none",
               }
         }

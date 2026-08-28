@@ -162,8 +162,7 @@ export function ChatComposer({ onVoice, onExpandedChange, preferredTarget }: Cha
         aria-label="Open chat composer"
         onClick={() => setExpanded(true)}
         className={cn(
-          "mk-touch fixed left-1/2 z-[70] -translate-x-1/2 select-none",
-          "bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px)+var(--mk-keyboard,0px))] sm:bottom-6",
+          "mk-touch mk-composer fixed left-4 right-20 z-[70] sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-auto select-none",
           "flex items-center gap-2 rounded-full border border-border/60 bg-card/80 px-4 py-2.5",
           "text-sm text-muted-foreground shadow-lg backdrop-blur-xl",
         )}
@@ -177,8 +176,7 @@ export function ChatComposer({ onVoice, onExpandedChange, preferredTarget }: Cha
   return (
     <div
       className={cn(
-        "fixed inset-x-2 right-16 z-[70] sm:inset-x-auto sm:right-auto sm:left-1/2 sm:w-[28rem] sm:-translate-x-1/2",
-        "bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px)+var(--mk-keyboard,0px))] sm:bottom-6",
+        "mk-composer fixed inset-x-2 right-16 z-[70] sm:inset-x-auto sm:right-auto sm:left-1/2 sm:w-[28rem] sm:-translate-x-1/2",
       )}
     >
       {wheelOpen ? (

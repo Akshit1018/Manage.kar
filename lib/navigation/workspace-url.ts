@@ -24,6 +24,25 @@ export function parseWorkspaceSearch(search: string): {
   return { view, q, filter, session }
 }
 
+export function workspaceViewTitle(view: WorkspaceView): string {
+  switch (view) {
+    case "overview":
+      return "Home"
+    case "tasks":
+      return "Tasks"
+    case "notes":
+      return "Notes"
+    case "chats":
+      return "Chats"
+    case "habits":
+      return "Habits"
+    default: {
+      const _exhaustive: never = view
+      throw new Error(`Unhandled workspace view: ${_exhaustive}`)
+    }
+  }
+}
+
 export function serializeWorkspaceSearch(
   view: WorkspaceView,
   q: string,

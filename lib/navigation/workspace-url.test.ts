@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { parseWorkspaceSearch, serializeWorkspaceSearch } from "./workspace-url"
+import { parseWorkspaceSearch, serializeWorkspaceSearch, workspaceViewTitle } from "./workspace-url"
 
 describe("workspace URL state", () => {
   it("reads view and query from the search string", () => {
@@ -34,5 +34,13 @@ describe("workspace URL state", () => {
     expect(serializeWorkspaceSearch("habits", " walk ")).toBe("?view=habits&q=walk")
     expect(serializeWorkspaceSearch("tasks", "", "overdue")).toBe("?view=tasks&filter=overdue")
     expect(serializeWorkspaceSearch("chats", "", "all", "demo-local")).toBe("?view=chats&session=demo-local")
+  })
+
+  it("names each workspace tab for the editorial heading", () => {
+    expect(workspaceViewTitle("overview")).toBe("Home")
+    expect(workspaceViewTitle("tasks")).toBe("Tasks")
+    expect(workspaceViewTitle("notes")).toBe("Notes")
+    expect(workspaceViewTitle("chats")).toBe("Chats")
+    expect(workspaceViewTitle("habits")).toBe("Habits")
   })
 })
