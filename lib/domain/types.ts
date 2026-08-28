@@ -1,4 +1,6 @@
 export type TaskPriority = "high" | "medium" | "low"
+export type TaskStatus = "todo" | "doing" | "done"
+export type FollowUpCadence = "daily" | "weekly"
 export type RecurringRule = "none" | "daily" | "weekly" | "monthly"
 export type HabitCategory = "health" | "productivity" | "learning" | "lifestyle" | "fitness" | "mindfulness"
 export type HabitFrequency = "daily" | "weekly" | "custom"
@@ -24,6 +26,12 @@ export interface TaskChecklistItem {
   completed: boolean
 }
 
+export interface TaskFollowUp {
+  cadence: FollowUpCadence
+  /** ISO timestamp of the last local nudge the user acknowledged. */
+  lastNudgedAt?: string
+}
+
 export interface Task {
   id: number
   title: string
@@ -35,6 +43,13 @@ export interface Task {
   reminders?: boolean
   checklist?: TaskChecklistItem[]
   labelIds?: number[]
+  /** Kanban column. `completed` stays the source of truth for done-ness. */
+  status?: TaskStatus
+  /** Human owner. Defaults to the device user ("me") when absent. */
+  owner?: string
+  /** Optional agent worker label for the future Hermes kanban integration. */
+  worker?: string
+  followUp?: TaskFollowUp
   updatedAt?: string
 }
 

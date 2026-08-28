@@ -477,6 +477,64 @@ describe("workspace store", () => {
     expect(legacy.labels.find((label) => label.name === "legacy")?.color).toBeUndefined()
   })
 
+  it("round-trips task status, owner, worker, and follow-up metadata", () => {
+    const storage = new MemoryStore()
+    const workspace = createEmptyWorkspace()
+    workspace.tasks.push({
+      id: 1,
+      title: "Board task",
+      completed: false,
+      priority: "medium",
+      dueDate: "2026-08-28",
+      status: "doing",
+      owner: "me",
+      worker: "hermes",
+      followUp: { cadence: "daily", lastNudgedAt: "2026-08-27T10:00:00.000Z" },
+    })
+
+    saveWorkspace(storage, workspace)
+    const loaded = loadWorkspace(storage)
+    const task = loaded.tasks.find((item) => item.title === "Board task")
+
+    expect(task?.status).toBe("doing")
+    expect(task?.owner).toBe("me")
+    expect(task?.worker).toBe("hermes")
+    expect(task?.followUp).toEqual({ cadence: "daily", lastNudgedAt: "2026-08-27T10:00:00.000Z" })
+  })
+
+  it("keeps tasks with invalid status or follow-up data, dropping only the bad fields", () => {
+    const storage = new MemoryStore()
+    storage.setItem(
+      WORKSPACE_KEY,
+      JSON.stringify({
+        schemaVersion: 1,
+        tasks: [
+          {
+            id: 1,
+            title: "Odd metadata",
+            completed: false,
+            priority: "low",
+            dueDate: "2026-08-28",
+            status: "blocked",
+            owner: "  ",
+            worker: 42,
+            followUp: { cadence: "hourly" },
+          },
+        ],
+        notes: [],
+        habits: [],
+      }),
+    )
+
+    const loaded = loadWorkspace(storage)
+    const task = loaded.tasks.find((item) => item.title === "Odd metadata")
+    expect(task).toBeDefined()
+    expect(task?.status).toBeUndefined()
+    expect(task?.owner).toBeUndefined()
+    expect(task?.worker).toBeUndefined()
+    expect(task?.followUp).toBeUndefined()
+  })
+
   it("keeps pins, colors, and task metadata through a backup round trip", () => {
     const workspace = createEmptyWorkspace()
     workspace.labels.push({ id: 90, name: "deep", kind: "tag", color: "teal" })

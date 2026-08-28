@@ -43,7 +43,8 @@ import { TaskList } from "@/components/workspace/task-list"
 import { NoteList } from "@/components/workspace/note-list"
 import { HabitList } from "@/components/workspace/habit-list"
 import { ChatsView } from "@/components/workspace/chats-view"
-import type { Habit, LabelKind, Note, Task, WorkspaceLabel } from "@/lib/domain/types"
+import type { Habit, LabelKind, Note, Task, TaskStatus, WorkspaceLabel } from "@/lib/domain/types"
+import { withTaskStatus } from "@/lib/tasks/board"
 import { attachUnknownTokensAsTags, parseAtTokens, uniqueLabelIds, upsertLabel } from "@/lib/labels/book"
 import { labelColor, nextLabelColor } from "@/lib/labels/palette"
 import { togglePinned } from "@/lib/notes/organize"
@@ -169,6 +170,30 @@ export function Dashboard({ initialSearch }: DashboardProps) {
       return {
         ...current,
         tasks: current.tasks.map((task) => (task.id === taskId ? { ...task, completed: false } : task)),
+      }
+    })
+  }
+
+  const handleSetTaskStatus = (taskId: number, status: TaskStatus) => {
+    persist((current) => {
+      const existing = current.tasks.find((task) => task.id === taskId)
+      if (!existing) {
+        return current
+      }
+      if (status === "done" && !existing.completed) {
+        const allocated = allocateEntityId(current)
+        const { completed, next } = completeRecurringTask(withTaskStatus(existing, "done"), allocated.id)
+        return {
+          ...allocated.workspace,
+          tasks: [
+            ...allocated.workspace.tasks.map((task) => (task.id === taskId ? completed : task)),
+            ...(next ? [next] : []),
+          ],
+        }
+      }
+      return {
+        ...current,
+        tasks: current.tasks.map((task) => (task.id === taskId ? withTaskStatus(task, status) : task)),
       }
     })
   }
@@ -731,6 +756,7 @@ export function Dashboard({ initialSearch }: DashboardProps) {
             onAddTask={() => setTaskModal({ isOpen: true, mode: "create" })}
             onToggleTask={handleTaskToggle}
             onEditTask={(task) => setTaskModal({ isOpen: true, mode: "edit", task })}
+            onSetTaskStatus={handleSetTaskStatus}
           />
         )}
 

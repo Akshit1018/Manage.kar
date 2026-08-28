@@ -9,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Repeat, Bell, Plus, X, Trash2, ChevronDown, ChevronUp, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { LabelKind, RecurringRule, Task, WorkspaceLabel } from "@/lib/domain/types"
+import type { FollowUpCadence, LabelKind, RecurringRule, Task, TaskStatus, WorkspaceLabel } from "@/lib/domain/types"
+import { TASK_STATUSES, statusLabel, taskStatus } from "@/lib/tasks/board"
 import { AtTokenSuggest, LabelPicker } from "@/components/label-picker"
 import { localDateKey, normalizeDueDate } from "@/lib/dates/due-date"
 import { ConfirmSheet } from "@/components/confirm-sheet"
@@ -37,6 +38,10 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode, label
     reminders: false,
     checklist: [],
     labelIds: [],
+    status: "todo",
+    owner: "",
+    worker: "",
+    followUp: undefined,
   })
   const [titleError, setTitleError] = useState("")
   const [descriptionCursor, setDescriptionCursor] = useState(0)
@@ -56,6 +61,10 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode, label
         reminders: task.reminders || false,
         checklist: task.checklist || [],
         labelIds: task.labelIds || [],
+        status: taskStatus(task),
+        owner: task.owner || "",
+        worker: task.worker || "",
+        followUp: task.followUp,
       })
     } else {
       setFormData({
@@ -68,6 +77,10 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode, label
         reminders: false,
         checklist: [],
         labelIds: [],
+        status: "todo",
+        owner: "",
+        worker: "",
+        followUp: undefined,
       })
     }
     setTitleError("")
@@ -81,10 +94,15 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode, label
       return
     }
 
-    const payload = {
+    const status = formData.status ?? "todo"
+    const payload: Omit<Task, "id"> = {
       ...formData,
       title,
       dueDate: normalizeDueDate(formData.dueDate),
+      completed: status === "done",
+      status,
+      owner: formData.owner?.trim() || undefined,
+      worker: formData.worker?.trim() || undefined,
     }
 
     if (mode === "edit" && task) {
@@ -232,6 +250,25 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode, label
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
+                <Label className="responsive-text-sm font-medium text-readable">Status</Label>
+                <Select
+                  value={formData.status ?? "todo"}
+                  onValueChange={(value: TaskStatus) => setFormData({ ...formData, status: value })}
+                >
+                  <SelectTrigger className="bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TASK_STATUSES.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {statusLabel(status)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
                 <Label className="responsive-text-sm font-medium text-readable">Priority</Label>
                 <Select
                   value={formData.priority}
@@ -313,6 +350,65 @@ export function TaskModal({ isOpen, onClose, onSave, onDelete, task, mode, label
                   </div>
                   <p className="text-xs text-muted-readable">
                     Requires notification permission. The tab must be open.
+                  </p>
+
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-accent/10 border border-border/30">
+                    <div className="flex items-center gap-2">
+                      <Repeat className="h-4 w-4 text-primary" />
+                      <Label className="responsive-text-sm text-readable">Follow up until done</Label>
+                    </div>
+                    <Select
+                      value={formData.followUp?.cadence ?? "none"}
+                      onValueChange={(value: FollowUpCadence | "none") =>
+                        setFormData({
+                          ...formData,
+                          followUp: value === "none" ? undefined : { cadence: value },
+                        })
+                      }
+                    >
+                      <SelectTrigger className="w-28 sm:w-32 bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        <SelectItem value="daily">Daily</SelectItem>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <p className="text-xs text-muted-readable">
+                    A local nudge on the Home tab while the app is open — not a push notification.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="task-owner" className="responsive-text-sm text-readable">
+                        Owner
+                      </Label>
+                      <Input
+                        id="task-owner"
+                        value={formData.owner ?? ""}
+                        onChange={(event) => setFormData({ ...formData, owner: event.target.value })}
+                        placeholder="me"
+                        className="bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="task-worker" className="responsive-text-sm text-readable">
+                        Worker (agent)
+                      </Label>
+                      <Input
+                        id="task-worker"
+                        value={formData.worker ?? ""}
+                        onChange={(event) => setFormData({ ...formData, worker: event.target.value })}
+                        placeholder="e.g. hermes"
+                        className="bg-card/95 backdrop-blur-xl border border-border/50 rounded-xl"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-readable">
+                    A note of who owns this and which agent will work it. Stored on this device for the future
+                    Hermes kanban — no agent is assigned anything yet.
                   </p>
                 </div>
               )}

@@ -8,6 +8,7 @@ import type {
   Habit,
   Note,
   Task,
+  TaskFollowUp,
   WorkspaceLabel,
   TimeEntry,
   UserProfile,
@@ -16,6 +17,8 @@ import type {
 import { emptyDeletedIds, stampWorkspaceMutation } from "@/lib/store/merge"
 import { hydrateWorkspaceLabels, normalizeLabelName } from "@/lib/labels/book"
 import { isLabelColor } from "@/lib/labels/palette"
+import { isTaskStatus } from "@/lib/tasks/board"
+import { isFollowUpCadence } from "@/lib/tasks/follow-up"
 import { normalizeSkin } from "@/lib/theme/apply-theme"
 import { localDateKey, normalizeDueDate } from "@/lib/dates/due-date"
 import { hydrateHabit } from "@/lib/habits/streak"
@@ -79,6 +82,10 @@ const taskSchema = z
       )
       .optional(),
     labelIds: z.array(z.number()).optional(),
+    status: z.unknown().optional(),
+    owner: z.unknown().optional(),
+    worker: z.unknown().optional(),
+    followUp: z.unknown().optional(),
   })
   .passthrough()
 
@@ -325,6 +332,24 @@ function parseArray<T>(
   return { items, dropped: rejected.length, rejected }
 }
 
+function asTrimmedString(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined
+  }
+  const trimmed = value.trim()
+  return trimmed ? trimmed.slice(0, 120) : undefined
+}
+
+function asFollowUp(value: unknown): TaskFollowUp | undefined {
+  if (!isRecord(value) || !isFollowUpCadence(value.cadence)) {
+    return undefined
+  }
+  return {
+    cadence: value.cadence,
+    ...(typeof value.lastNudgedAt === "string" ? { lastNudgedAt: value.lastNudgedAt } : {}),
+  }
+}
+
 function asTask(item: unknown, weekStartsOn: "sunday" | "monday"): Task | null {
   const parsed = taskSchema.safeParse(item)
   if (!parsed.success) {
@@ -336,6 +361,10 @@ function asTask(item: unknown, weekStartsOn: "sunday" | "monday"): Task | null {
     title: task.title.trim(),
     dueDate: normalizeDueDate(task.dueDate, new Date(), weekStartsOn),
     labelIds: asIdArray(task.labelIds),
+    status: isTaskStatus(parsed.data.status) ? parsed.data.status : undefined,
+    owner: asTrimmedString(parsed.data.owner),
+    worker: asTrimmedString(parsed.data.worker),
+    followUp: asFollowUp(parsed.data.followUp),
   }
 }
 
