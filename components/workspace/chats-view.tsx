@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { ArrowLeft, Cable, MessageCircle, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ApprovalCard } from "@/components/approval-card"
 import { EmptyState } from "@/components/empty-state"
 import { PairingSheet } from "@/components/pairing-sheet"
 import { cn } from "@/lib/utils"
@@ -19,6 +20,7 @@ import {
   visibleSessions,
 } from "@/lib/dialer/dialer"
 import { NEW_CHAT_TARGET, type ChatListItem, type DialerState, type OutboxMessage } from "@/lib/dialer/types"
+import { resolvePendingApproval } from "@/lib/hermes/approval"
 import { chatRowAccessibleName } from "@/lib/ui/workspace-sections-layout"
 
 interface ChatsViewProps {
@@ -44,17 +46,18 @@ export function ChatsView({ sessionId, searchQuery, onOpenSession, onBack }: Cha
   }, [])
 
   if (!dialer) {
-    return null
+    return (
+      <div className="grid gap-3" aria-busy="true" aria-label="Loading chats">
+        <article className="mk-chat-skeleton mk-editorial-card h-20 animate-pulse" />
+        <article className="mk-chat-skeleton mk-editorial-card h-20 animate-pulse" />
+        <article className="mk-chat-skeleton mk-editorial-card h-20 animate-pulse" />
+      </div>
+    )
   }
 
   if (sessionId) {
     return (
-      <ChatThread
-        dialer={dialer}
-        sessionId={sessionId}
-        onBack={onBack}
-        onCompose={() => dispatchComposerOpen({ target: sessionId })}
-      />
+      <ChatThread dialer={dialer} sessionId={sessionId} onBack={onBack} />
     )
   }
 
@@ -115,7 +118,10 @@ function ChatRow({ item, onOpen }: { item: ChatListItem; onOpen: () => void }) {
         type="button"
         className="flex w-full items-start gap-3 rounded-xl text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
         onClick={onOpen}
-        aria-label={chatRowAccessibleName(item)}
+        aria-label={chatRowAccessibleName({
+          ...item,
+          statusWord: item.presence ? presenceLabel(item.presence, item.source) : undefined,
+        })}
       >
         <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
           {item.id === NEW_CHAT_TARGET ? (
@@ -128,8 +134,8 @@ function ChatRow({ item, onOpen }: { item: ChatListItem; onOpen: () => void }) {
           <span className="mk-meta-row">
             {item.presence ? (
               <span
-                className={cn("h-2 w-2 shrink-0 rounded-full", presenceDotClass(item.presence))}
-                title={presenceLabel(item.presence)}
+                className={cn("h-2 w-2 shrink-0 rounded-full", presenceDotClass(item.presence, item.source))}
+                title={presenceLabel(item.presence, item.source)}
               />
             ) : null}
             <span className="mk-entity-title font-semibold">{item.title}</span>
@@ -155,12 +161,10 @@ function ChatThread({
   dialer,
   sessionId,
   onBack,
-  onCompose,
 }: {
   dialer: DialerState
   sessionId: string
   onBack: () => void
-  onCompose: () => void
 }) {
   const sessions = visibleSessions(dialer)
   const title = targetTitle(sessions, sessionId)
@@ -176,7 +180,7 @@ function ChatThread({
         <div className="mk-chat-header-copy">
           <div className="mk-meta-row">
             {session?.presence ? (
-              <span className={cn("h-2 w-2 shrink-0 rounded-full", presenceDotClass(session.presence))} />
+              <span className={cn("h-2 w-2 shrink-0 rounded-full", presenceDotClass(session.presence, session.source))} />
             ) : null}
             <h2 className="truncate text-xl font-bold">{title}</h2>
             {session?.source === "demo" ? (
@@ -189,20 +193,15 @@ function ChatThread({
             ) : null}
           </div>
           <p className="text-xs text-muted-foreground">
-            {session ? presenceLabel(session.presence) : "Not paired yet"}
+            {session ? presenceLabel(session.presence, session.source) : "Not paired yet"}
           </p>
         </div>
-        <Button className="mk-chat-header-action mk-touch" onClick={onCompose}>
-          <Plus className="mr-2 h-4 w-4" />
-          Message
-        </Button>
       </div>
+      <ApprovalCard approval={resolvePendingApproval([])} />
       {messages.length === 0 ? (
         <EmptyState
           title="No messages yet"
-          description="The dialer at the bottom is the quick-fire composer. Messages stay local until this machine is paired."
-          actionLabel="Message"
-          onAction={onCompose}
+          description="Use the composer at the bottom. Messages stay local until this machine is paired."
         />
       ) : (
         <div className="space-y-3">

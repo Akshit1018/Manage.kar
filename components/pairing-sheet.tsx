@@ -26,6 +26,7 @@ import {
   persistPairing,
   removeMachine,
 } from "@/lib/pairing/pairing"
+import { showSimulatedPairingControl } from "@/lib/pairing/developer"
 import type { MachineKind, PairingState } from "@/lib/pairing/types"
 
 interface PairingSheetProps {
@@ -85,6 +86,7 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
   const [dialer, setDialer] = useState<DialerState | null>(null)
   const [draft, setDraft] = useState<DraftPairing | null>(null)
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
+  const [developerPairing, setDeveloperPairing] = useState(false)
 
   useEffect(() => {
     if (!open) {
@@ -92,6 +94,12 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
       setConfirmRemoveId(null)
       return
     }
+    setDeveloperPairing(
+      showSimulatedPairingControl({
+        hash: window.location.hash,
+        search: window.location.search,
+      }),
+    )
     const reload = () => {
       setPairing(loadPairing(browserStorage()))
       setDialer(loadDialer(browserStorage()))
@@ -182,8 +190,8 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
                         <div className="flex items-center gap-2">
                           {session ? (
                             <span
-                              className={cn("h-2 w-2 shrink-0 rounded-full", presenceDotClass(session.presence))}
-                              title={presenceLabel(session.presence)}
+                              className={cn("h-2 w-2 shrink-0 rounded-full", presenceDotClass(session.presence, session.source))}
+                              title={presenceLabel(session.presence, session.source)}
                             />
                           ) : null}
                           <h4 className="truncate font-semibold">{machine.name}</h4>
@@ -211,8 +219,7 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
               <div className="flex items-start gap-3">
                 <Cable className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">
-                  No machines paired. Add one to generate a pairing code — once a real Hermes machine
-                  scans it, its chats will appear in the Chats tab.
+                  Generate a code, then open Hermes on the computer → Pair phone.
                 </p>
               </div>
             </Card>
@@ -250,8 +257,9 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
               </div>
 
               <div className="space-y-2 rounded-xl border border-border/50 bg-accent/10 p-4">
+                <h5 className="text-center text-sm font-semibold">Not a real QR yet</h5>
                 <QrPlaceholder code={draft.code} />
-                <p className="mk-pairing-code text-lg tracking-widest">{draft.code}</p>
+                <p className="mk-pairing-code text-center text-2xl font-semibold tracking-widest">{draft.code}</p>
                 <p className="mk-pairing-code text-xs text-muted-foreground">
                   {pairingLink(draft.code)}
                 </p>
@@ -269,20 +277,28 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
                 <Button variant="outline" className="mk-touch bg-transparent" onClick={() => setDraft(null)}>
                   Cancel
                 </Button>
-                <Button className="mk-touch" onClick={simulatePairing}>
-                  <FlaskConical className="mr-2 h-4 w-4" />
-                  Simulate pairing (dev)
-                </Button>
+                {developerPairing ? (
+                  <Button className="mk-touch" onClick={simulatePairing}>
+                    <FlaskConical className="mr-2 h-4 w-4" />
+                    Simulate pairing (dev)
+                  </Button>
+                ) : null}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Simulation only: registers the machine locally and opens a chat for it. No real handshake
-                happens.
-              </p>
+              {developerPairing ? (
+                <p className="text-xs text-muted-foreground">
+                  Simulation only: registers the machine locally and opens a chat for it. No real handshake
+                  happens.
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Waiting for the computer. This phone is the client; the machine confirms the pair.
+                </p>
+              )}
             </Card>
           ) : (
             <Button className="mk-touch w-full" onClick={startDraft}>
               <Plus className="mr-2 h-4 w-4" />
-              Add machine
+              Pair a computer
             </Button>
           )}
         </div>

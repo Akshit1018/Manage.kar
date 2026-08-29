@@ -37,6 +37,7 @@ export function composerLeavesOrbGutter(viewportWidth: number, composerRightInse
 export interface ChatRowNameInput {
   title: string
   source?: "demo" | "paired"
+  statusWord?: string
   queuedCount: number
   preview: string
 }
@@ -54,6 +55,9 @@ export function chatRowAccessibleName(item: ChatRowNameInput): string {
       const _exhaustive: never = item.source
       return _exhaustive
     }
+  }
+  if (item.statusWord) {
+    parts.push(item.statusWord)
   }
   if (item.queuedCount > 0) {
     parts.push(`${item.queuedCount} queued`)
@@ -220,6 +224,10 @@ export interface WorkspaceSectionsSourceContract {
   chatsRowHasNoHeadingInButton: boolean
   chatsPreviewUsesLineClamp: boolean
   chatsTitleUsesEntityTitle: boolean
+  chatsThreadHasNoHeaderMessage: boolean
+  chatsEmptyHasNoMessageCta: boolean
+  chatsLoadingUsesSkeletons: boolean
+  chatsMountsApprovalCard: boolean
   habitDescriptionWraps: boolean
   composerNotifiesExpandedBeforeSetState: boolean
   composerUsesComposerBar: boolean
@@ -273,10 +281,16 @@ export function workspaceSectionsSourceContract(sources: {
       sources.chatsView.includes('aria-label="Machines"') &&
       sources.chatsView.includes('aria-label="New chat"') &&
       sources.chatsView.includes('aria-label="Back to chats"') &&
-      /aria-label=\{chatRowAccessibleName\(item\)\}/.test(sources.chatsView),
+      /aria-label=\{chatRowAccessibleName\(/.test(sources.chatsView),
     chatsRowHasNoHeadingInButton: !chatsButtonContainsHeading(sources.chatsView),
     chatsPreviewUsesLineClamp: sources.chatsView.includes("line-clamp-2"),
     chatsTitleUsesEntityTitle: sources.chatsView.includes("mk-entity-title"),
+    chatsThreadHasNoHeaderMessage:
+      !sources.chatsView.includes("Message</Button>") && !sources.chatsView.includes(">Message<"),
+    chatsEmptyHasNoMessageCta:
+      !sources.chatsView.includes('actionLabel="Message"') && !sources.chatsView.includes("onAction={onCompose}"),
+    chatsLoadingUsesSkeletons: sources.chatsView.includes("mk-chat-skeleton"),
+    chatsMountsApprovalCard: sources.chatsView.includes("ApprovalCard"),
     habitDescriptionWraps: habitDescriptionAllowsWrap(sources.habitDashboard),
     composerNotifiesExpandedBeforeSetState: composerNotifiesExpandedBeforeSetState(sources.composer),
     composerUsesComposerBar: sources.composer.includes("mk-composer-bar"),

@@ -35,6 +35,7 @@ export interface WheelItem {
   title: string
   /** Undefined for the New chat entry, which has no machine behind it yet. */
   presence?: SessionPresence
+  source?: SessionSource
 }
 
 export interface ChatListItem {
