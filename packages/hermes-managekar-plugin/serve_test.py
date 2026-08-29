@@ -69,6 +69,13 @@ class ServeTests(unittest.TestCase):
             )
             self.assertEqual(reuse_status, 409)
             self.assertEqual(reuse["error"], "already claimed")
+
+            qr = urlopen(f"http://127.0.0.1:{port}/pair/{minted['pair_id']}", timeout=2)
+            html = qr.read().decode("utf-8")
+            self.assertEqual(qr.status, 200)
+            self.assertIn("<svg", html)
+            self.assertIn("pair QR", html)
+            self.assertIn("managekar.pair.v1", html)
         finally:
             server.shutdown()
             server.server_close()

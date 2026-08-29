@@ -40,8 +40,10 @@ These predate the Hermes companion direction and are not reversed by it.
 [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent). We consume:
 
 - Chat/sessions/streaming: JSON-RPC WebSocket (`/api/ws`, port 9119) via `@hermes/shared`.
-- Tasks: the Hermes **kanban** board (statuses `triage → todo → ready → running → blocked → review → done`),
-  boards as project containers. We render it; we do not reinvent it.
+- Tasks: the Hermes **kanban** board (statuses
+  `triage → todo → scheduled → ready → running → blocked → review → done`,
+  plus `archived` as a sink). Boards are project containers. We render
+  those statuses; we do not clone the dashboard SPA.
 - Reminders/recurring work: Hermes **cron** (natural-language schedules, multi-platform delivery).
 - Transcription (fast tier): `POST /api/audio/transcribe` on the paired machine.
 - Agent identity: Hermes **profiles**; per-bot canonical chat follows the desktop "Bot Chat" title contract.
@@ -235,3 +237,24 @@ D001–D005.
   the Chats tab.
 - **Reversal:** If Hermes ships an unauthenticated companion claim route on the
   dashboard, retire `--serve` and keep the same ticket shape.
+
+### D013 — Official loopback attach is the host contract
+
+- Proven on this cloud box against NousResearch/hermes-agent **0.20.6**
+  (`4209d37`): `uv pip install -e ".[web]"`, then `hermes serve` on
+  `127.0.0.1:9119` with `HERMES_DASHBOARD_SESSION_TOKEN`. Extra name is
+  `[web]`, not `[dashboard]`. No LLM key is required for `session.create`
+  (lazy session, `model: dummy`).
+- `GET /api/status` is public. `POST /api/plugins/managekar/pair` is **401**
+  without the session header, even on loopback. Official claim without
+  `MANAGEKAR_DASHBOARD_TOKEN` returns an `mk_` stub; `/api/ws?token=` then
+  **403**s. `--serve` claim with `--token` returns `{ endpoint: :9119, token }`
+  and `/api/ws` accepts `session.create`.
+- `hermes serve` is headless: `/pair/<id>` on `:9119` is 404. The host QR
+  lives on `--serve` (`:9120/pair/<id>` SVG) or the dashboard tab (`qr_svg`).
+- A separate public plugin GitHub repo is not claimed from this environment
+  (`gh` cannot create repositories). The extractable folder stays
+  `packages/hermes-managekar-plugin/`.
+- **Reversal:** If Hermes publishes a first-party companion QR that returns
+  the dashboard socket, delete `--serve` and keep `managekar.pair.v1` only
+  as a fallback parser.

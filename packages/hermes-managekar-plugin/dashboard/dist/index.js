@@ -56,6 +56,12 @@
                 "div",
                 null,
                 React.createElement("p", null, "Scan this from the Manage.kar phone app, or open the QR page."),
+                ticket.qr_svg
+                  ? React.createElement("div", {
+                      "aria-label": "pair QR",
+                      dangerouslySetInnerHTML: { __html: ticket.qr_svg },
+                    })
+                  : null,
                 React.createElement(
                   "p",
                   null,
