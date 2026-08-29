@@ -40,8 +40,8 @@ export function showGlobalCreateRow(view: WorkspaceView): boolean {
 export function showWorkspaceSearch(view: WorkspaceView): boolean {
   switch (view) {
     case "chats":
-      return false
     case "overview":
+      return false
     case "tasks":
     case "notes":
     case "habits":
@@ -54,7 +54,19 @@ export function showWorkspaceSearch(view: WorkspaceView): boolean {
 }
 
 export function showToolLauncher(view: WorkspaceView, width: number): boolean {
-  return view === "overview" && width >= TOOL_LAUNCHER_MIN_WIDTH
+  void width
+  switch (view) {
+    case "overview":
+    case "tasks":
+    case "notes":
+    case "chats":
+    case "habits":
+      return false
+    default: {
+      const _exhaustive: never = view
+      return _exhaustive
+    }
+  }
 }
 
 export function homeGreeting(profileName: string): string {

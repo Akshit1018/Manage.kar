@@ -53,7 +53,7 @@ requireIncludes("components/workspace/dashboard.tsx", ["homeGreeting"])
 requireAbsent("components/workspace/dashboard.tsx", ['"Your workspace"'])
 requireIncludes("app/layout.tsx", ["Hermes companion"])
 requireAbsent("app/layout.tsx", ["local tasks, notes, and habits"])
-requireIncludes("apps/mobile/lib/src/screens/shell_screen.dart", ['Text("Home"'])
+requireIncludes("apps/mobile/lib/src/screens/shell_screen.dart", ['label: "Home"'])
 requireAbsent("apps/mobile/lib/src/screens/shell_screen.dart", ["Your workspace"])
 requireIncludes("docs/DECISIONS.md", ["Bot Chat", "not a marketplace name"])
 

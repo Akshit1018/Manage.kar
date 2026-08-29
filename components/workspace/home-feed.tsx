@@ -245,7 +245,7 @@ function HomePreview({
 }) {
   return (
     <section aria-label={title}>
-      <h2 className="mk-section-title mb-3">{title}</h2>
+      <h2 className="mk-home-heading mb-3">{title}</h2>
       <div className={hasMore ? "mk-home-fade" : undefined}>
         <div className="grid gap-3">{children}</div>
       </div>

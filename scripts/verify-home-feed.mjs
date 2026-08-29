@@ -82,8 +82,15 @@ function verifyUi() {
     "homeGreeting",
     "agentDaySumUp",
     "openChat",
+    "LayoutGrid",
+    'aria-label="More"',
   ])
-  requireAbsent("components/workspace/dashboard.tsx", ["<TodaySection", '"Your workspace"'])
+  requireAbsent("components/workspace/dashboard.tsx", [
+    "<TodaySection",
+    '"Your workspace"',
+    "showToolLauncher",
+    "aria-label=\"Goals\"",
+  ])
   if (dashboard.includes("pending tasks") && dashboard.includes("mk-featured-numeral")) {
     fail("dashboard still shows overview count tiles")
   }
@@ -95,7 +102,15 @@ function verifyUi() {
     "homeJumpTiles",
   ])
   requireIncludes("lib/ui/home-chrome.ts", ["overviewUsesHomeFeed"])
-  requireIncludes("app/globals.css", [".mk-home-circle", ".mk-home-jump", ".mk-home-fade"])
+  requireIncludes("app/globals.css", [
+    ".mk-home-circle",
+    ".mk-home-jump",
+    ".mk-home-fade",
+    ".mk-home-kicker",
+    ".mk-home-spotlight.mk-featured-surface",
+  ])
+  requireIncludes("apps/mobile/lib/src/ui/home_feed.dart", ["homeGreeting", "homeAgents", "agentDaySumUp"])
+  requireIncludes("apps/mobile/lib/src/screens/shell_screen.dart", ["_JumpTile", "grid_view_outlined"])
 }
 
 function verifyTheme() {

@@ -6,14 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
-  Target,
   Settings,
   User,
-  Share2,
-  Zap,
   Plus,
-  BarChart3,
-  Clock,
   FileText,
   CheckSquare,
   Search,
@@ -21,6 +16,7 @@ import {
   Activity,
   Home,
   Download,
+  LayoutGrid,
   MessageCircle,
 } from "lucide-react"
 import { ChatComposer } from "@/components/chat-composer"
@@ -85,7 +81,6 @@ import {
   showDesktopSidebar,
   showGlobalCreateRow,
   showMobileTabBar,
-  showToolLauncher,
   showWorkspaceSearch,
   workspaceNavItems,
 } from "@/lib/ui/home-chrome"
@@ -753,6 +748,17 @@ export function Dashboard({ initialSearch }: DashboardProps) {
               <Download className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Export</span>
             </Button>
+            {currentView === "overview" ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="modern-card rounded-2xl"
+                onClick={() => setMoreToolsOpen(true)}
+                aria-label="More"
+              >
+                <LayoutGrid className="h-5 w-5" />
+              </Button>
+            ) : null}
             <Button
               variant="ghost"
               size="icon"
@@ -766,6 +772,7 @@ export function Dashboard({ initialSearch }: DashboardProps) {
         </div>
 
         <div className="min-w-0">
+          {currentView === "overview" && greeting !== "Today" ? <p className="mk-home-kicker">Today</p> : null}
           <h1 className="mk-workspace-heading">{currentView === "overview" ? greeting : workspaceViewTitle(currentView)}</h1>
           <p className="mk-section-support mt-2">
             {currentView === "overview" ? daySumUp : workspaceViewSupport(currentView, greeting)}
@@ -788,54 +795,6 @@ export function Dashboard({ initialSearch }: DashboardProps) {
               Habit
             </Button>
           </div>
-        </div>
-        ) : null}
-
-        {currentView === "overview" && !showToolLauncher(currentView, viewportWidth) ? (
-          <Button
-            variant="outline"
-            className="mk-touch w-full rounded-2xl bg-transparent"
-            onClick={() => setMoreToolsOpen(true)}
-          >
-            More
-          </Button>
-        ) : null}
-
-        {showToolLauncher(currentView, viewportWidth) ? (
-        <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-          <Button
-            variant="ghost"
-            className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14"
-            onClick={() => selectView("chats")}
-            aria-label="Chats"
-          >
-            <MessageCircle className="h-4 w-4" />
-            <span className="hidden text-xs min-[375px]:inline">Chats</span>
-          </Button>
-          <Button variant="ghost" className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14" onClick={() => setHabitDashboard(true)} aria-label="Habits dashboard">
-            <Activity className="h-4 w-4" />
-            <span className="hidden text-xs min-[375px]:inline">Habits</span>
-          </Button>
-          <Button variant="ghost" className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14" onClick={() => setGoalManagerModal(true)} aria-label="Goals">
-            <Target className="h-4 w-4" />
-            <span className="hidden text-xs min-[375px]:inline">Goals</span>
-          </Button>
-          <Button variant="ghost" className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14" onClick={() => setTimeTrackerModal(true)} aria-label="Time">
-            <Clock className="h-4 w-4" />
-            <span className="hidden text-xs min-[375px]:inline">Time</span>
-          </Button>
-          <Button variant="ghost" className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14" onClick={() => setFocusModal(true)} aria-label="Focus">
-            <Zap className="h-4 w-4" />
-            <span className="hidden text-xs min-[375px]:inline">Focus</span>
-          </Button>
-          <Button variant="ghost" className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14" onClick={() => setShareModal(true)} aria-label="Share">
-            <Share2 className="h-4 w-4" />
-            <span className="hidden text-xs min-[375px]:inline">Share</span>
-          </Button>
-          <Button variant="ghost" className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14" onClick={() => setAnalyticsModal(true)} aria-label="Counts">
-            <BarChart3 className="h-4 w-4" />
-            <span className="hidden text-xs min-[375px]:inline">Counts</span>
-          </Button>
         </div>
         ) : null}
 

@@ -22,15 +22,16 @@ describe("home chrome", () => {
     expect(showGlobalCreateRow("habits")).toBe(false)
   })
 
-  it("drops the permanent search field on chats", () => {
+  it("drops the permanent search field on chats and Home", () => {
     expect(showWorkspaceSearch("chats")).toBe(false)
-    expect(showWorkspaceSearch("overview")).toBe(true)
+    expect(showWorkspaceSearch("overview")).toBe(false)
+    expect(showWorkspaceSearch("tasks")).toBe(true)
   })
 
-  it("hides the tool launcher below 640px", () => {
+  it("keeps the tool strip off Home so the feed can breathe", () => {
     expect(showToolLauncher("overview", 320)).toBe(false)
-    expect(showToolLauncher("overview", 639)).toBe(false)
-    expect(showToolLauncher("overview", 640)).toBe(true)
+    expect(showToolLauncher("overview", 640)).toBe(false)
+    expect(showToolLauncher("overview", 1280)).toBe(false)
     expect(showToolLauncher("chats", 1280)).toBe(false)
   })
 
