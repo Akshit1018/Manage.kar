@@ -40,6 +40,7 @@ describe("pairing handshake", () => {
     expect(pairingFailureCopy("code_expired")).toMatch(/expired/i)
     expect(pairingFailureCopy("unreachable")).toMatch(/unreachable/i)
     expect(pairingFailureCopy("needs_token")).toMatch(/session token/i)
+    expect(pairingFailureCopy("claim_failed")).toMatch(/ticket/i)
     expect(applyHelperProbe(draft, { kind: "needs_token" }, LATER).failure).toBe("needs_token")
     const expired = applyHelperProbe(draft, { kind: "waiting" }, "2026-08-29T10:20:00.000Z")
     expect(expired.failure).toBe("code_expired")

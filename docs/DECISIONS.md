@@ -190,17 +190,19 @@ D001–D005.
 ### D009 — Pairing is an honest local scaffold until Hermes connects
 
 - Machines live in `managekar.pairing.v1` (backed up and wiped with everything else).
-  Pairing codes/links are generated on-device; the QR is labeled **Not a real QR yet**.
-  The client handshake is `waiting` with expiry, then named failures
-  (`helper_not_running`, `code_expired`, `unreachable`, `needs_token`). Showing the QR does not
-  complete a pair. A live attach uses the MIT dashboard contract: `GET /api/status`,
-  then `/api/ws?token=`, then `session.create`. Status alone never pairs.
-  "Simulate pairing (dev)" stays behind `#dev` / `?dev=1` only. Attached or simulated
-  sessions use `source: "paired"`, `presence: "active"` — the only sessions whose sends
-  may read "Sent". Hermes DM pairing (`hermes pairing approve <platform> <code>`) is not
-  machine pairing.
-- **Reversal:** Replace the QR placeholder with a real scannable ticket when Hermes
-  ships a companion QR; keep the same storage shape.
+  A host-minted `managekar.pair.v1` ticket (QR, magic link, or dashboard tab) is the
+  real pair. The local MK- code is still labeled **Not a real QR yet**. The client
+  handshake is `waiting` with expiry, then named failures
+  (`helper_not_running`, `code_expired`, `unreachable`, `needs_token`, `claim_failed`).
+  Showing a placeholder QR does not complete a pair. Claiming a host ticket returns
+  `{ endpoint, token }` once; then the MIT dashboard contract runs: `GET /api/status`,
+  `/api/ws?token=`, `session.create`. Status alone never pairs. Plugin routes live at
+  `/api/plugins/managekar/`. "Simulate pairing (dev)" stays behind `#dev` / `?dev=1`
+  only. Attached or simulated sessions use `source: "paired"`, `presence: "active"` —
+  the only sessions whose sends may read "Sent". Hermes DM pairing
+  (`hermes pairing approve <platform> <code>`) is not machine pairing.
+- **Reversal:** If Hermes ships an official companion QR, replace `managekar.pair.v1`
+  with that ticket shape and keep the same storage.
 
 ### D010 — Home is Today; chrome is per-tab
 

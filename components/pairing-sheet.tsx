@@ -37,8 +37,15 @@ import { showSimulatedPairingControl } from "@/lib/pairing/developer"
 import type { MachineKind, PairingDraft, PairingState } from "@/lib/pairing/types"
 import { attachToHermesDashboard } from "@/lib/hermes/attach"
 import { HERMES_DEFAULT_BASE } from "@/lib/hermes/endpoint"
+import {
+  claimPluginPair,
+  parsePairPayload,
+  requestPluginPair,
+  type ManagekarPairTicket,
+} from "@/lib/hermes/plugin-pair"
 import { connectCompanion, getCompanionClient } from "@/lib/hermes/session-client"
 import { bindHermesSession } from "@/lib/hermes/session-map"
+import { PairQr } from "@/components/pair-qr"
 
 interface PairingSheetProps {
   open: boolean
@@ -53,6 +60,8 @@ interface DraftPairing {
   token: string
   handshake: PairingDraft
   connecting?: boolean
+  ticketText: string
+  ticket?: ManagekarPairTicket
 }
 
 function lastSeenCopy(iso: string, now = new Date()): string {
@@ -142,7 +151,15 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
       nowIso,
       endpoint: HERMES_DEFAULT_BASE,
     })
-    setDraft({ name: "", kind: "vps", code, endpoint: HERMES_DEFAULT_BASE, token: "", handshake })
+    setDraft({
+      name: "",
+      kind: "vps",
+      code,
+      endpoint: HERMES_DEFAULT_BASE,
+      token: "",
+      handshake,
+      ticketText: "",
+    })
   }
 
   useEffect(() => {
@@ -216,6 +233,16 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
       nowIso,
       mode: "connect",
     })
+    persistPaired(probe, current, machineId, nowIso, current.token)
+  }
+
+  const persistPaired = (
+    probe: Awaited<ReturnType<typeof attachToHermesDashboard>>,
+    current: DraftPairing,
+    machineId: string,
+    nowIso: string,
+    token?: string,
+  ) => {
     const next = applyHelperProbe(current.handshake, probe, nowIso)
     if (next.phase === "paired") {
       const storage = browserStorage()
@@ -224,7 +251,7 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
         loadDialer(storage),
         next,
         nowIso,
-        current.token,
+        token,
       )
       if (result) {
         persistPairing(storage, { ...result.pairing, draft: undefined })
@@ -235,12 +262,88 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
         }
         setDraft(null)
         toast.success(`${next.name} connected to Hermes. Its chat is in the Chats tab.`)
-        return
+        return true
       }
     }
     setDraft({ ...current, connecting: false, handshake: next })
     if (next.failure) {
       toast.error(handshakeStatusCopy(next))
+    }
+    return false
+  }
+
+  const claimHostTicket = async (ticket = draftRef.current?.ticket) => {
+    const current = draftRef.current
+    if (!current || current.connecting || !ticket) {
+      return
+    }
+    setDraft({ ...current, connecting: true })
+    const machineId = generateMachineId()
+    const nowIso = new Date().toISOString()
+    try {
+      const claimed = await claimPluginPair({
+        fetchImpl: fetch,
+        ticket,
+        deviceId: machineId,
+        deviceName: current.name.trim() || "Manage.kar",
+        nowIso,
+      })
+      const probe = await attachToHermesDashboard({
+        fetchImpl: fetch,
+        openSocket: async () => {
+          await connectCompanion({
+            baseUrl: claimed.endpoint,
+            token: claimed.token,
+          })
+          if (getCompanionClient().connectionState !== "open") {
+            throw new Error("WebSocket connection failed")
+          }
+        },
+        request: (method, params) => getCompanionClient().request(method, params),
+        baseUrl: claimed.endpoint,
+        token: claimed.token,
+        machineId,
+        name: current.name.trim() || ticket.hostLabel || "Hermes",
+        nowIso,
+        mode: "connect",
+      })
+      persistPaired(probe, { ...current, endpoint: claimed.endpoint, token: claimed.token }, machineId, nowIso, claimed.token)
+    } catch {
+      setDraft({
+        ...current,
+        connecting: false,
+        handshake: { ...current.handshake, phase: "failed", failure: "claim_failed" },
+      })
+      toast.error("The host ticket could not be claimed. Mint a new QR on the computer.")
+    }
+  }
+
+  const requestTicketFromUrl = async () => {
+    const current = draftRef.current
+    if (!current || current.connecting) {
+      return
+    }
+    setDraft({ ...current, connecting: true })
+    try {
+      const ticket = await requestPluginPair({
+        fetchImpl: fetch,
+        baseUrl: current.endpoint || HERMES_DEFAULT_BASE,
+        hostLabel: current.name.trim() || "Hermes",
+      })
+      setDraft({
+        ...current,
+        connecting: false,
+        ticket,
+        ticketText: JSON.stringify(ticket),
+      })
+      toast.success("Host minted a managekar.pair.v1 ticket. Claim it on this phone.")
+    } catch {
+      setDraft({
+        ...current,
+        connecting: false,
+        handshake: { ...current.handshake, phase: "failed", failure: "helper_not_running" },
+      })
+      toast.error("This Hermes URL did not mint a Manage.kar ticket.")
     }
   }
 
@@ -294,7 +397,7 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
         open={open}
         onClose={onClose}
         title="Paired machines"
-        description="This phone waits for a Hermes helper. It speaks the MIT dashboard: GET /api/status, then /api/ws with a session token. Simulate pairing stays behind #dev."
+        description="This phone waits for a Hermes helper. Mint a managekar.pair.v1 ticket on the host (QR / link), or paste a dashboard URL and token. Simulate pairing stays behind #dev."
       >
         <div className="space-y-4">
           {pairing && pairing.machines.length > 0 ? (
@@ -348,8 +451,9 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
                 <div className="flex items-start gap-3">
                   <Cable className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">
-                    Start Hermes with `hermes dashboard` on the computer. Paste its URL and
-                    session token, then Connect. This is dashboard attach, not DM pairing.
+                    On the computer run `hermes managekar` or the dashboard Manage.kar tab.
+                    Scan that host QR, paste the ticket, or use URL + token then Connect.
+                    This is host claim plus dashboard attach, not DM pairing.
                   </p>
                 </div>
               </Card>
@@ -374,7 +478,7 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
                       })
                     }
                     placeholder="e.g. Home VPS"
-                    className="mk-touch rounded-xl"
+                    className="mk-touch rounded-lg"
                   />
                 </div>
                 <div className="space-y-2">
@@ -390,7 +494,7 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
                       })
                     }
                     placeholder="http://127.0.0.1:9119"
-                    className="mk-touch rounded-xl"
+                    className="mk-touch rounded-lg"
                   />
                 </div>
                 <div className="space-y-2">
@@ -402,7 +506,7 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
                     value={draft.token}
                     onChange={(event) => setDraft({ ...draft, token: event.target.value })}
                     placeholder="From hermes dashboard"
-                    className="mk-touch rounded-xl"
+                    className="mk-touch rounded-lg"
                   />
                 </div>
                 <div className="space-y-2">
@@ -413,7 +517,7 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
                       setDraft({ ...draft, kind: value, handshake: { ...draft.handshake, kind: value } })
                     }
                   >
-                    <SelectTrigger className="mk-touch rounded-xl">
+                    <SelectTrigger className="mk-touch rounded-lg">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -424,16 +528,43 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
                 </div>
               </div>
 
-              <div className="space-y-2 rounded-xl border border-border/50 bg-accent/10 p-4">
-                <h5 className="text-center text-sm font-semibold">Not a real QR yet</h5>
-                <QrPlaceholder code={draft.code} />
-                <p className="mk-pairing-code text-center text-2xl font-semibold tracking-widest">{draft.code}</p>
-                <p className="mk-pairing-code text-xs text-muted-foreground">
-                  {pairingLink(draft.code)}
-                </p>
-                <p className="text-center text-xs text-muted-foreground">
-                  QR placeholder — generated on this device. Showing it does not mean a QR was scanned.
-                </p>
+              <div className="space-y-2 rounded-lg border border-border/50 bg-accent/10 p-4">
+                <div className="space-y-2">
+                  <Label htmlFor="pair-ticket">Host ticket or QR payload</Label>
+                  <Input
+                    id="pair-ticket"
+                    value={draft.ticketText}
+                    onChange={(event) => {
+                      const ticketText = event.target.value
+                      setDraft({
+                        ...draft,
+                        ticketText,
+                        ticket: parsePairPayload(ticketText) ?? undefined,
+                      })
+                    }}
+                    placeholder="managekar.pair.v1|… or paste JSON"
+                    className="mk-touch rounded-lg"
+                  />
+                </div>
+                {draft.ticket ? (
+                  <>
+                    <h5 className="text-center text-sm font-semibold">Host QR from managekar.pair.v1</h5>
+                    <PairQr ticket={draft.ticket} />
+                    <p className="text-center text-xs text-muted-foreground">
+                      This QR encodes the host ticket. Claiming it once returns the dashboard token.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h5 className="text-center text-sm font-semibold">Not a real QR yet</h5>
+                    <QrPlaceholder code={draft.code} />
+                    <p className="mk-pairing-code text-center text-2xl font-semibold tracking-widest">{draft.code}</p>
+                    <p className="mk-pairing-code text-xs text-muted-foreground">{pairingLink(draft.code)}</p>
+                    <p className="text-center text-xs text-muted-foreground">
+                      QR placeholder — generated on this device. Showing it does not mean a QR was scanned.
+                    </p>
+                  </>
+                )}
                 <p className="text-center text-sm">{handshakeStatusCopy(draft.handshake)}</p>
                 <Button variant="outline" size="sm" className="mk-touch w-full bg-transparent" onClick={copyCode}>
                   <Copy className="mr-2 h-4 w-4" />
@@ -444,6 +575,22 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
               <div className="mk-sheet-footer-actions">
                 <Button variant="outline" className="mk-touch bg-transparent" onClick={() => setDraft(null)}>
                   Cancel
+                </Button>
+                <Button
+                  variant="outline"
+                  className="mk-touch bg-transparent"
+                  disabled={draft.connecting}
+                  onClick={() => void requestTicketFromUrl()}
+                >
+                  Request ticket
+                </Button>
+                <Button
+                  variant="outline"
+                  className="mk-touch bg-transparent"
+                  disabled={draft.connecting || !draft.ticket}
+                  onClick={() => void claimHostTicket()}
+                >
+                  Claim ticket
                 </Button>
                 <Button className="mk-touch" disabled={draft.connecting} onClick={() => void connectHermes()}>
                   <Cable className="mr-2 h-4 w-4" />

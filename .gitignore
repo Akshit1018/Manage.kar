@@ -38,6 +38,10 @@ next-env.d.ts
 # Local capture artifacts
 /*.png
 
+# Python
+__pycache__/
+*.py[cod]
+
 # Agent skill runtime (unlazy ledgers, Claude local settings)
 .unlazy/
 .unlazy-hook-state.json
