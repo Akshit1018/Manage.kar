@@ -172,7 +172,7 @@ describe("workspace section source contract", () => {
     expect(contract.timeEntriesSurviveClose).toBe(true)
     expect(sources.chatsView).toContain("queueCopy")
     expect(sources.composer).toContain("queueCopy")
-    expect(sources.composer).toContain("queueMessage")
+    expect(sources.composer).toContain("sendCompanionMessage")
     expect(composerNotifiesExpandedBeforeSetState(sources.composer)).toBe(true)
     expect(applyComposerExpandedChangeLocksNotifyFirst(readComponent("lib/ui/workspace-sections-layout.ts"))).toBe(
       true,

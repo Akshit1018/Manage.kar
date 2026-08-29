@@ -3,6 +3,7 @@ import {
   centeredWheelIndex,
   chatListItems,
   createEmptyDialer,
+  canFlushOutbox,
   flushOutbox,
   loadDialer,
   messagesForTarget,
@@ -145,8 +146,19 @@ describe("queuedCountFor", () => {
 })
 
 describe("flushOutbox", () => {
-  it("sends queued messages for a session that came back online", () => {
-    let state = stateWith([session({ id: "s1", presence: "offline" })])
+  it("does not flush demo or unreachable sessions", () => {
+    expect(canFlushOutbox(session({ source: "demo", presence: "active" }))).toBe(false)
+    expect(canFlushOutbox(session({ source: "paired", presence: "offline" }))).toBe(false)
+    expect(canFlushOutbox(session({ source: "paired", presence: "active" }))).toBe(true)
+    let demo = queueMessage(createEmptyDialer(), "demo-local", "a", "2026-08-28T10:00:00.000Z")!.state
+    expect(flushOutbox(demo, "demo-local", "2026-08-28T11:00:00.000Z").outbox[0]?.status).toBe("queued")
+    let offline = stateWith([session({ id: "s1", presence: "offline" })])
+    offline = queueMessage(offline, "s1", "a", "2026-08-28T10:00:00.000Z")!.state
+    expect(flushOutbox(offline, "s1", "2026-08-28T11:00:00.000Z").outbox[0]?.status).toBe("queued")
+  })
+
+  it("sends queued messages only for a paired reachable session", () => {
+    let state = stateWith([session({ id: "s1", presence: "active" })])
     state = queueMessage(state, "s1", "a", "2026-08-28T10:00:00.000Z")!.state
     const flushed = flushOutbox(state, "s1", "2026-08-28T11:00:00.000Z")
     expect(flushed.outbox.every((message) => message.status === "sent")).toBe(true)
@@ -154,7 +166,7 @@ describe("flushOutbox", () => {
   })
 
   it("leaves other targets queued", () => {
-    let state = stateWith([session({ id: "s1", presence: "offline" }), session({ id: "s2", presence: "offline" })])
+    let state = stateWith([session({ id: "s1", presence: "active" }), session({ id: "s2", presence: "active" })])
     state = queueMessage(state, "s1", "a", "2026-08-28T10:00:00.000Z")!.state
     state = queueMessage(state, "s2", "b", "2026-08-28T10:00:00.000Z")!.state
     const flushed = flushOutbox(state, "s1", "2026-08-28T11:00:00.000Z")

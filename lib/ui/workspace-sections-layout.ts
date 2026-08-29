@@ -348,9 +348,7 @@ export function honestCopyContract(sources: {
 }): HonestCopyContract {
   return {
     chatsStayLocal: sources.chatsView.includes("Messages stay on this device until you pair a Hermes machine."),
-    pairingIsScaffold: sources.pairingSheet.includes(
-      "Pairing is a local scaffold until a Hermes backend is connected. Nothing talks to a server yet.",
-    ),
+    pairingIsScaffold: sources.pairingSheet.includes("This phone waits for a Hermes helper"),
     pairingSimulationLabeled:
       sources.pairingSheet.includes("Simulate pairing (dev)") &&
       sources.pairingSheet.includes("paired (simulation)"),

@@ -1,4 +1,6 @@
+import "package:flutter/material.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:managekar/src/screens/chats_screen.dart";
 import "package:managekar/src/state/dialer.dart";
 
 DialerSession session({
@@ -66,11 +68,24 @@ void main() {
     });
   });
 
+  group("presence words", () {
+    test("demo stays not paired and paired maps to reachable / asleep / unreachable", () {
+      expect(presenceLabel("active", "demo"), "not paired");
+      expect(presenceLabel("idle", "demo"), "not paired");
+      expect(presenceLabel("offline", "demo"), "not paired");
+      expect(presenceLabel("active", "paired"), "reachable");
+      expect(presenceLabel("idle", "paired"), "asleep");
+      expect(presenceLabel("offline", "paired"), "unreachable");
+      expect(presenceColor("active", "demo"), isNot(const Color(0xFF10B981)));
+    });
+  });
+
   group("honest copy", () {
-    test("demo and unpaired messages say pairing, paired queued says online, acked says sent", () {
+    test("demo and unpaired messages say pairing, paired queued says reachable, acked says sent", () {
       expect(queueCopy(status: "queued", source: "demo"), contains("pairing"));
       expect(queueCopy(status: "sent", source: "demo"), contains("pairing"));
-      expect(queueCopy(status: "queued", source: "paired", presence: "offline"), contains("online"));
+      expect(queueCopy(status: "queued", source: "paired", presence: "offline"), contains("reachable"));
+      expect(queueCopy(status: "queued", source: "paired", presence: "offline"), isNot(contains("online")));
       expect(queueCopy(status: "sent", source: "paired"), "Sent");
       expect(queueCopy(status: "queued"), contains("pairing"));
     });

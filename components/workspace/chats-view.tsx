@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ArrowLeft, Cable, MessageCircle, Plus } from "lucide-react"
+import { ArrowLeft, Cable, MessageCircle, Plus, Square } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ApprovalCard } from "@/components/approval-card"
 import { EmptyState } from "@/components/empty-state"
@@ -9,6 +9,17 @@ import { HermesWordmark } from "@/components/hermes-wordmark"
 import { PairingSheet } from "@/components/pairing-sheet"
 import { SkillsOnMachine } from "@/components/skills-on-machine"
 import { cn } from "@/lib/utils"
+import {
+  approvalForSession,
+  approvalRespondParams,
+  clearApproval,
+  getCompanionRuntime,
+  pendingApprovalFromEvent,
+  setCompanionRuntime,
+  subscribeCompanionRuntime,
+  type ApprovalChoice,
+} from "@/lib/hermes/approval-runtime"
+import { connectCompanion, getCompanionClient } from "@/lib/hermes/session-client"
 import {
   DIALER_CHANGED_EVENT,
   chatListItems,
@@ -22,7 +33,6 @@ import {
   visibleSessions,
 } from "@/lib/dialer/dialer"
 import { NEW_CHAT_TARGET, type ChatListItem, type DialerState, type OutboxMessage } from "@/lib/dialer/types"
-import { resolvePendingApproval } from "@/lib/hermes/approval"
 import { chatIdentityKind, chatIdentityLabel } from "@/lib/hermes/chat-identity"
 import { loadPairing, PAIRING_CHANGED_EVENT } from "@/lib/pairing/pairing"
 import type { PairingState } from "@/lib/pairing/types"
@@ -46,6 +56,7 @@ export function ChatsView({ sessionId, searchQuery, onOpenSession, onBack }: Cha
       setPairing(loadPairing(window.localStorage))
     }
     reload()
+    void connectCompanion()
     window.addEventListener(DIALER_CHANGED_EVENT, reload)
     window.addEventListener(PAIRING_CHANGED_EVENT, reload)
     window.addEventListener("storage", reload)
@@ -230,7 +241,8 @@ function ChatThread({
           </p>
         </div>
       </div>
-      <ApprovalCard approval={resolvePendingApproval([])} />
+      <LiveApproval sessionId={sessionId} />
+      <LiveThread sessionId={sessionId} />
       {messages.length === 0 ? (
         <EmptyState
           title="No messages yet"
@@ -243,6 +255,82 @@ function ChatThread({
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function LiveApproval({ sessionId }: { sessionId: string }) {
+  const [runtime, setRuntime] = useState(getCompanionRuntime)
+  useEffect(() => subscribeCompanionRuntime(setRuntime), [])
+  const approval = approvalForSession(runtime, sessionId)
+  const ignore = pendingApprovalFromEvent({ type: "message.delta" })
+  return (
+    <ApprovalCard
+      approval={approval ?? ignore}
+      yolo={runtime.yolo}
+      onChoose={(choice: ApprovalChoice) => {
+        const pending = approvalForSession(getCompanionRuntime(), sessionId)
+        const params = approvalRespondParams(choice, sessionId, pending?.id)
+        void getCompanionClient()
+          .request(params.method, {
+            choice: params.choice,
+            session_id: params.session_id,
+            ...(params.request_id ? { request_id: params.request_id } : {}),
+          })
+          .catch(() => undefined)
+        setCompanionRuntime(clearApproval(getCompanionRuntime(), sessionId))
+      }}
+    />
+  )
+}
+
+function LiveThread({ sessionId }: { sessionId: string }) {
+  const [runtime, setRuntime] = useState(getCompanionRuntime)
+  useEffect(() => subscribeCompanionRuntime(setRuntime), [])
+  const thread = runtime.threads[sessionId]
+  if (!thread) {
+    return null
+  }
+  return (
+    <div className="space-y-3">
+      {thread.streaming ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="mk-touch"
+          aria-label="Stop"
+          onClick={() => {
+            void getCompanionClient().request("session.interrupt", { session_id: sessionId }).catch(() => undefined)
+          }}
+        >
+          <Square className="mr-2 h-4 w-4" />
+          Stop
+        </Button>
+      ) : null}
+      {thread.items.map((item) => {
+        switch (item.kind) {
+          case "assistant":
+            return (
+              <div key={item.id} className="flex justify-start">
+                <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-secondary px-4 py-2">
+                  <p className="whitespace-pre-wrap break-words text-sm">{item.text || (item.streaming ? "…" : "")}</p>
+                </div>
+              </div>
+            )
+          case "tool":
+            return (
+              <article key={item.id} className="mk-editorial-card p-3 text-sm">
+                <p className="font-semibold">{item.name}</p>
+                <p className="text-xs text-muted-foreground">{item.phase}</p>
+                {item.preview ? <p className="mt-1 text-muted-foreground">{item.preview}</p> : null}
+              </article>
+            )
+          default: {
+            const _exhaustive: never = item
+            return _exhaustive
+          }
+        }
+      })}
     </div>
   )
 }

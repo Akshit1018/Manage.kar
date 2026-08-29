@@ -84,6 +84,9 @@ void main() {
     expect(find.text("Hermes · VPS"), findsOneWidget);
     expect(find.text("Research bot"), findsOneWidget);
     expect(find.text("Demo"), findsNWidgets(3));
+    expect(find.text("not paired"), findsWidgets);
+    expect(find.text("online"), findsNothing);
+    expect(find.text("reachable"), findsNothing);
 
     await tester.tap(find.text("Hermes · local"));
     await tester.pumpAndSettle();
@@ -94,5 +97,17 @@ void main() {
     expect(find.text("status update please"), findsOneWidget);
     expect(find.textContaining("will send after pairing"), findsWidgets);
     expect(find.text("Sent"), findsNothing);
+    expect(find.text("online"), findsNothing);
+    expect(find.text("not paired"), findsWidgets);
+    expect(find.text("reachable"), findsNothing);
+  });
+
+  test("presence words match the web companion", () {
+    expect(presenceLabel("active"), "reachable");
+    expect(presenceLabel("idle"), "asleep");
+    expect(presenceLabel("offline"), "unreachable");
+    expect(presenceLabel("active", "demo"), "not paired");
+    expect(presenceLabel("offline", "demo"), "not paired");
+    expect(presenceColor("active", "demo"), isNot(const Color(0xFF10B981)));
   });
 }

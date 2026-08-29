@@ -158,7 +158,15 @@ export function queueMessage(
   }
 }
 
+export function canFlushOutbox(session?: HermesSession): boolean {
+  return session?.source === "paired" && session.presence === "active"
+}
+
 export function flushOutbox(state: DialerState, target: string, nowIso: string): DialerState {
+  const known = resolveSession(state, target)
+  if (!canFlushOutbox(known)) {
+    return state
+  }
   return {
     ...state,
     outbox: state.outbox.map((message) =>
