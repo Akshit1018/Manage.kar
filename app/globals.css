@@ -1290,23 +1290,6 @@ html[data-skin="classic"].dark {
     .mk-board-column {
       flex: unset;
     }
-
-    :root,
-    .dark {
-      --mk-bottom-nav: calc(0.75rem + env(safe-area-inset-bottom, 0px));
-    }
-
-    .mk-desktop-nav {
-      display: flex;
-    }
-
-    .mk-workspace {
-      padding-left: calc(13.25rem + env(safe-area-inset-left, 0px));
-    }
-
-    .mk-bottom-chrome {
-      display: none;
-    }
   }
 
   .mk-workspace {
@@ -1496,6 +1479,25 @@ html[data-skin="classic"].dark {
   .mk-pill-nav button[aria-current="page"] {
     background: var(--foreground);
     color: var(--background);
+  }
+
+  @media (min-width: 1024px) {
+    :root,
+    .dark {
+      --mk-bottom-nav: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    .mk-desktop-nav {
+      display: flex;
+    }
+
+    .mk-workspace {
+      padding-left: calc(13.25rem + env(safe-area-inset-left, 0px));
+    }
+
+    .mk-bottom-chrome {
+      display: none;
+    }
   }
 
   .mk-composer {

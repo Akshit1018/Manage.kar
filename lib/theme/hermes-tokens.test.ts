@@ -83,6 +83,7 @@ describe("Hermes theme CSS contract", () => {
     expect(contract.hasDesktopNav).toBe(true)
     expect(contract.desktopNavHiddenOnPhone).toBe(true)
     expect(contract.keepsFiveTabPill).toBe(true)
+    expect(contract.desktopChromeWinsOverBase).toBe(true)
   })
 
   it("loads Inter and JetBrains Mono instead of inventing a display face", () => {

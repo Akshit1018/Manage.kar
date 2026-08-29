@@ -57,6 +57,7 @@ export interface HermesCssContract {
   hasDesktopNav: boolean
   desktopNavHiddenOnPhone: boolean
   keepsFiveTabPill: boolean
+  desktopChromeWinsOverBase: boolean
 }
 
 export function hermesCssContract(css: string): HermesCssContract {
@@ -80,5 +81,22 @@ export function hermesCssContract(css: string): HermesCssContract {
       /\.mk-desktop-nav\s*\{[^}]*display:\s*none/.test(css) &&
       /@media\s*\(\s*min-width:\s*1024px\s*\)[\s\S]*\.mk-desktop-nav\s*\{[^}]*display:\s*flex/.test(css),
     keepsFiveTabPill: /\.mk-pill-nav\s*\{[\s\S]*grid-template-columns:\s*repeat\(5,/.test(css),
+    desktopChromeWinsOverBase: desktopChromeWinsOverBase(css),
   }
+}
+
+export function desktopChromeWinsOverBase(css: string): boolean {
+  const baseWorkspace = css.indexOf(".mk-workspace {\n    min-height: 100dvh")
+  const baseBottom = css.indexOf(".mk-bottom-chrome {\n    position: fixed")
+  const lastMedia = css.lastIndexOf("@media (min-width: 1024px)")
+  if (lastMedia < 0 || baseWorkspace < 0 || baseBottom < 0) {
+    return false
+  }
+  const tail = css.slice(lastMedia)
+  return (
+    lastMedia > baseWorkspace &&
+    lastMedia > baseBottom &&
+    /\.mk-workspace\s*\{[^}]*padding-left/.test(tail) &&
+    /\.mk-bottom-chrome\s*\{[^}]*display:\s*none/.test(tail)
+  )
 }
