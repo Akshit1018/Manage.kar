@@ -36,3 +36,16 @@ export function yoloBannerCopy(): string {
 export function resolvePendingApproval(list: PendingApproval[]): PendingApproval | null {
   return list[0] ?? null
 }
+
+export function approvalToolName(command: string): string {
+  const token = command.trim().split(/\s+/)[0]
+  return token || "tool"
+}
+
+export function approvalChrome(): { cardClass: string; commandClass: string; railClass: string } {
+  return {
+    cardClass: "mk-approval-card",
+    commandClass: "mk-approval-command",
+    railClass: "mk-approval-rail",
+  }
+}

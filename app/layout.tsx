@@ -1,21 +1,20 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
-import { Geist } from "next/font/google"
-import { Manrope } from "next/font/google"
+import { Inter, JetBrains_Mono } from "next/font/google"
 import { Toaster } from "sonner"
 import { ServiceWorkerRegister } from "@/components/service-worker-register"
 import "./globals.css"
 
-const geist = Geist({
+const inter = Inter({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-geist",
+  variable: "--font-inter",
 })
 
-const manrope = Manrope({
+const jetbrains = JetBrains_Mono({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-manrope",
+  variable: "--font-jetbrains",
 })
 
 export const viewport: Viewport = {
@@ -50,7 +49,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${geist.variable} ${manrope.variable} antialiased`}>
+    <html lang="en" className={`${inter.variable} ${jetbrains.variable} antialiased`}>
       <head>
         <link rel="icon" href="/icon.png" type="image/png" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

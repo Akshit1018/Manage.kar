@@ -5,7 +5,9 @@ import { ArrowLeft, Cable, MessageCircle, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ApprovalCard } from "@/components/approval-card"
 import { EmptyState } from "@/components/empty-state"
+import { HermesWordmark } from "@/components/hermes-wordmark"
 import { PairingSheet } from "@/components/pairing-sheet"
+import { SkillsOnMachine } from "@/components/skills-on-machine"
 import { cn } from "@/lib/utils"
 import {
   DIALER_CHANGED_EVENT,
@@ -21,6 +23,9 @@ import {
 } from "@/lib/dialer/dialer"
 import { NEW_CHAT_TARGET, type ChatListItem, type DialerState, type OutboxMessage } from "@/lib/dialer/types"
 import { resolvePendingApproval } from "@/lib/hermes/approval"
+import { chatIdentityKind, chatIdentityLabel } from "@/lib/hermes/chat-identity"
+import { loadPairing, PAIRING_CHANGED_EVENT } from "@/lib/pairing/pairing"
+import type { PairingState } from "@/lib/pairing/types"
 import { chatRowAccessibleName } from "@/lib/ui/workspace-sections-layout"
 
 interface ChatsViewProps {
@@ -32,15 +37,21 @@ interface ChatsViewProps {
 
 export function ChatsView({ sessionId, searchQuery, onOpenSession, onBack }: ChatsViewProps) {
   const [dialer, setDialer] = useState<DialerState | null>(null)
+  const [pairing, setPairing] = useState<PairingState | null>(null)
   const [pairingOpen, setPairingOpen] = useState(false)
 
   useEffect(() => {
-    const reload = () => setDialer(loadDialer(window.localStorage))
+    const reload = () => {
+      setDialer(loadDialer(window.localStorage))
+      setPairing(loadPairing(window.localStorage))
+    }
     reload()
     window.addEventListener(DIALER_CHANGED_EVENT, reload)
+    window.addEventListener(PAIRING_CHANGED_EVENT, reload)
     window.addEventListener("storage", reload)
     return () => {
       window.removeEventListener(DIALER_CHANGED_EVENT, reload)
+      window.removeEventListener(PAIRING_CHANGED_EVENT, reload)
       window.removeEventListener("storage", reload)
     }
   }, [])
@@ -48,6 +59,9 @@ export function ChatsView({ sessionId, searchQuery, onOpenSession, onBack }: Cha
   if (!dialer) {
     return (
       <div className="grid gap-3" aria-busy="true" aria-label="Loading chats">
+        <div className="mk-preloader">
+          <HermesWordmark />
+        </div>
         <article className="mk-chat-skeleton mk-editorial-card h-20 animate-pulse" />
         <article className="mk-chat-skeleton mk-editorial-card h-20 animate-pulse" />
         <article className="mk-chat-skeleton mk-editorial-card h-20 animate-pulse" />
@@ -89,6 +103,10 @@ export function ChatsView({ sessionId, searchQuery, onOpenSession, onBack }: Cha
         </div>
       </div>
       <PairingSheet open={pairingOpen} onClose={() => setPairingOpen(false)} />
+      <SkillsOnMachine
+        paired={(pairing?.machines.length ?? 0) > 0}
+        reported={pairing?.machines.flatMap((machine) => machine.skills ?? []) ?? []}
+      />
       {items.length === 0 ? (
         <EmptyState
           title={searchQuery ? "No matching chats" : "No chats yet"}
@@ -112,6 +130,8 @@ export function ChatsView({ sessionId, searchQuery, onOpenSession, onBack }: Cha
 }
 
 function ChatRow({ item, onOpen }: { item: ChatListItem; onOpen: () => void }) {
+  const identity = chatIdentityKind({ title: item.title, source: item.source })
+  const title = chatIdentityLabel(identity, item.title)
   return (
     <article className="mk-editorial-card p-4">
       <button
@@ -120,6 +140,7 @@ function ChatRow({ item, onOpen }: { item: ChatListItem; onOpen: () => void }) {
         onClick={onOpen}
         aria-label={chatRowAccessibleName({
           ...item,
+          title,
           statusWord: item.presence ? presenceLabel(item.presence, item.source) : undefined,
         })}
       >
@@ -138,7 +159,12 @@ function ChatRow({ item, onOpen }: { item: ChatListItem; onOpen: () => void }) {
                 title={presenceLabel(item.presence, item.source)}
               />
             ) : null}
-            <span className="mk-entity-title font-semibold">{item.title}</span>
+            <span className="mk-entity-title font-semibold">{title}</span>
+            {identity === "bot-chat" ? (
+              <span className="rounded-full bg-primary/10 px-1.5 text-[10px] font-medium text-primary">
+                Bot Chat
+              </span>
+            ) : null}
             {item.source === "demo" ? (
               <span className="rounded-full bg-secondary px-1.5 text-[10px] font-medium text-muted-foreground">
                 Demo
@@ -167,8 +193,10 @@ function ChatThread({
   onBack: () => void
 }) {
   const sessions = visibleSessions(dialer)
-  const title = targetTitle(sessions, sessionId)
   const session = sessions.find((item) => item.id === sessionId)
+  const rawTitle = targetTitle(sessions, sessionId)
+  const identity = chatIdentityKind({ title: rawTitle, source: session?.source })
+  const title = chatIdentityLabel(identity, rawTitle)
   const messages = messagesForTarget(dialer, sessionId)
 
   return (
@@ -183,6 +211,11 @@ function ChatThread({
               <span className={cn("h-2 w-2 shrink-0 rounded-full", presenceDotClass(session.presence, session.source))} />
             ) : null}
             <h2 className="truncate text-xl font-bold">{title}</h2>
+            {identity === "bot-chat" ? (
+              <span className="rounded-full bg-primary/10 px-1.5 text-[10px] font-medium text-primary">
+                Bot Chat
+              </span>
+            ) : null}
             {session?.source === "demo" ? (
               <span
                 aria-label="Demo session"

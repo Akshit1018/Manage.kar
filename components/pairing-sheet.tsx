@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { MobileSheet } from "@/components/mobile-sheet"
 import { ConfirmSheet } from "@/components/confirm-sheet"
+import { SkillsOnMachine } from "@/components/skills-on-machine"
 import { cn } from "@/lib/utils"
 import { browserStorage } from "@/lib/store/workspace"
 import { DIALER_CHANGED_EVENT, loadDialer, persistDialer, presenceDotClass, presenceLabel } from "@/lib/dialer/dialer"
@@ -210,19 +211,25 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
+                    <div className="mt-3">
+                      <SkillsOnMachine paired reported={machine.skills ?? []} />
+                    </div>
                   </Card>
                 )
               })}
             </div>
           ) : (
-            <Card className="mk-editorial-card p-4">
-              <div className="flex items-start gap-3">
-                <Cable className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  Generate a code, then open Hermes on the computer → Pair phone.
-                </p>
-              </div>
-            </Card>
+            <>
+              <Card className="mk-editorial-card p-4">
+                <div className="flex items-start gap-3">
+                  <Cable className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    Generate a code, then open Hermes on the computer → Pair phone.
+                  </p>
+                </div>
+              </Card>
+              <SkillsOnMachine paired={false} />
+            </>
           )}
 
           {draft ? (
