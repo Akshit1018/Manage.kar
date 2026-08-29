@@ -14,6 +14,7 @@ import "package:managekar/src/state/session.dart";
 import "package:managekar/src/state/workspace.dart";
 import "package:managekar/src/util/format.dart";
 import "package:managekar/src/widgets/assist_orb.dart";
+import "package:managekar/src/widgets/assist_orb_geometry.dart";
 import "package:managekar/src/widgets/forms.dart";
 
 class ShellScreen extends StatefulWidget {
@@ -96,6 +97,7 @@ class _ShellScreenState extends State<ShellScreen> {
             children: [
               pages[index],
               AssistOrb(
+                visible: orbVisibleOnTab(index),
                 onRecord: () => captureVoiceFromOrb(context, widget.workspace),
                 onTask: () => openTaskEditor(context, widget.workspace),
                 onNote: () => openNoteEditor(context, widget.workspace),

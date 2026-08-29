@@ -97,16 +97,19 @@ class PairStore:
         host_label: str = "Hermes",
         now: float | None = None,
         token: str | None = None,
+        endpoint: str | None = None,
+        pair_base: str | None = None,
     ) -> dict[str, Any]:
         now = time.time() if now is None else now
         pair_id = secrets.token_hex(16)
         expires_at = time.strftime("%Y-%m-%dT%H:%M:%S.000Z", time.gmtime(now + TTL_SECONDS))
         session_token = token or f"mk_{secrets.token_hex(16)}"
+        claim_base = pair_base or base
         ticket = build_ticket(
             pair_id=pair_id,
-            claim_url=plugin_claim_url(base),
+            claim_url=plugin_claim_url(claim_base),
             expires_at=expires_at,
-            qr_url=plugin_qr_url(base, pair_id),
+            qr_url=plugin_qr_url(claim_base, pair_id),
             host_label=host_label,
         )
         self.records[pair_id] = {
@@ -114,7 +117,7 @@ class PairStore:
             "token": session_token,
             "expires_at": now + TTL_SECONDS,
             "claimed": False,
-            "endpoint": normalize_base(base),
+            "endpoint": normalize_base(endpoint or base),
         }
         self.save()
         return ticket

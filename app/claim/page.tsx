@@ -1,6 +1,7 @@
 "use client"
 
 import { Suspense, useEffect, useState } from "react"
+import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -131,7 +132,7 @@ function ClaimInner() {
       <h1 className="text-2xl font-semibold">Claim host ticket</h1>
       <p className="text-sm text-muted-foreground">{status}</p>
       <Button asChild className="rounded-lg">
-        <a href="/">Back to workspace</a>
+        <Link href="/">Back to workspace</Link>
       </Button>
     </main>
   )

@@ -16,8 +16,9 @@ import {
   iconBarPosition,
   movementExceeded,
   orbGestureOutcome,
+  orbHoverOpensTray,
   orbKeyboardIntent,
-  orbLostPointerShouldFinish,
+  orbLostPointerPolicy,
   orbPlacementTransitionMs,
   orbViewportBounds,
   parseResolvedLengthPx,
@@ -371,7 +372,7 @@ export function FloatingToggle({
       {icons ? (
         <div
           ref={trayRef}
-          className="fixed z-[80] flex items-center gap-2 rounded-full border border-border/50 bg-card/95 p-2 shadow-2xl backdrop-blur-xl"
+          className="fixed z-[80] flex items-center gap-2 rounded-lg border border-border/50 bg-card/95 p-2 shadow-2xl backdrop-blur-xl"
           style={{ left: icons.x, top: icons.y }}
           onMouseEnter={clearHideTimer}
           onMouseLeave={hideIconBarSoon}
@@ -470,15 +471,20 @@ export function FloatingToggle({
         }}
         onLostPointerCapture={(event) => {
           if (
-            !orbLostPointerShouldFinish({
+            orbLostPointerPolicy({
               activePointerId: activePointerRef.current,
               eventPointerId: event.pointerId,
               gestureEnded: gestureEndedRef.current,
-            })
+            }) !== "handoff"
           ) {
             return
           }
-          finishGesture(true)
+          detachPointerFallback()
+          fallbackDetachRef.current = attachOrbPointerFallback(window, event.pointerId, {
+            onMove: (clientX, clientY) => handleMoveRef.current(clientX, clientY),
+            onUp: () => finishGestureRef.current(false),
+            onCancel: () => finishGestureRef.current(true),
+          })
         }}
         onKeyDown={(event) => {
           const intent = orbKeyboardIntent(event.key)
@@ -506,11 +512,19 @@ export function FloatingToggle({
         }}
         onContextMenu={(event) => event.preventDefault()}
         onMouseEnter={() => {
-          if (!recorderOpen) {
+          const hover = window.matchMedia("(hover: hover)").matches
+          const fine = window.matchMedia("(pointer: fine)").matches
+          if (!recorderOpen && orbHoverOpensTray({ hoverCapable: hover, finePointer: fine })) {
             revealIconBar()
           }
         }}
-        onMouseLeave={hideIconBarSoon}
+        onMouseLeave={() => {
+          const hover = window.matchMedia("(hover: hover)").matches
+          const fine = window.matchMedia("(pointer: fine)").matches
+          if (orbHoverOpensTray({ hoverCapable: hover, finePointer: fine })) {
+            hideIconBarSoon()
+          }
+        }}
         className={cn(
           "mk-touch fixed z-[80] h-14 w-14 cursor-move rounded-full border-2 shadow-lg select-none",
           "bg-primary/20 text-primary-foreground backdrop-blur-md border-primary/20",

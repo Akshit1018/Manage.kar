@@ -28,6 +28,22 @@ class PairStoreTests(unittest.TestCase):
         self.assertTrue(payload.startswith(f"{KIND}|"))
         self.assertIn(ticket["pairId"], payload)
 
+    def test_pair_base_claim_urls_keep_dashboard_endpoint(self) -> None:
+        store = PairStore(records={})
+        ticket = store.mint(
+            "http://127.0.0.1:9119",
+            "home",
+            now=1_000.0,
+            token="dash_tok",
+            endpoint="http://127.0.0.1:9119",
+            pair_base="http://127.0.0.1:9120",
+        )
+        self.assertEqual(ticket["claimUrl"], plugin_claim_url("http://127.0.0.1:9120"))
+        self.assertTrue(ticket["qrUrl"].startswith("http://127.0.0.1:9120/pair/"))
+        claimed = store.claim(ticket["pairId"], "phone-1", "Pixel", now=1_010.0)
+        self.assertEqual(claimed["endpoint"], "http://127.0.0.1:9119")
+        self.assertEqual(claimed["token"], "dash_tok")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,6 @@
 import { keyboardOverlap } from "@/lib/ui/visual-viewport"
 
-export const LONG_PRESS_MS = 2000
+export const LONG_PRESS_MS = 500
 export const ICON_BAR_MS = 3000
 export const DRAG_THRESHOLD_PX = 10
 export const ORB_SIZE = 56
@@ -352,7 +352,7 @@ export function snapOrbToEdge(
 }
 
 export function defaultOrbPosition(bounds: OrbBounds): { x: number; y: number } {
-  return clampOrbPosition(bounds.width - 100, bounds.height - 100, bounds)
+  return snapOrbToEdge(clampOrbPosition(bounds.width, bounds.height, bounds), bounds)
 }
 
 /** Width of the revealed icon bar: four 44px icons, three 8px gaps, 8px padding each side. */
@@ -363,11 +363,33 @@ export function iconBarPosition(
   bounds: OrbBounds,
   barWidth = ICON_BAR_WIDTH,
 ): { x: number; y: number } {
-  const { width, leftInset, rightInset, topInset } = resolveBounds(bounds)
+  const { width, inset, leftInset, rightInset, topInset } = resolveBounds(bounds)
   const opensRight = orb.x + ORB_SIZE / 2 < width / 2
-  const rawX = opensRight ? orb.x + 60 : orb.x - 60
+  const rawX = opensRight ? orb.x + ORB_SIZE + inset : orb.x - barWidth - inset
   return {
     x: Math.max(leftInset, Math.min(width - barWidth - rightInset, rawX)),
     y: Math.max(topInset, orb.y - 60),
   }
+}
+
+export function orbHoverOpensTray(input: { hoverCapable: boolean; finePointer: boolean }): boolean {
+  return input.hoverCapable && input.finePointer
+}
+
+export function orbLostPointerPolicy(input: {
+  activePointerId: number | null
+  eventPointerId: number
+  gestureEnded: boolean
+}): "handoff" | "ignore" {
+  if (input.gestureEnded || input.activePointerId == null || input.eventPointerId !== input.activePointerId) {
+    return "ignore"
+  }
+  return "handoff"
+}
+
+export function rectsOverlap(
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number },
+): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y
 }
