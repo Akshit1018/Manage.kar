@@ -1,0 +1,30 @@
+{
+  "capturedAt": "2026-08-29T10:34:00Z",
+  "repo": "Akshit1018/Manage.kar",
+  "mainSha": "4ad6170fdee2b84313184293edb1f1875c4b29f2",
+  "mainSubject": "Initial commit from local archive",
+  "openPullRequests": [
+    {"number": 1, "head": "cursor/product-foundation-e2f4", "base": "main", "draft": true, "title": "Local-first workspace: one source of truth for tasks, notes, and habits"},
+    {"number": 2, "head": "cursor/red-team-inspection-e2f4", "base": "cursor/product-foundation-e2f4", "draft": true, "title": "Adversarial red-team inspection: Manage.kar is not a 1.0 product"},
+    {"number": 3, "head": "cursor/fix-red-team-findings-e2f4", "base": "cursor/product-foundation-e2f4", "draft": true, "title": "Fix red-team findings: storage-first workspace and honest product surface"},
+    {"number": 4, "head": "cursor/forensic-intelligence-e2f4", "base": "cursor/fix-red-team-findings-e2f4", "draft": true, "title": "Forensic product intelligence after remediations"},
+    {"number": 5, "head": "cursor/green-team-repair-e2f4", "base": "cursor/forensic-intelligence-e2f4", "draft": true, "title": "Green Team: today home, real schedules, honest share"},
+    {"number": 6, "head": "cursor/finish-remaining-e2f4", "base": "cursor/green-team-repair-e2f4", "draft": true, "title": "Close remaining client-side leftovers without inventing a backend"},
+    {"number": 7, "head": "cursor/mobile-first-modals-e2f4", "base": "cursor/finish-remaining-e2f4", "draft": false, "title": "Mobile-first overlays, keyboard-safe sheets, and voice bowl"},
+    {"number": 8, "head": "cursor/flutter-native-backend-e2f4", "base": "cursor/mobile-first-modals-e2f4", "draft": false, "title": "Flutter iOS/Android/web client + PostgreSQL API"},
+    {"number": 9, "head": "cursor/pwa-stop-loading-e2f4", "base": "cursor/flutter-native-backend-e2f4", "draft": true, "title": "Stop the original workspace from hanging on “Loading…”"},
+    {"number": 10, "head": "cursor/at-labels-e2f4", "base": "cursor/pwa-stop-loading-e2f4", "draft": true, "title": "Add @ place, tag, and person labels on tasks and notes"},
+    {"number": 11, "head": "cursor/floating-orb-e2f4", "base": "cursor/at-labels-e2f4", "draft": true, "title": "Restore the floating orb, long-press record, and task/note icons"},
+    {"number": 12, "head": "cursor/chat-dialer-e2f4", "base": "cursor/floating-orb-e2f4", "draft": true, "title": "Chat dialer: glass composer dock with session wheel, presence dots, and outbox"},
+    {"number": 13, "head": "cursor/hermes-theme-e2f4", "base": "cursor/chat-dialer-e2f4", "draft": true, "title": "Hermes skin: Nous Blue light + Hermes Teal dark as the default theme"},
+    {"number": 14, "head": "cursor/orb-radial-chats-e2f4", "base": "cursor/hermes-theme-e2f4", "draft": true, "title": "Orb radial: Record / Task / Note / Chats + product decision record"},
+    {"number": 15, "head": "cursor/chats-tab-e2f4", "base": "cursor/orb-radial-chats-e2f4", "draft": true, "title": "feat(chats): fourth tab with session list and honest outbox"},
+    {"number": 16, "head": "cursor/ios-hermes-chats-e2f4", "base": "cursor/chats-tab-e2f4", "draft": true, "title": "feat(mobile): iOS app — Chats tab, Hermes theme, assist orb"},
+    {"number": 17, "head": "cursor/workspace-sections-e2f4", "base": "cursor/ios-hermes-chats-e2f4", "draft": true, "title": "Workspace sections on the original UI: note labels/pins/Ask, task board, pairing, overview signals"},
+    {"number": 18, "head": "cursor/editorial-mobile-ui-e2f4", "base": "cursor/workspace-sections-e2f4", "draft": true, "title": "Editorial mobile UI refresh and robust AssistiveTouch-style orb"},
+    {"number": 19, "head": "cursor/honest-companion-e2f4", "base": "cursor/editorial-mobile-ui-e2f4", "draft": true, "title": "Honest companion: Today-first Home, truthful presence, one composer"},
+    {"number": 20, "head": "cursor/hermes-site-theme-e2f4", "base": "cursor/honest-companion-e2f4", "draft": true, "title": "Align Hermes site tokens and companion feature chrome"}
+  ],
+  "ci": "every open PR statusCheckRollup was empty at capture",
+  "vitestOnWorkspaceHead": {"files": 47, "tests": 327, "failed": 0}
+}
