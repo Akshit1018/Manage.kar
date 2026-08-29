@@ -53,6 +53,14 @@ These predate the Hermes companion direction and are not reversed by it.
 - Default skin = **Hermes**: light mode is Nous Blue (`#E8F2FD` canvas, `#0053FD` accent),
   dark mode is Hermes Teal (`#041c1c` canvas, `#ffe6cb` cream, blue lifted to `#4a86ff`).
   Surfaces derive via `color-mix` ratios (4/6/8/10/15%), matching the Hermes dashboard system.
+- Live marketing site ([hermes-agent.nousresearch.com](https://hermes-agent.nousresearch.com/)) brand
+  quartet is recorded as `--mk-site-*`: electric blue `#0000f2`, paper `#ffffff`,
+  foreground `#f5f5f5`, accent `#edff45`. Those tokens mark the wordmark, hydrate
+  preloader, and approval rail only — they are **not** a third product skin and do
+  not replace dashboard canvases.
+- Type matches the MIT dashboard default: 15px / 1.55 / 0.5rem radius, Inter +
+  JetBrains Mono (open fonts from the dashboard catalog). Proprietary Nous
+  marketing faces (Sigurd, Rules) are not loaded.
 - Original look preserved as the **Classic** skin (Settings → Appearance → Skin).
 
 ## The assistive ball (Android native) and the in-app orb
@@ -100,6 +108,9 @@ These predate the Hermes companion direction and are not reversed by it.
 
 - **Fourth tab.** Full Hermes power: streaming replies, approvals as tappable cards,
   steering, stop, attachments, model switching. Filterable by machine/configuration.
+- Canonical bot identity follows the desktop **Bot Chat** title contract (exact title
+  `Bot Chat`). Other sessions stay machine names. Demo rows stay labeled Demo.
+- Skills on a paired machine are **read-only**. No Plugins tab, no install store.
 - The chat dialer (bottom composer + session wheel, "New chat" first, presence dots
   green/yellow/red, offline outbox) is the quick-fire surface; the tab is the full surface.
 - The app maintains its **own self-evolving Hermes session pinned at top** of Home.
@@ -193,3 +204,12 @@ D001–D005.
   search field. Paired presence words are reachable / asleep / unreachable.
 - **Reversal:** Restore a counts-first Home only if Today is empty *and* testers need
   the dashboard tiles as the first lesson.
+
+### D011 — Site brand marks sit on dashboard surfaces
+
+- `--mk-site-*` (live site `#0000f2` / `#f5f5f5` / `#edff45` / `#ffffff`) decorate
+  wordmark, preloader, and approval chrome. App canvases stay Nous Blue / Hermes Teal.
+  Desktop left nav appears from 1024px and lists the same five destinations as the
+  phone pill. The hydrate preloader never blocks the workspace.
+- **Reversal:** Only if Nous publishes a single official companion token sheet that
+  replaces both the marketing site and the dashboard palettes.

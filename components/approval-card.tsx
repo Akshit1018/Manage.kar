@@ -3,7 +3,9 @@
 import { Button } from "@/components/ui/button"
 import {
   approvalChoiceLabel,
+  approvalChrome,
   approvalTimeoutLabel,
+  approvalToolName,
   yoloBannerCopy,
   type ApprovalChoice,
   type PendingApproval,
@@ -17,21 +19,28 @@ interface ApprovalCardProps {
 }
 
 export function ApprovalCard({ approval, onChoose }: ApprovalCardProps) {
+  const chrome = approvalChrome()
+
   if (!approval) {
-    return null
+    return (
+      <aside className={`${chrome.cardClass} mk-editorial-card space-y-2 p-4`} aria-label="No pending tool approval">
+        <p className="text-sm text-muted-foreground">No tool is waiting for approval.</p>
+      </aside>
+    )
   }
 
   return (
-    <aside className="mk-editorial-card space-y-3 p-4" aria-label="Pending tool approval">
+    <aside className={`${chrome.cardClass} mk-editorial-card space-y-3 p-4`} aria-label="Pending tool approval">
       {approval.yolo ? (
         <p className="rounded-xl bg-destructive/15 px-3 py-2 text-sm font-medium text-destructive">
           {yoloBannerCopy()}
         </p>
       ) : null}
-      <div>
-        <p className="text-sm font-semibold">{approval.command}</p>
-        <p className="mt-1 text-sm text-muted-foreground">{approval.reason}</p>
-        <p className="mt-2 text-xs text-muted-foreground">{approvalTimeoutLabel(approval.secondsLeft)}</p>
+      <div className={chrome.railClass}>
+        <span className="mk-approval-tool">{approvalToolName(approval.command)}</span>
+        <p className={`${chrome.commandClass} font-semibold`}>{approval.command}</p>
+        <p className="text-sm text-muted-foreground">{approval.reason}</p>
+        <p className="text-xs text-muted-foreground">{approvalTimeoutLabel(approval.secondsLeft)}</p>
       </div>
       <div className="grid grid-cols-2 gap-2">
         {CHOICES.map((choice) => (

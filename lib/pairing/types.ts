@@ -1,3 +1,5 @@
+import type { MachineSkill } from "@/lib/hermes/skills"
+
 export type MachineKind = "vps" | "local"
 
 export interface PairedMachine {
@@ -6,6 +8,7 @@ export interface PairedMachine {
   kind: MachineKind
   pairedAt: string
   lastSeenAt: string
+  skills?: MachineSkill[]
 }
 
 export interface PairingState {

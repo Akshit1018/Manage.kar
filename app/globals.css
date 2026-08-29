@@ -8,7 +8,18 @@
    * Default skin: "hermes" — light mode is the Nous Blue palette from the
    * Hermes dashboard (web/src/themes/presets.ts: nousBlueTheme). Surfaces are
    * derived Hermes-style: midground mixed over background at fixed ratios.
+   * Live-site brand tokens (--mk-site-*) come from hermes-agent.nousresearch.com
+   * `.hermes-web` and are used for wordmark / approval rail only.
    */
+  --mk-site-bg: #0000f2;
+  --mk-site-fg: #f5f5f5;
+  --mk-site-accent: #edff45;
+  --mk-site-paper: #ffffff;
+  --theme-base-size: 15px;
+  --theme-line-height: 1.55;
+  --theme-letter-spacing: 0;
+  --theme-font-sans: var(--font-inter), "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --theme-font-mono: var(--font-jetbrains), "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
   --mk-canvas: #e8f2fd;
   --mk-mid: #0053fd;
   --mk-ink: #170d02;
@@ -36,7 +47,7 @@
   --chart-3: #34d399;
   --chart-4: #ffbd38;
   --chart-5: #fb2c36;
-  --radius: 0.625rem;
+  --radius: 0.5rem;
   --sidebar: color-mix(in srgb, var(--mk-mid) 4%, var(--mk-canvas));
   --sidebar-foreground: var(--mk-ink);
   --sidebar-primary: #0053fd;
@@ -224,6 +235,10 @@ html[data-skin="classic"].dark {
   body {
     @apply bg-background text-foreground;
     overflow-x: hidden;
+    font-family: var(--theme-font-sans);
+    font-size: var(--theme-base-size);
+    line-height: var(--theme-line-height);
+    letter-spacing: var(--theme-letter-spacing);
   }
 
   body {
@@ -1223,6 +1238,40 @@ html[data-skin="classic"].dark {
     flex: 0 0 auto;
   }
 
+  .mk-desktop-nav {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 30;
+    width: 12.5rem;
+    height: 100dvh;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: calc(1rem + env(safe-area-inset-top, 0px)) 0.75rem calc(1rem + env(safe-area-inset-bottom, 0px));
+    padding-left: calc(0.75rem + env(safe-area-inset-left, 0px));
+    background: var(--sidebar);
+    border-right: 1px solid var(--sidebar-border);
+  }
+
+  .mk-desktop-nav button {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.5rem 0.75rem;
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--sidebar-foreground);
+    text-align: left;
+  }
+
+  .mk-desktop-nav button[aria-current="page"] {
+    background: var(--sidebar-accent);
+    color: var(--sidebar-accent-foreground);
+  }
+
   @media (min-width: 640px) {
     .mk-filter-rail {
       flex-wrap: wrap;
@@ -1267,6 +1316,87 @@ html[data-skin="classic"].dark {
     letter-spacing: -0.05em;
     line-height: 0.9;
     color: var(--foreground);
+  }
+
+  .mk-wordmark {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 0;
+    line-height: 1.1;
+  }
+
+  .mk-wordmark-hermes {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--primary);
+  }
+
+  .mk-wordmark-companion {
+    font-size: 0.65rem;
+    color: var(--muted-foreground);
+  }
+
+  .mk-preloader {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 3.5rem;
+    padding: 0.75rem;
+    border-radius: var(--radius);
+    background: var(--mk-site-bg);
+    color: var(--mk-site-fg);
+  }
+
+  .mk-preloader .mk-wordmark-hermes {
+    color: var(--mk-site-accent);
+    animation: mk-preloader-pulse 1.4s ease-in-out infinite;
+  }
+
+  .mk-preloader .mk-wordmark-companion {
+    color: var(--mk-site-fg);
+  }
+
+  @keyframes mk-preloader-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
+    }
+  }
+
+  .mk-approval-card {
+    border-left: 3px solid var(--mk-site-accent);
+  }
+
+  .mk-approval-rail {
+    display: grid;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+
+  .mk-approval-command {
+    font-family: var(--theme-font-mono);
+    font-size: 0.8125rem;
+    overflow-wrap: anywhere;
+  }
+
+  .mk-approval-tool {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 0.15rem 0.45rem;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--mk-site-accent) 28%, var(--card));
+    color: var(--foreground);
+    font-family: var(--theme-font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.04em;
+    text-transform: lowercase;
   }
 
   .mk-featured-surface {
@@ -1349,6 +1479,25 @@ html[data-skin="classic"].dark {
   .mk-pill-nav button[aria-current="page"] {
     background: var(--foreground);
     color: var(--background);
+  }
+
+  @media (min-width: 1024px) {
+    :root,
+    .dark {
+      --mk-bottom-nav: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    .mk-desktop-nav {
+      display: flex;
+    }
+
+    .mk-workspace {
+      padding-left: calc(13.25rem + env(safe-area-inset-left, 0px));
+    }
+
+    .mk-bottom-chrome {
+      display: none;
+    }
   }
 
   .mk-composer {

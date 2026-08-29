@@ -44,6 +44,7 @@ import { TaskList } from "@/components/workspace/task-list"
 import { NoteList } from "@/components/workspace/note-list"
 import { HabitList } from "@/components/workspace/habit-list"
 import { ChatsView } from "@/components/workspace/chats-view"
+import { HermesWordmark } from "@/components/hermes-wordmark"
 import type { Habit, LabelKind, Note, Task, TaskStatus, WorkspaceLabel } from "@/lib/domain/types"
 import { taskStatus, withTaskStatus } from "@/lib/tasks/board"
 import { attachUnknownTokensAsTags, parseAtTokens, uniqueLabelIds, upsertLabel } from "@/lib/labels/book"
@@ -71,19 +72,26 @@ import {
 import { COMPOSER_OPEN_EVENT } from "@/lib/dialer/dialer"
 import type { ComposerOpenDetail } from "@/lib/dialer/types"
 import { filterTasks, type TaskListFilter } from "@/lib/tasks/filter"
-import { showGlobalCreateRow, showToolLauncher, showWorkspaceSearch } from "@/lib/ui/home-chrome"
+import {
+  showDesktopSidebar,
+  showGlobalCreateRow,
+  showMobileTabBar,
+  showToolLauncher,
+  showWorkspaceSearch,
+  workspaceNavItems,
+} from "@/lib/ui/home-chrome"
 
 function clipTitle(content: string, limit: number) {
   return content.length > limit ? `${content.slice(0, limit).trim()}…` : content.trim()
 }
 
-const WORKSPACE_TABS = [
-  ["overview", "Home", Home],
-  ["tasks", "Tasks", CheckSquare],
-  ["notes", "Notes", FileText],
-  ["chats", "Chats", MessageCircle],
-  ["habits", "Habits", Activity],
-] as const
+const WORKSPACE_TAB_ICONS = {
+  overview: Home,
+  tasks: CheckSquare,
+  notes: FileText,
+  chats: MessageCircle,
+  habits: Activity,
+} as const
 
 function workspaceViewSupport(view: WorkspaceView, greeting: string): string {
   switch (view) {
@@ -630,6 +638,28 @@ export function Dashboard({ initialSearch }: DashboardProps) {
 
   return (
     <div className="mk-workspace">
+      <nav
+        className="mk-desktop-nav"
+        aria-label="Workspace sections"
+        aria-hidden={!showDesktopSidebar(viewportWidth)}
+      >
+        <HermesWordmark className="mb-4 mt-1" />
+        {workspaceNavItems().map(([view, label]) => {
+          const Icon = WORKSPACE_TAB_ICONS[view]
+          return (
+            <button
+              key={view}
+              type="button"
+              aria-label={label}
+              aria-current={currentView === view ? "page" : undefined}
+              onClick={() => selectView(view)}
+            >
+              <Icon className="h-4 w-4" />
+              <span>{label}</span>
+            </button>
+          )
+        })}
+      </nav>
       <div className="mk-bottom-chrome-probe" data-mk-bottom-chrome="" aria-hidden />
       <ClipboardMonitor
         onCreateTask={handleClipboardTask}
@@ -671,6 +701,7 @@ export function Dashboard({ initialSearch }: DashboardProps) {
           >
             <User className="h-5 w-5" />
           </Button>
+          <HermesWordmark />
           <div className="flex shrink-0 items-center gap-2">
             <Button
               variant="outline"
@@ -916,20 +947,27 @@ export function Dashboard({ initialSearch }: DashboardProps) {
         )}
       </main>
 
-      <nav className="mk-bottom-chrome" aria-label="Workspace sections">
+      <nav
+        className="mk-bottom-chrome"
+        aria-label="Workspace sections"
+        aria-hidden={!showMobileTabBar(viewportWidth)}
+      >
         <div className="mk-pill-nav">
-          {WORKSPACE_TABS.map(([view, label, Icon]) => (
-            <button
-              key={view}
-              type="button"
-              aria-label={label}
-              aria-current={currentView === view ? "page" : undefined}
-              onClick={() => selectView(view)}
-            >
-              <Icon className="h-4 w-4" />
-              <span>{label}</span>
-            </button>
-          ))}
+          {workspaceNavItems().map(([view, label]) => {
+            const Icon = WORKSPACE_TAB_ICONS[view]
+            return (
+              <button
+                key={view}
+                type="button"
+                aria-label={label}
+                aria-current={currentView === view ? "page" : undefined}
+                onClick={() => selectView(view)}
+              >
+                <Icon className="h-4 w-4" />
+                <span>{label}</span>
+              </button>
+            )
+          })}
         </div>
       </nav>
 

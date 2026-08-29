@@ -1,5 +1,6 @@
 import type { KeyValueStore } from "@/lib/store/workspace"
 import type { DialerState, HermesSession } from "@/lib/dialer/types"
+import { parseMachineSkills } from "@/lib/hermes/skills"
 import type { MachineKind, PairedMachine, PairingState } from "./types"
 
 export const PAIRING_KEY = "managekar.pairing.v1"
@@ -54,12 +55,14 @@ function asMachine(value: unknown): PairedMachine | null {
   if (typeof value.name !== "string" || value.name.trim() === "") {
     return null
   }
+  const skills = parseMachineSkills(value.skills)
   return {
     id: value.id.slice(0, 128),
     name: value.name.trim().slice(0, 120),
     kind: asMachineKind(value.kind),
     pairedAt: typeof value.pairedAt === "string" ? value.pairedAt : new Date(0).toISOString(),
     lastSeenAt: typeof value.lastSeenAt === "string" ? value.lastSeenAt : new Date(0).toISOString(),
+    ...(skills.length > 0 ? { skills } : {}),
   }
 }
 
@@ -135,6 +138,7 @@ export function completeSimulatedPairing(
     kind: input.kind,
     pairedAt: existing?.pairedAt ?? input.nowIso,
     lastSeenAt: input.nowIso,
+    ...(existing?.skills && existing.skills.length > 0 ? { skills: existing.skills } : {}),
   }
   const machines = existing
     ? pairing.machines.map((item) => (item.id === input.id ? machine : item))

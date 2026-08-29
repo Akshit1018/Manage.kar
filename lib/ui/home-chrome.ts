@@ -1,6 +1,25 @@
 import type { WorkspaceView } from "@/lib/navigation/workspace-url"
 
 export const TOOL_LAUNCHER_MIN_WIDTH = 640
+export const DESKTOP_SIDEBAR_MIN_WIDTH = 1024
+
+export function showDesktopSidebar(width: number): boolean {
+  return width >= DESKTOP_SIDEBAR_MIN_WIDTH
+}
+
+export function showMobileTabBar(width: number): boolean {
+  return !showDesktopSidebar(width)
+}
+
+export function workspaceNavItems(): ReadonlyArray<readonly [WorkspaceView, string]> {
+  return [
+    ["overview", "Home"],
+    ["tasks", "Tasks"],
+    ["notes", "Notes"],
+    ["chats", "Chats"],
+    ["habits", "Habits"],
+  ]
+}
 
 export function showGlobalCreateRow(view: WorkspaceView): boolean {
   switch (view) {
