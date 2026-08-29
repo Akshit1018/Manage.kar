@@ -1,3 +1,5 @@
+import { probeHermesDashboard } from "@/lib/hermes/attach"
+import { HERMES_DEFAULT_BASE } from "@/lib/hermes/endpoint"
 import type { DialerState } from "@/lib/dialer/types"
 import { completeSimulatedPairing } from "./pairing"
 import type { MachineKind, PairingDraft, PairingFailure, PairingProbe, PairingState } from "./types"
@@ -9,6 +11,7 @@ export interface StartHandshakeInput {
   kind: MachineKind
   code: string
   nowIso: string
+  endpoint?: string
 }
 
 export function startHandshake(input: StartHandshakeInput): PairingDraft {
@@ -19,6 +22,7 @@ export function startHandshake(input: StartHandshakeInput): PairingDraft {
     startedAt: input.nowIso,
     expiresAt: new Date(Date.parse(input.nowIso) + PAIRING_CODE_TTL_MS).toISOString(),
     phase: "waiting",
+    ...(input.endpoint ? { endpoint: input.endpoint } : {}),
   }
 }
 
@@ -30,6 +34,8 @@ export function pairingFailureCopy(failure: PairingFailure): string {
       return "This pairing code expired. Generate a new one."
     case "unreachable":
       return "The machine is unreachable."
+    case "needs_token":
+      return "This Hermes dashboard needs a session token. Paste it from the helper, then Connect."
     default: {
       const _exhaustive: never = failure
       return _exhaustive
@@ -48,6 +54,9 @@ export function handshakeStatusCopy(draft: PairingDraft, now = new Date()): stri
     return pairingFailureCopy("code_expired")
   }
   const seconds = Math.max(0, Math.floor((Date.parse(draft.expiresAt) - now.getTime()) / 1000))
+  if (draft.dashboardVersion) {
+    return `Hermes ${draft.dashboardVersion} is running. ${seconds}s left to Connect.`
+  }
   return `Waiting for the computer. ${seconds}s left.`
 }
 
@@ -57,11 +66,20 @@ export function applyHelperProbe(draft: PairingDraft, probe: PairingProbe, nowIs
   }
   switch (probe.kind) {
     case "waiting":
-      return { ...draft, phase: "waiting", failure: undefined }
+      return {
+        ...draft,
+        phase: "waiting",
+        failure: undefined,
+        ...(probe.dashboard?.version ? { dashboardVersion: probe.dashboard.version } : {}),
+        ...(probe.dashboard ? { authRequired: probe.dashboard.authRequired } : {}),
+        ...(probe.dashboard?.installId ? { installId: probe.dashboard.installId } : {}),
+      }
     case "helper_not_running":
       return { ...draft, phase: "failed", failure: "helper_not_running" }
     case "unreachable":
       return { ...draft, phase: "failed", failure: "unreachable" }
+    case "needs_token":
+      return { ...draft, phase: "failed", failure: "needs_token" }
     case "paired":
       return {
         ...draft,
@@ -69,6 +87,10 @@ export function applyHelperProbe(draft: PairingDraft, probe: PairingProbe, nowIs
         machineId: probe.machineId,
         name: probe.name?.trim() || draft.name,
         failure: undefined,
+        ...(probe.hermesSessionId ? { hermesSessionId: probe.hermesSessionId } : {}),
+        ...(probe.endpoint ? { endpoint: probe.endpoint } : {}),
+        ...(probe.installId ? { installId: probe.installId } : {}),
+        ...(probe.hermesVersion ? { hermesVersion: probe.hermesVersion } : {}),
       }
     default: {
       const _exhaustive: never = probe
@@ -82,6 +104,7 @@ export function completeHandshakePairing(
   dialer: DialerState,
   draft: PairingDraft,
   nowIso: string,
+  token?: string,
 ): { pairing: PairingState; dialer: DialerState } | null {
   if (draft.phase !== "paired" || !draft.machineId) {
     return null
@@ -91,20 +114,18 @@ export function completeHandshakePairing(
     name: draft.name,
     kind: draft.kind,
     nowIso,
+    endpoint: draft.endpoint,
+    token,
+    installId: draft.installId,
+    hermesVersion: draft.hermesVersion,
+    hermesSessionId: draft.hermesSessionId,
   })
 }
 
 export async function probeLocalHelper(
   fetchImpl: typeof fetch,
-  url = "http://127.0.0.1:9119/api/status",
+  url = `${HERMES_DEFAULT_BASE}/api/status`,
 ): Promise<PairingProbe> {
-  try {
-    const response = await fetchImpl(url, { method: "GET" })
-    if (!response.ok) {
-      return { kind: "unreachable" }
-    }
-    return { kind: "waiting" }
-  } catch {
-    return { kind: "helper_not_running" }
-  }
+  const base = url.replace(/\/api\/status\/?$/, "")
+  return probeHermesDashboard(fetchImpl, base || HERMES_DEFAULT_BASE)
 }

@@ -67,7 +67,13 @@ export function applyHermesEvent(thread: ThreadState, event: HermesEvent): Threa
   }
   switch (known) {
     case "gateway.ready":
+    case "session.info":
+    case "thinking.delta":
+    case "reasoning.delta":
     case "approval.request":
+    case "clarify.request":
+    case "sudo.request":
+    case "secret.request":
     case "error":
       return thread
     case "message.start":
@@ -76,6 +82,7 @@ export function applyHermesEvent(thread: ThreadState, event: HermesEvent): Threa
         streaming: true,
         items: upsertAssistant(thread.items, thread.sessionId, "", true),
       }
+    case "message.interim":
     case "message.delta": {
       const prior = thread.items.find((item) => item.kind === "assistant" && item.id === `assistant:${thread.sessionId}`)
       const nextText = `${prior && prior.kind === "assistant" ? prior.text : ""}${asText(event.payload)}`

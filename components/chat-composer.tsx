@@ -23,6 +23,7 @@ import {
 } from "@/lib/dialer/dialer"
 import { getCompanionClient } from "@/lib/hermes/session-client"
 import { sendCompanionMessage } from "@/lib/hermes/send"
+import { loadPairing, machineSessionId } from "@/lib/pairing/pairing"
 import { NEW_CHAT_TARGET, type ComposerOpenDetail, type DialerState } from "@/lib/dialer/types"
 import { useVisualViewportInset } from "@/lib/ui/use-visual-viewport"
 import { applyComposerExpandedChange } from "@/lib/ui/workspace-sections-layout"
@@ -140,12 +141,15 @@ export function ChatComposer({ onVoice, onExpandedChange, preferredTarget }: Cha
     sendingRef.current = true
     const base = dialer ?? loadDialer(window.localStorage)
     const client = getCompanionClient()
+    const pairing = loadPairing(window.localStorage)
+    const machine = pairing.machines.find((item) => machineSessionId(item.id) === target)
     void sendCompanionMessage({
       state: base,
       target,
       text: draft,
       nowIso: new Date().toISOString(),
       connection: client.connectionState,
+      hermesSessionId: machine?.hermesSessionId,
       submit: (params) => client.request(params.method, { session_id: params.session_id, text: params.text }),
     })
       .then((result) => {

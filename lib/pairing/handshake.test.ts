@@ -39,6 +39,8 @@ describe("pairing handshake", () => {
     expect(pairingFailureCopy("helper_not_running")).toMatch(/helper is not running/i)
     expect(pairingFailureCopy("code_expired")).toMatch(/expired/i)
     expect(pairingFailureCopy("unreachable")).toMatch(/unreachable/i)
+    expect(pairingFailureCopy("needs_token")).toMatch(/session token/i)
+    expect(applyHelperProbe(draft, { kind: "needs_token" }, LATER).failure).toBe("needs_token")
     const expired = applyHelperProbe(draft, { kind: "waiting" }, "2026-08-29T10:20:00.000Z")
     expect(expired.failure).toBe("code_expired")
     expect(handshakeStatusCopy(expired, new Date("2026-08-29T10:20:00.000Z"))).toMatch(/expired/i)
@@ -62,5 +64,22 @@ describe("pairing handshake", () => {
     const result = completeHandshakePairing(createEmptyPairing(), createEmptyDialer(), confirmed, LATER)
     expect(result?.pairing.machines[0]?.id).toBe("m1")
     expect(result?.dialer.sessions[0]?.source).toBe("paired")
+  })
+
+  it("keeps waiting when /api/status looks like a Hermes dashboard", () => {
+    const draft = startHandshake({
+      name: "Home VPS",
+      kind: "vps",
+      code: "MK-ABCD-EFGH",
+      nowIso: STARTED,
+    })
+    const waiting = applyHelperProbe(
+      draft,
+      { kind: "waiting", dashboard: { version: "0.5.0", gatewayRunning: true, authRequired: false } },
+      LATER,
+    )
+    expect(waiting.phase).toBe("waiting")
+    expect(waiting.dashboardVersion).toBe("0.5.0")
+    expect(completeHandshakePairing(createEmptyPairing(), createEmptyDialer(), waiting, LATER)).toBeNull()
   })
 })

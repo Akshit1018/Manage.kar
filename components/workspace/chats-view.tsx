@@ -19,7 +19,8 @@ import {
   subscribeCompanionRuntime,
   type ApprovalChoice,
 } from "@/lib/hermes/approval-runtime"
-import { connectCompanion, getCompanionClient } from "@/lib/hermes/session-client"
+import { connectPairedMachine, getCompanionClient } from "@/lib/hermes/session-client"
+import { outboundHermesSessionId } from "@/lib/hermes/session-map"
 import {
   DIALER_CHANGED_EVENT,
   chatListItems,
@@ -52,11 +53,12 @@ export function ChatsView({ sessionId, searchQuery, onOpenSession, onBack }: Cha
 
   useEffect(() => {
     const reload = () => {
+      const next = loadPairing(window.localStorage)
       setDialer(loadDialer(window.localStorage))
-      setPairing(loadPairing(window.localStorage))
+      setPairing(next)
+      connectPairedMachine(next, sessionId || undefined)
     }
     reload()
-    void connectCompanion()
     window.addEventListener(DIALER_CHANGED_EVENT, reload)
     window.addEventListener(PAIRING_CHANGED_EVENT, reload)
     window.addEventListener("storage", reload)
@@ -65,7 +67,7 @@ export function ChatsView({ sessionId, searchQuery, onOpenSession, onBack }: Cha
       window.removeEventListener(PAIRING_CHANGED_EVENT, reload)
       window.removeEventListener("storage", reload)
     }
-  }, [])
+  }, [sessionId])
 
   if (!dialer) {
     return (
@@ -210,6 +212,10 @@ function ChatThread({
   const title = chatIdentityLabel(identity, rawTitle)
   const messages = messagesForTarget(dialer, sessionId)
 
+  useEffect(() => {
+    connectPairedMachine(loadPairing(window.localStorage), sessionId)
+  }, [sessionId])
+
   return (
     <div className="space-y-4">
       <div className="mk-chat-header">
@@ -270,7 +276,7 @@ function LiveApproval({ sessionId }: { sessionId: string }) {
       yolo={runtime.yolo}
       onChoose={(choice: ApprovalChoice) => {
         const pending = approvalForSession(getCompanionRuntime(), sessionId)
-        const params = approvalRespondParams(choice, sessionId, pending?.id)
+        const params = approvalRespondParams(choice, outboundHermesSessionId(sessionId), pending?.id)
         void getCompanionClient()
           .request(params.method, {
             choice: params.choice,
@@ -300,7 +306,9 @@ function LiveThread({ sessionId }: { sessionId: string }) {
           className="mk-touch"
           aria-label="Stop"
           onClick={() => {
-            void getCompanionClient().request("session.interrupt", { session_id: sessionId }).catch(() => undefined)
+            void getCompanionClient()
+              .request("session.interrupt", { session_id: outboundHermesSessionId(sessionId) })
+              .catch(() => undefined)
           }}
         >
           <Square className="mr-2 h-4 w-4" />

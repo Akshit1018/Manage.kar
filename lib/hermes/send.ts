@@ -32,6 +32,7 @@ export interface SendCompanionInput {
   text: string
   nowIso: string
   connection: ConnectionState
+  hermesSessionId?: string
   submit: (params: SubmitPromptParams) => Promise<unknown>
 }
 
@@ -53,7 +54,7 @@ export async function sendCompanionMessage(
     await input.submit({
       method: "prompt.submit",
       text: queued.message.text,
-      session_id: input.target,
+      session_id: input.hermesSessionId?.trim() || input.target,
     })
   } catch {
     return { state: queued.state, message: queued.message, submitted: false }

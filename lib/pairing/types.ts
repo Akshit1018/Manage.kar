@@ -1,10 +1,11 @@
+import type { HermesDashboardStatus } from "@/lib/hermes/status"
 import type { MachineSkill } from "@/lib/hermes/skills"
 
 export const PAIRING_STORAGE_KEY = "managekar.pairing.v1"
 
 export type MachineKind = "vps" | "local"
 
-export type PairingFailure = "helper_not_running" | "code_expired" | "unreachable"
+export type PairingFailure = "helper_not_running" | "code_expired" | "unreachable" | "needs_token"
 
 export type HandshakePhase = "waiting" | "failed" | "paired"
 
@@ -17,14 +18,30 @@ export interface PairingDraft {
   phase: HandshakePhase
   failure?: PairingFailure
   machineId?: string
+  endpoint?: string
+  dashboardVersion?: string
+  authRequired?: boolean
+  hermesSessionId?: string
+  installId?: string
+  hermesVersion?: string
 }
 
 export type PairingProbe =
-  | { kind: "waiting" }
+  | { kind: "waiting"; dashboard?: HermesDashboardStatus }
   | { kind: "helper_not_running" }
   | { kind: "unreachable" }
   | { kind: "code_expired" }
-  | { kind: "paired"; machineId: string; name?: string }
+  | { kind: "needs_token" }
+  | {
+      kind: "paired"
+      machineId: string
+      name?: string
+      hermesSessionId?: string
+      endpoint?: string
+      token?: string
+      installId?: string
+      hermesVersion?: string
+    }
 
 export interface PairedMachine {
   id: string
@@ -33,6 +50,11 @@ export interface PairedMachine {
   pairedAt: string
   lastSeenAt: string
   skills?: MachineSkill[]
+  endpoint?: string
+  token?: string
+  installId?: string
+  hermesVersion?: string
+  hermesSessionId?: string
 }
 
 export interface PairingState {
