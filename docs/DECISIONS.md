@@ -21,7 +21,7 @@ These predate the Hermes companion direction and are not reversed by it.
 ### D003 — First run is empty, not fake seed data
 
 - **Why:** Trust. Empty states tell the user what to do next.
-- **Chats exception:** Demo Hermes machines are shown in memory so the dialer is usable before pairing. They are labeled Demo, never marked sent, and are not written on first load.
+- **Chats exception:** Demo Hermes machines are shown in memory so the dialer is usable before pairing. They are labeled Demo, their status word is **not paired** (never online/reachable), never marked sent, and are not written on first load.
 - **Reversal:** Add an explicit “Load sample workspace” action if testers need it.
 
 ### D004 — No CRDT / no backend in this slice
@@ -179,9 +179,17 @@ D001–D005.
 ### D009 — Pairing is an honest local scaffold until Hermes connects
 
 - Machines live in `managekar.pairing.v1` (backed up and wiped with everything else).
-  Pairing codes/links are generated on-device; the QR is labeled a placeholder and the
-  only completion path is a button explicitly named "Simulate pairing (dev)". Simulated
-  pairing creates a dialer session with `source: "paired"`, `presence: "active"` — the
-  only sessions whose sends may read "Sent".
+  Pairing codes/links are generated on-device; the QR is labeled **Not a real QR yet**.
+  The only completion path is still "Simulate pairing (dev)", but that control renders
+  only with `#dev` or `?dev=1`. Simulated pairing creates a dialer session with
+  `source: "paired"`, `presence: "active"` — the only sessions whose sends may read "Sent".
 - **Reversal:** Replace the simulate action with the real QR/magic-link handshake when
   the Hermes backend module ships; the storage shape is designed to survive that swap.
+
+### D010 — Home is Today; chrome is per-tab
+
+- Overview main order is Today, then follow-ups, then counts. The seven-tile tool
+  launcher is hidden below 640px. Chats has no global Add-task row and no permanent
+  search field. Paired presence words are reachable / asleep / unreachable.
+- **Reversal:** Restore a counts-first Home only if Today is empty *and* testers need
+  the dashboard tiles as the first lesson.
