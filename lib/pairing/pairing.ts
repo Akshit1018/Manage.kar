@@ -33,6 +33,7 @@ function asPairingFailure(value: unknown): PairingFailure | undefined {
     case "code_expired":
     case "unreachable":
     case "needs_token":
+    case "claim_failed":
       return value
     default:
       return undefined

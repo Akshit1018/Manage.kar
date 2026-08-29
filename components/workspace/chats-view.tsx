@@ -174,7 +174,7 @@ function ChatRow({ item, onOpen }: { item: ChatListItem; onOpen: () => void }) {
             ) : null}
             <span className="mk-entity-title font-semibold">{title}</span>
             {identity === "bot-chat" ? (
-              <span className="rounded-full bg-primary/10 px-1.5 text-[10px] font-medium text-primary">
+              <span className="rounded-sm bg-primary/10 px-1.5 text-[10px] font-medium text-primary">
                 Bot Chat
               </span>
             ) : null}
@@ -229,7 +229,7 @@ function ChatThread({
             ) : null}
             <h2 className="truncate text-xl font-bold">{title}</h2>
             {identity === "bot-chat" ? (
-              <span className="rounded-full bg-primary/10 px-1.5 text-[10px] font-medium text-primary">
+              <span className="rounded-sm bg-primary/10 px-1.5 text-[10px] font-medium text-primary">
                 Bot Chat
               </span>
             ) : null}

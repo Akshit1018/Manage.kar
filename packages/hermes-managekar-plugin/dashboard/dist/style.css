@@ -1,0 +1,14 @@
+.mk-host-pair {
+  max-width: 28rem;
+  margin: 0 auto;
+  padding: 1rem;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.mk-host-pair pre {
+  overflow: auto;
+  font-size: 0.75rem;
+  border-radius: 0.5rem;
+  padding: 0.75rem;
+  background: color-mix(in srgb, currentColor 6%, transparent);
+}

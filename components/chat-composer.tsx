@@ -250,7 +250,7 @@ export function ChatComposer({ onVoice, onExpandedChange, preferredTarget }: Cha
         </div>
       ) : null}
 
-      <div className="mk-composer-bar rounded-3xl border border-border/60 bg-card/85 p-1.5 shadow-2xl backdrop-blur-xl">
+      <div className="mk-composer-bar rounded-lg border border-border/60 bg-card/85 p-1.5 shadow-2xl backdrop-blur-xl">
         <Button
           size="icon"
           variant="ghost"

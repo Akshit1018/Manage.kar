@@ -58,6 +58,7 @@ export interface HermesCssContract {
   desktopNavHiddenOnPhone: boolean
   keepsFiveTabPill: boolean
   desktopChromeWinsOverBase: boolean
+  editorialUsesDashboardRadius: boolean
 }
 
 export function hermesCssContract(css: string): HermesCssContract {
@@ -82,6 +83,9 @@ export function hermesCssContract(css: string): HermesCssContract {
       /@media\s*\(\s*min-width:\s*1024px\s*\)[\s\S]*\.mk-desktop-nav\s*\{[^}]*display:\s*flex/.test(css),
     keepsFiveTabPill: /\.mk-pill-nav\s*\{[\s\S]*grid-template-columns:\s*repeat\(5,/.test(css),
     desktopChromeWinsOverBase: desktopChromeWinsOverBase(css),
+    editorialUsesDashboardRadius:
+      /\.mk-editorial-card\s*\{[^}]*border-radius:\s*var\(--radius\)/.test(css) &&
+      !/\.mk-editorial-card\s*\{[^}]*border-radius:\s*calc\(var\(--radius\) \+ 4px\)/.test(css),
   }
 }
 

@@ -1,0 +1,14 @@
+{
+  "name": "managekar",
+  "label": "Manage.kar",
+  "description": "Host QR / magic-link pairing for the Manage.kar companion",
+  "icon": "Smartphone",
+  "version": "1.0.0",
+  "tab": {
+    "path": "/managekar",
+    "position": "after:skills"
+  },
+  "entry": "dist/index.js",
+  "css": "dist/style.css",
+  "api": "plugin_api.py"
+}

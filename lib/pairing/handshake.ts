@@ -36,6 +36,8 @@ export function pairingFailureCopy(failure: PairingFailure): string {
       return "The machine is unreachable."
     case "needs_token":
       return "This Hermes dashboard needs a session token. Paste it from the helper, then Connect."
+    case "claim_failed":
+      return "The host ticket could not be claimed. Mint a new QR on the computer."
     default: {
       const _exhaustive: never = failure
       return _exhaustive

@@ -5,7 +5,12 @@ export const PAIRING_STORAGE_KEY = "managekar.pairing.v1"
 
 export type MachineKind = "vps" | "local"
 
-export type PairingFailure = "helper_not_running" | "code_expired" | "unreachable" | "needs_token"
+export type PairingFailure =
+  | "helper_not_running"
+  | "code_expired"
+  | "unreachable"
+  | "needs_token"
+  | "claim_failed"
 
 export type HandshakePhase = "waiting" | "failed" | "paired"
 
