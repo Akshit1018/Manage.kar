@@ -102,7 +102,9 @@ function verifyFlutterPresence() {
     '"asleep"',
     '"unreachable"',
   ])
-  requireAbsent("apps/mobile/test/dialer_test.dart", ['contains("online")'])
+  if (!read("apps/mobile/test/dialer_test.dart").includes("isNot(contains(\"online\"))")) {
+    fail("dialer_test.dart does not reject the word online")
+  }
   run(flutterBin(), ["test", "test/dialer_test.dart", "test/widget_test.dart"], join(root, "apps/mobile"))
 }
 
@@ -152,7 +154,7 @@ function verifyPairing() {
     "showSimulatedPairingControl",
     "Not a real QR yet",
   ])
-  requireAbsent("components/pairing-sheet.tsx", ["QR was scanned"])
+  requireIncludes("components/pairing-sheet.tsx", ["does not mean a QR was scanned"])
   requireIncludes("lib/pairing/developer.ts", ["#dev", "dev=1"])
   run("pnpm", [
     "test",
@@ -170,12 +172,12 @@ function verifyApproval() {
   ])
   requireIncludes("lib/hermes/approval.test.ts", [
     "pendingApprovalFromEvent",
-    "does not invent a pending command",
+    "never invents a pending command",
     "does not offer YOLO on the phone",
   ])
-  requireIncludes("components/approval-card.tsx", ["approvalChoiceLabel", "Once"])
+  requireIncludes("components/approval-card.tsx", ["approvalChoiceLabel", "showApprovalChoices"])
   const card = read("components/approval-card.tsx")
-  if (card.includes('choice === "yolo"') || card.includes(">YOLO<") || card.includes('"Yolo"')) {
+  if (card.includes('choice === "yolo"') || />\s*YOLO\s*</.test(card) || card.includes('"Yolo"')) {
     fail("approval-card offers YOLO on the phone")
   }
   requireIncludes("components/workspace/chats-view.tsx", [
