@@ -3,6 +3,7 @@ import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 import {
   DESKTOP_SIDEBAR_MIN_WIDTH,
+  homeGreeting,
   overviewPlacesTodayBeforeCounts,
   showDesktopSidebar,
   showGlobalCreateRow,
@@ -50,10 +51,19 @@ describe("home chrome", () => {
     expect(workspaceNavItems().some(([, label]) => /plugin/i.test(label))).toBe(false)
   })
 
+  it("greets unnamed profiles as Today, not Your workspace", () => {
+    expect(homeGreeting("")).toBe("Today")
+    expect(homeGreeting("User")).toBe("Today")
+    expect(homeGreeting("  User  ")).toBe("Today")
+    expect(homeGreeting("Ada")).toBe("Hello, Ada")
+  })
+
   it("places Today before count tiles in the dashboard source", () => {
     const source = readFileSync(resolve(process.cwd(), "components/workspace/dashboard.tsx"), "utf8")
     expect(overviewPlacesTodayBeforeCounts(source)).toBe(true)
     expect(source).toContain("setMoreToolsOpen(true)")
     expect(source).toContain("moreToolsOpen")
+    expect(source).toContain("homeGreeting")
+    expect(source.includes('greeting = "Your workspace"')).toBe(false)
   })
 })

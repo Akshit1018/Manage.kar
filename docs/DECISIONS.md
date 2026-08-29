@@ -110,6 +110,8 @@ These predate the Hermes companion direction and are not reversed by it.
   steering, stop, attachments, model switching. Filterable by machine/configuration.
 - Canonical bot identity follows the desktop **Bot Chat** title contract (exact title
   `Bot Chat`). Other sessions stay machine names. Demo rows stay labeled Demo.
+  The leftover demo bot is titled `Bot Chat`, not a marketplace name like
+  “Research bot”. Unnamed Home copy is **Today**, not “Your workspace”.
 - Skills on a paired machine are **read-only**. No Plugins tab, no install store.
 - The chat dialer (bottom composer + session wheel, "New chat" first, presence dots
   green/yellow/red, offline outbox) is the quick-fire surface; the tab is the full surface.

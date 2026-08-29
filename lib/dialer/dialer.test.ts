@@ -239,6 +239,7 @@ describe("visibleSessions and chat list", () => {
   it("shows in-memory demos until a paired machine exists", () => {
     const demos = visibleSessions(createEmptyDialer())
     expect(demos.map((item) => item.id)).toEqual(["demo-local", "demo-vps", "demo-research"])
+    expect(demos.map((item) => item.title)).toEqual(["Hermes · local", "Hermes · VPS", "Bot Chat"])
     const paired = visibleSessions(stateWith([session({ id: "real", source: "paired" })]))
     expect(paired.map((item) => item.id)).toEqual(["real"])
   })

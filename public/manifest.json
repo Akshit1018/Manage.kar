@@ -1,7 +1,7 @@
 {
   "name": "Manage.kar",
   "short_name": "Manage.kar",
-  "description": "Local-first tasks, notes, and habits. Data stays in this browser unless you export it.",
+  "description": "Hermes companion. Chats, tasks, notes, and habits stay on this device unless you export.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

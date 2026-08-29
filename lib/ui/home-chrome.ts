@@ -57,6 +57,14 @@ export function showToolLauncher(view: WorkspaceView, width: number): boolean {
   return view === "overview" && width >= TOOL_LAUNCHER_MIN_WIDTH
 }
 
+export function homeGreeting(profileName: string): string {
+  const name = profileName.trim()
+  if (name && name !== "User") {
+    return `Hello, ${name}`
+  }
+  return "Today"
+}
+
 export function overviewPlacesTodayBeforeCounts(source: string): boolean {
   const today = source.indexOf("<TodaySection")
   const featured = source.indexOf("mk-featured-surface")

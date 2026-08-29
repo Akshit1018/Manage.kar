@@ -143,7 +143,7 @@ class _HomeTab extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text("Your workspace", style: Theme.of(context).textTheme.headlineSmall),
+                child: Text("Home", style: Theme.of(context).textTheme.headlineSmall),
               ),
               IconButton(
                 tooltip: "Open profile",

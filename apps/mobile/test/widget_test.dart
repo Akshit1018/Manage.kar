@@ -132,7 +132,7 @@ void main() {
     expect(find.text("New chat"), findsWidgets);
     expect(find.text("Hermes · local"), findsOneWidget);
     expect(find.text("Hermes · VPS"), findsOneWidget);
-    expect(find.text("Research bot"), findsOneWidget);
+    expect(find.text("Bot Chat"), findsOneWidget);
     expect(find.text("Demo"), findsNWidgets(3));
     expect(find.text("not paired"), findsWidgets);
     expect(find.text("online"), findsNothing);

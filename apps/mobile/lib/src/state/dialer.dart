@@ -165,7 +165,7 @@ List<DialerSession> demoSessions({DateTime? now}) {
     ),
     DialerSession(
       id: "demo-research",
-      title: "Research bot",
+      title: "Bot Chat",
       presence: "offline",
       lastActivityAt: minutesAgo(60 * 26),
       source: "demo",
