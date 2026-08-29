@@ -23,9 +23,9 @@ export function workspaceNavItems(): ReadonlyArray<readonly [WorkspaceView, stri
 
 export function showGlobalCreateRow(view: WorkspaceView): boolean {
   switch (view) {
-    case "overview":
     case "tasks":
       return true
+    case "overview":
     case "notes":
     case "chats":
     case "habits":
@@ -65,8 +65,6 @@ export function homeGreeting(profileName: string): string {
   return "Today"
 }
 
-export function overviewPlacesTodayBeforeCounts(source: string): boolean {
-  const today = source.indexOf("<TodaySection")
-  const featured = source.indexOf("mk-featured-surface")
-  return today >= 0 && featured >= 0 && today < featured
+export function overviewUsesHomeFeed(source: string): boolean {
+  return source.includes("<HomeFeed") && !source.includes("<TodaySection")
 }

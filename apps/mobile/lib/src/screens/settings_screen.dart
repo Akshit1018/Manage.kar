@@ -91,7 +91,7 @@ class SettingsScreen extends StatelessWidget {
               ListTile(
                 title: const Text("Skin"),
                 subtitle: Text(appearance()["skin"] as String? ?? "hermes"),
-                onTap: () => _pick(context, "Skin", ["hermes", "classic"], appearance()["skin"] as String? ?? "hermes", (value) {
+                onTap: () => _pick(context, "Skin", ["hermes", "classic", "white", "black"], appearance()["skin"] as String? ?? "hermes", (value) {
                   return patchSettings({"skin": value});
                 }),
               ),

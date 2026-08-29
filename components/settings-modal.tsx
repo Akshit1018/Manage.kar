@@ -11,7 +11,7 @@ import { toast } from "sonner"
 import { GoogleIntegration } from "./google-integration"
 import { ConfirmSheet, type ConfirmRequest } from "@/components/confirm-sheet"
 import { MobileSheet } from "@/components/mobile-sheet"
-import type { AppSettings, Workspace } from "@/lib/domain/types"
+import type { AppearanceSkin, AppSettings, Workspace } from "@/lib/domain/types"
 import type { DialerState } from "@/lib/dialer/types"
 import { loadDialer, notifyDialerChanged, persistDialer } from "@/lib/dialer/dialer"
 import type { PairingState } from "@/lib/pairing/types"
@@ -333,7 +333,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       <Label className="responsive-text-sm text-readable">Skin</Label>
                       <Select
                         value={settings.appearance.skin}
-                        onValueChange={(value: "hermes" | "classic") =>
+                        onValueChange={(value: AppearanceSkin) =>
                           updateSettings("appearance", "skin", value)
                         }
                       >
@@ -343,11 +343,13 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                         <SelectContent>
                           <SelectItem value="hermes">Hermes (default)</SelectItem>
                           <SelectItem value="classic">Classic Manage.kar</SelectItem>
+                          <SelectItem value="white">White</SelectItem>
+                          <SelectItem value="black">Black</SelectItem>
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground">
-                        Hermes uses the Nous design palette: teal-black with warm cream in dark mode, Nous blue in
-                        light mode.
+                        Hermes keeps Nous Blue and Hermes Teal. White and Black are paper and ink skins. Site
+                        tokens stay on the wordmark only.
                       </p>
                     </div>
 

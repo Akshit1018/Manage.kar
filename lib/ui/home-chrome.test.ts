@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest"
 import {
   DESKTOP_SIDEBAR_MIN_WIDTH,
   homeGreeting,
-  overviewPlacesTodayBeforeCounts,
+  overviewUsesHomeFeed,
   showDesktopSidebar,
   showGlobalCreateRow,
   showMobileTabBar,
@@ -15,7 +15,7 @@ import {
 
 describe("home chrome", () => {
   it("hides global create on chats, notes, and habits", () => {
-    expect(showGlobalCreateRow("overview")).toBe(true)
+    expect(showGlobalCreateRow("overview")).toBe(false)
     expect(showGlobalCreateRow("tasks")).toBe(true)
     expect(showGlobalCreateRow("chats")).toBe(false)
     expect(showGlobalCreateRow("notes")).toBe(false)
@@ -58,12 +58,13 @@ describe("home chrome", () => {
     expect(homeGreeting("Ada")).toBe("Hello, Ada")
   })
 
-  it("places Today before count tiles in the dashboard source", () => {
+  it("renders the home feed instead of Today and count tiles", () => {
     const source = readFileSync(resolve(process.cwd(), "components/workspace/dashboard.tsx"), "utf8")
-    expect(overviewPlacesTodayBeforeCounts(source)).toBe(true)
+    expect(overviewUsesHomeFeed(source)).toBe(true)
     expect(source).toContain("setMoreToolsOpen(true)")
     expect(source).toContain("moreToolsOpen")
     expect(source).toContain("homeGreeting")
+    expect(source).toContain("agentDaySumUp")
     expect(source.includes('greeting = "Your workspace"')).toBe(false)
   })
 })

@@ -203,7 +203,7 @@ export async function buildApp(prisma: PrismaClient, options: BuildAppOptions = 
             habitReminders: z.boolean().optional(),
             focusBreaks: z.boolean().optional(),
             theme: z.enum(["light", "dark", "system"]).optional(),
-            skin: z.enum(["hermes", "classic"]).optional(),
+            skin: z.enum(["hermes", "classic", "white", "black"]).optional(),
             fontSize: z.enum(["small", "medium", "large"]).optional(),
             animations: z.boolean().optional(),
             clipboardMonitor: z.boolean().optional(),
@@ -811,7 +811,10 @@ function serializeSettings(settings: {
     },
     appearance: {
       theme: settings?.theme ?? "system",
-      skin: settings?.skin === "classic" ? "classic" : "hermes",
+      skin:
+        settings?.skin === "classic" || settings?.skin === "white" || settings?.skin === "black"
+          ? settings.skin
+          : "hermes",
       fontSize: settings?.fontSize ?? "medium",
       animations: settings?.animations ?? true,
     },

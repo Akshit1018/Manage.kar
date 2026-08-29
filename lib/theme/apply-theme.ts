@@ -1,7 +1,15 @@
 import type { AppearanceSkin, AppSettings, ThemePreference } from "@/lib/domain/types"
 
 export function normalizeSkin(value: unknown): AppearanceSkin {
-  return value === "classic" ? "classic" : "hermes"
+  switch (value) {
+    case "classic":
+    case "white":
+    case "black":
+    case "hermes":
+      return value
+    default:
+      return "hermes"
+  }
 }
 
 export function resolveDarkMode(

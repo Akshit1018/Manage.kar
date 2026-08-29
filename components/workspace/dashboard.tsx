@@ -39,7 +39,7 @@ import { AnalyticsDashboard } from "@/components/analytics-dashboard"
 import { TimeTracker } from "@/components/time-tracker"
 import { GoalManager } from "@/components/goal-manager"
 import { ClipboardMonitor } from "@/components/clipboard-monitor"
-import { TodaySection } from "@/components/workspace/today-section"
+import { HomeFeed } from "@/components/workspace/home-feed"
 import { TaskList } from "@/components/workspace/task-list"
 import { NoteList } from "@/components/workspace/note-list"
 import { HabitList } from "@/components/workspace/habit-list"
@@ -69,8 +69,16 @@ import {
   workspaceViewTitle,
   type WorkspaceView,
 } from "@/lib/navigation/workspace-url"
-import { COMPOSER_OPEN_EVENT } from "@/lib/dialer/dialer"
-import type { ComposerOpenDetail } from "@/lib/dialer/types"
+import {
+  COMPOSER_OPEN_EVENT,
+  DIALER_CHANGED_EVENT,
+  chatListItems,
+  createEmptyDialer,
+  loadDialer,
+  visibleSessions,
+} from "@/lib/dialer/dialer"
+import type { ComposerOpenDetail, DialerState } from "@/lib/dialer/types"
+import { getCompanionRuntime, subscribeCompanionRuntime } from "@/lib/hermes/runtime"
 import { filterTasks, type TaskListFilter } from "@/lib/tasks/filter"
 import {
   homeGreeting,
@@ -81,6 +89,7 @@ import {
   showWorkspaceSearch,
   workspaceNavItems,
 } from "@/lib/ui/home-chrome"
+import { agentDaySumUp, homeAgents, homeRuntimeSignals, pickHomeSpotlight } from "@/lib/ui/home-feed"
 
 function clipTitle(content: string, limit: number) {
   return content.length > limit ? `${content.slice(0, limit).trim()}…` : content.trim()
@@ -158,21 +167,31 @@ export function Dashboard({ initialSearch }: DashboardProps) {
   const [voiceRecorderOpen, setVoiceRecorderOpen] = useState(false)
   const [moreToolsOpen, setMoreToolsOpen] = useState(false)
   const [viewportWidth, setViewportWidth] = useState(320)
+  const [dialer, setDialer] = useState<DialerState>(createEmptyDialer)
+  const [runtime, setRuntime] = useState(getCompanionRuntime)
 
   const weekStartsOn = workspace.settings.general.weekStartsOn
   const todayKey = localDateKey()
   const [pairedMachineCount, setPairedMachineCount] = useState(0)
 
   useEffect(() => {
-    const reload = () => setPairedMachineCount(loadPairing(browserStorage()).machines.length)
+    const reload = () => {
+      const storage = browserStorage()
+      setPairedMachineCount(loadPairing(storage).machines.length)
+      setDialer(loadDialer(storage))
+    }
     reload()
     window.addEventListener(PAIRING_CHANGED_EVENT, reload)
+    window.addEventListener(DIALER_CHANGED_EVENT, reload)
     window.addEventListener("storage", reload)
     return () => {
       window.removeEventListener(PAIRING_CHANGED_EVENT, reload)
+      window.removeEventListener(DIALER_CHANGED_EVENT, reload)
       window.removeEventListener("storage", reload)
     }
   }, [])
+
+  useEffect(() => subscribeCompanionRuntime(setRuntime), [])
 
   useEffect(() => {
     const updateWidth = () => setViewportWidth(window.innerWidth)
@@ -606,12 +625,27 @@ export function Dashboard({ initialSearch }: DashboardProps) {
   }
 
   const completedTasksCount = tasks.filter((task) => task.completed).length
-  const pendingTasksCount = tasks.filter((task) => !task.completed).length
-  const pinnedNotesCount = notes.filter((note) => note.pinned).length
   const doingTasksCount = tasks.filter((task) => taskStatus(task) === "doing").length
   const followUpsDue = dueFollowUps(tasks)
   const todayTasks = tasks.filter((task) => isTaskDueTodayOrOverdue(task.dueDate, task.completed))
-  const todayHabits = habits.filter((habit) => isHabitScheduledOn(habit, todayKey, weekStartsOn))
+  const homeChats = chatListItems(dialer)
+  const homeAgentList = homeAgents(visibleSessions(dialer))
+  const runtimeSignals = homeRuntimeSignals(runtime, homeChats)
+  const daySumUp = agentDaySumUp({
+    thinkingTitle: runtimeSignals.thinkingTitle,
+    approvalTitle: runtimeSignals.approvalTitle,
+    doingCount: doingTasksCount,
+    todayCount: todayTasks.length,
+    paired: pairedMachineCount > 0,
+  })
+  const homeSpotlight = pickHomeSpotlight({
+    chats: homeChats,
+    tasks,
+    todayTasks,
+    busyChatId: runtimeSignals.busyChatId,
+    busyDetail: runtimeSignals.busyDetail,
+    approvalChatId: runtimeSignals.approvalChatId,
+  })
   const query = searchQuery.toLowerCase()
   const searchedTasks = tasks.filter(
     (task) =>
@@ -635,6 +669,11 @@ export function Dashboard({ initialSearch }: DashboardProps) {
     if (view === "chats") {
       setChatSession("")
     }
+  }
+
+  const openChat = (sessionId: string) => {
+    setCurrentView("chats")
+    setChatSession(sessionId)
   }
 
   return (
@@ -727,8 +766,10 @@ export function Dashboard({ initialSearch }: DashboardProps) {
         </div>
 
         <div className="min-w-0">
-          <h1 className="mk-workspace-heading">{workspaceViewTitle(currentView)}</h1>
-          <p className="mk-section-support mt-2">{workspaceViewSupport(currentView, greeting)}</p>
+          <h1 className="mk-workspace-heading">{currentView === "overview" ? greeting : workspaceViewTitle(currentView)}</h1>
+          <p className="mk-section-support mt-2">
+            {currentView === "overview" ? daySumUp : workspaceViewSupport(currentView, greeting)}
+          </p>
         </div>
 
         {showGlobalCreateRow(currentView) ? (
@@ -816,75 +857,22 @@ export function Dashboard({ initialSearch }: DashboardProps) {
       <main className="mb-10">
         {currentView === "overview" && (
           <div className="space-y-6">
-            <TodaySection
+            <HomeFeed
+              agents={homeAgentList}
+              chats={homeChats}
               tasks={tasks}
-              todayTasks={todayTasks}
-              todayHabits={todayHabits}
-              labels={workspace.labels}
-              dateFormat={dateFormat}
-              onToggleTask={handleTaskToggle}
-              onEditTask={(task) => setTaskModal({ isOpen: true, mode: "edit", task })}
-              onToggleHabit={handleHabitToggle}
-              onAddTask={() => setTaskModal({ isOpen: true, mode: "create" })}
+              notes={notes}
+              habits={habits}
+              spotlight={homeSpotlight}
+              onOpenAgent={openChat}
+              onOpenChat={openChat}
+              onOpenTask={(task) => setTaskModal({ isOpen: true, mode: "edit", task })}
+              onOpenNote={(note) => setNoteModal({ isOpen: true, mode: "edit", note })}
+              onOpenHabit={(habit) => setHabitModal({ isOpen: true, mode: "edit", habit })}
+              onOpenView={selectView}
             />
 
             <FollowUpSection tasks={followUpsDue} onToggleTask={handleTaskToggle} onNudge={handleNudgeFollowUp} />
-
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <button type="button" className="col-span-2 text-left lg:col-span-2" onClick={() => selectView("tasks")} aria-label={`${pendingTasksCount} pending tasks`}>
-                <div className="mk-featured-surface p-5">
-                  <p className="mk-featured-numeral">{pendingTasksCount}</p>
-                  <p className="mt-2 text-sm">pending tasks</p>
-                </div>
-              </button>
-              <button type="button" className="text-left" onClick={() => selectView("tasks")} aria-label={`${completedTasksCount} completed tasks`}>
-                <Card className="mk-editorial-card p-4">
-                  <p className="text-2xl font-bold">{completedTasksCount}</p>
-                  <p className="mk-section-support text-xs">Done</p>
-                </Card>
-              </button>
-              <button type="button" className="text-left" onClick={() => selectView("habits")} aria-label={`${habits.filter((habit) => habit.completedToday).length} of ${habits.length} habits done today`}>
-                <Card className="mk-editorial-card p-4">
-                  <p className="text-2xl font-bold">{habits.filter((habit) => habit.completedToday).length}/{habits.length}</p>
-                  <p className="mk-section-support text-xs">Habits today</p>
-                </Card>
-              </button>
-              <button type="button" className="text-left" onClick={() => selectView("notes")} aria-label={`${notes.length} notes`}>
-                <Card className="mk-editorial-card p-4">
-                  <p className="text-2xl font-bold">{notes.length}</p>
-                  <p className="mk-section-support text-xs">Notes</p>
-                </Card>
-              </button>
-              <button type="button" className="text-left" onClick={() => selectView("tasks")} aria-label={`${doingTasksCount} tasks in progress`}>
-                <Card className="mk-editorial-card p-4">
-                  <p className="text-2xl font-bold">{doingTasksCount}</p>
-                  <p className="mk-section-support text-xs">Doing</p>
-                </Card>
-              </button>
-              <button type="button" className="text-left" onClick={() => selectView("tasks")} aria-label={`${followUpsDue.length} follow-ups due`}>
-                <Card className="mk-editorial-card p-4">
-                  <p className="text-2xl font-bold">{followUpsDue.length}</p>
-                  <p className="mk-section-support text-xs">Follow-ups due</p>
-                </Card>
-              </button>
-              <button type="button" className="text-left" onClick={() => selectView("notes")} aria-label={`${pinnedNotesCount} pinned notes`}>
-                <Card className="mk-editorial-card p-4">
-                  <p className="text-2xl font-bold">{pinnedNotesCount}</p>
-                  <p className="mk-section-support text-xs">Pinned notes</p>
-                </Card>
-              </button>
-              <button
-                type="button"
-                className="text-left"
-                onClick={() => selectView("chats")}
-                aria-label={`${pairedMachineCount} paired machines`}
-              >
-                <Card className="mk-editorial-card p-4">
-                  <p className="text-2xl font-bold">{pairedMachineCount}</p>
-                  <p className="mk-section-support text-xs">Machines paired</p>
-                </Card>
-              </button>
-            </div>
           </div>
         )}
 

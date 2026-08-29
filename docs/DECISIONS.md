@@ -258,3 +258,18 @@ D001–D005.
 - **Reversal:** If Hermes publishes a first-party companion QR that returns
   the dashboard socket, delete `--serve` and keep `managekar.pair.v1` only
   as a fallback parser.
+
+### D014 — Home is greeting + agent feed; White and Black are extra skins
+
+- Overview heading is `homeGreeting` (`Today` or `Hello, {name}`) plus an
+  honest one-line agent day sum-up. Circles are the user's Bot Chat agents
+  (or all visible sessions if none). Tap opens that chat. Four square jumps
+  go to Task / Notes / Chat / Habit. The spotlight is the busy or last
+  chat/task with real thinking or checklist progress — not a fake weekly
+  percent. Short faded lists follow. Other tabs stay as they are.
+- Skins: `hermes` | `classic` | `white` | `black`. White is paper + ink.
+  Black is `#000` + light ink. Both keep `--radius: 0.5rem` and apply even
+  if the light/dark toggle is the other way. Site tokens stay chrome-only.
+  Do not invent a beige third product face.
+- **Reversal:** Only if the founder replaces Home with a different first
+  screen and retires White/Black.

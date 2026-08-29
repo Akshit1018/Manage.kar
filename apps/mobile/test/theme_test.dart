@@ -11,8 +11,10 @@ void main() {
       expect(normalizeSkin(42), "hermes");
     });
 
-    test("returns classic only for exactly classic", () {
+    test("returns classic, white, and black when chosen", () {
       expect(normalizeSkin("classic"), "classic");
+      expect(normalizeSkin("white"), "white");
+      expect(normalizeSkin("black"), "black");
     });
   });
 
@@ -36,6 +38,20 @@ void main() {
       final theme = buildAppTheme(skin: "classic");
       final expected = ColorScheme.fromSeed(seedColor: const Color(0xFF2F6BFF));
       expect(theme.colorScheme.primary, expected.primary);
+    });
+  });
+
+  group("white and black skins", () {
+    test("white stays paper even when brightness is dark", () {
+      final theme = buildAppTheme(skin: "white", brightness: Brightness.dark);
+      expect(theme.scaffoldBackgroundColor, Colors.white);
+      expect(theme.colorScheme.onSurface, const Color(0xFF170D02));
+    });
+
+    test("black stays ink even when brightness is light", () {
+      final theme = buildAppTheme(skin: "black", brightness: Brightness.light);
+      expect(theme.scaffoldBackgroundColor, Colors.black);
+      expect(theme.colorScheme.onSurface, const Color(0xFFF5F5F5));
     });
   });
 }

@@ -14,8 +14,10 @@ describe("theme resolution", () => {
 })
 
 describe("skin resolution", () => {
-  it("keeps the classic skin when chosen", () => {
+  it("keeps classic, white, and black when chosen", () => {
     expect(normalizeSkin("classic")).toBe("classic")
+    expect(normalizeSkin("white")).toBe("white")
+    expect(normalizeSkin("black")).toBe("black")
   })
 
   it("defaults everything else to the Hermes skin", () => {
