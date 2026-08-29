@@ -1,6 +1,7 @@
 import unittest
 
 from pairing import KIND, PairStore, compact_payload, plugin_claim_url
+from qr import encode_matrix, matrix_to_svg
 
 
 class PairStoreTests(unittest.TestCase):
@@ -43,6 +44,12 @@ class PairStoreTests(unittest.TestCase):
         claimed = store.claim(ticket["pairId"], "phone-1", "Pixel", now=1_010.0)
         self.assertEqual(claimed["endpoint"], "http://127.0.0.1:9119")
         self.assertEqual(claimed["token"], "dash_tok")
+
+    def test_host_qr_svg(self) -> None:
+        svg = matrix_to_svg(encode_matrix("managekar.pair.v1|abc|http://127.0.0.1:9120/claim"))
+        self.assertIn("<svg", svg)
+        self.assertIn("shape-rendering=\"crispEdges\"", svg)
+        self.assertIn("#e8f2fd", svg)
 
 
 if __name__ == "__main__":

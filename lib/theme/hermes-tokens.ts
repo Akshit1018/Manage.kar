@@ -59,6 +59,7 @@ export interface HermesCssContract {
   keepsFiveTabPill: boolean
   desktopChromeWinsOverBase: boolean
   editorialUsesDashboardRadius: boolean
+  featuredUsesDashboardRadius: boolean
 }
 
 export function hermesCssContract(css: string): HermesCssContract {
@@ -86,6 +87,9 @@ export function hermesCssContract(css: string): HermesCssContract {
     editorialUsesDashboardRadius:
       /\.mk-editorial-card\s*\{[^}]*border-radius:\s*var\(--radius\)/.test(css) &&
       !/\.mk-editorial-card\s*\{[^}]*border-radius:\s*calc\(var\(--radius\) \+ 4px\)/.test(css),
+    featuredUsesDashboardRadius:
+      /\.mk-featured-surface\s*\{[^}]*border-radius:\s*var\(--radius\)/.test(css) &&
+      !/\.mk-featured-surface\s*\{[^}]*border-radius:\s*calc\(var\(--radius\) \+ 6px\)/.test(css),
   }
 }
 

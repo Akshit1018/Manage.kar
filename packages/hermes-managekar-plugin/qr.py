@@ -153,3 +153,25 @@ def matrix_to_ascii(matrix: list[list[bool]]) -> str:
         rows.append([False, False, *row, False, False])
     rows.extend([blank, blank])
     return "\n".join("".join("██" if cell else "  " for cell in row) for row in rows)
+
+
+def matrix_to_svg(matrix: list[list[bool]], module: int = 4) -> str:
+    """Crisp-edge SVG for the host QR page and dashboard tab."""
+    size = len(matrix)
+    pad = 2
+    dim = (size + pad * 2) * module
+    cells: list[str] = []
+    for row_index, row in enumerate(matrix):
+        for col_index, dark in enumerate(row):
+            if not dark:
+                continue
+            cells.append(
+                f'<rect x="{(col_index + pad) * module}" y="{(row_index + pad) * module}" '
+                f'width="{module}" height="{module}"/>'
+            )
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {dim} {dim}" '
+        f'width="{dim}" height="{dim}" shape-rendering="crispEdges" fill="#170d02">'
+        f'<rect width="{dim}" height="{dim}" fill="#e8f2fd"/>'
+        f"{''.join(cells)}</svg>"
+    )

@@ -16,8 +16,17 @@ from urllib.parse import urlparse
 
 try:
     from .pairing import PairStore, compact_payload, default_store_path
+    from .qr import encode_matrix, matrix_to_svg
 except ImportError:
     from pairing import PairStore, compact_payload, default_store_path
+    from qr import encode_matrix, matrix_to_svg
+
+
+def ticket_qr_svg(payload: str) -> str:
+    try:
+        return matrix_to_svg(encode_matrix(payload))
+    except Exception:
+        return ""
 
 
 def _json(handler: BaseHTTPRequestHandler, status: int, body: dict) -> None:
@@ -76,14 +85,18 @@ def make_handler(store: PairStore, pair_base: str, dashboard: str, label: str, t
                     return
                 ticket = record["ticket"]
                 payload = compact_payload(ticket)
+                svg = ticket_qr_svg(payload)
                 _html(
                     self,
                     200,
                     (
-                        "<!doctype html><html><body style='font-family:sans-serif;padding:2rem'>"
-                        "<p style='letter-spacing:.2em;color:#0053fd'>HERMES</p>"
-                        "<h1>Scan or paste this ticket</h1>"
+                        "<!doctype html><html><body style='font-family:Inter,system-ui,sans-serif;"
+                        "padding:2rem;background:#e8f2fd;color:#170d02'>"
+                        "<p style='letter-spacing:.22em;color:#0053fd;margin:0'>HERMES</p>"
+                        "<h1 style='font-size:1.25rem'>Scan this ticket</h1>"
+                        f"<div aria-label='pair QR'>{svg}</div>"
                         f"<p><code>{payload}</code></p>"
+                        "<p>Claim once, then the phone attaches to the Hermes dashboard socket.</p>"
                         "</body></html>"
                     ),
                 )

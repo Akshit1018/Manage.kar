@@ -1403,7 +1403,7 @@ html[data-skin="classic"].dark {
     background: var(--mk-featured);
     color: var(--mk-featured-foreground);
     border: 1px solid color-mix(in srgb, var(--mk-featured-foreground) 14%, transparent);
-    border-radius: calc(var(--radius) + 6px);
+    border-radius: var(--radius);
     box-shadow: 0 14px 36px color-mix(in srgb, var(--mk-featured) 30%, transparent);
     max-width: 100%;
     overflow: hidden;
