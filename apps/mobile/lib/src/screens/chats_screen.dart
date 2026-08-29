@@ -1,7 +1,10 @@
 import "package:flutter/material.dart";
 import "package:managekar/src/state/dialer.dart";
 
-Color presenceColor(String presence) {
+Color presenceColor(String presence, [String? source]) {
+  if (source == "demo") {
+    return const Color(0xFF9CA3AF);
+  }
   switch (presence) {
     case "active":
       return const Color(0xFF10B981);
@@ -12,14 +15,17 @@ Color presenceColor(String presence) {
   }
 }
 
-String presenceLabel(String presence) {
+String presenceLabel(String presence, [String? source]) {
+  if (source == "demo") {
+    return "not paired";
+  }
   switch (presence) {
     case "active":
-      return "online";
+      return "reachable";
     case "idle":
-      return "idle";
+      return "asleep";
     default:
-      return "offline";
+      return "unreachable";
   }
 }
 
@@ -60,19 +66,26 @@ class ChatsTab extends StatelessWidget {
                     children: [
                       if (item.presence != null) ...[
                         Semantics(
-                          label: presenceLabel(item.presence!),
+                          label: presenceLabel(item.presence!, item.source),
                           child: Container(
                             width: 8,
                             height: 8,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: presenceColor(item.presence!),
+                              color: presenceColor(item.presence!, item.source),
                             ),
                           ),
                         ),
                         const SizedBox(width: 6),
                       ],
                       Flexible(child: Text(item.title, overflow: TextOverflow.ellipsis)),
+                      if (item.presence != null) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          presenceLabel(item.presence!, item.source),
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        ),
+                      ],
                       if (item.source == "demo") ...[
                         const SizedBox(width: 6),
                         const _Badge(text: "Demo"),
@@ -151,14 +164,27 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
             title: Row(
               children: [
                 if (session != null) ...[
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(shape: BoxShape.circle, color: presenceColor(session.presence)),
+                  Semantics(
+                    label: presenceLabel(session.presence, session.source),
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: presenceColor(session.presence, session.source),
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 8),
                 ],
                 Flexible(child: Text(title, overflow: TextOverflow.ellipsis)),
+                if (session != null) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    presenceLabel(session.presence, session.source),
+                    style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                ],
                 if (session?.source == "demo") ...[
                   const SizedBox(width: 8),
                   const _Badge(text: "Demo"),

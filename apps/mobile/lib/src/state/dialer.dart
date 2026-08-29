@@ -246,7 +246,7 @@ String queueCopy({required String status, String? source, String? presence}) {
   if (status == "sent") {
     return "Sent";
   }
-  return "Queued — sends when the agent is back online";
+  return "Queued — sends when the machine is reachable";
 }
 
 String targetTitle(List<DialerSession> sessions, String target) {

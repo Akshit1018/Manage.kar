@@ -1,20 +1,35 @@
-# Gates: install unlazy and audit every in-flight Manage.kar task
+# Gates: remaining honest companion leftovers
 
-OWNS: .cursor/skills/unlazy/**, docs/superpowers/plans/2026-08-29-inflight-task-audit.md, docs/superpowers/evidence/2026-08-29-pr-snapshot.json, scripts/verify-inflight-audit.mjs, GATES.md, .gitignore, .superpowers/sdd/progress.md
+OWNS: GATES.md, scripts/verify-remaining-companion.mjs, apps/mobile/lib/src/screens/chats_screen.dart, apps/mobile/lib/src/state/dialer.dart, apps/mobile/lib/src/overlay/**, apps/mobile/test/**, apps/mobile/android/**, lib/hermes/**, lib/pairing/**, lib/dialer/**, lib/ui/workspace-sections-layout.ts, lib/ui/workspace-sections-layout.test.ts, components/workspace/chats-view.tsx, components/pairing-sheet.tsx, components/approval-card.tsx, components/chat-composer.tsx, docs/DECISIONS.md, docs/KNOWN_LIMITATIONS.md
 
-Scope: Install the canonical Leonxlnx/unlazy skill so later agents can Read it, then publish an evidence-backed audit of every stacked PR, leftover product item, and live preview.
+Scope: Ship Flutter presence parity, a testable Hermes JSON-RPC client, an honest pairing handshake, live approval cards, and documented Android overlay stubs without fake online, fake sent, or fake QR scans.
 
-- [x] G1: the committed Cursor skill is unlazy from Leonxlnx and pins upstream da0b00a
-  CHECK: node scripts/verify-inflight-audit.mjs
-  EXPECT: inflight audit verification passed
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/workspace; path=565d104854b0/35 entries; EXPECT=matched; output-sha256=9ec9054acb8805bdf783bf96b141fba8480d49ed3a01dc35d9aebff3250603c9; output-bytes=35
+- [ ] G0: this ledger states outcomes that can fail
+  CHECK: node .cursor/skills/unlazy/scripts/gate-lint.mjs GATES.md
+  EXPECT: LINT OK
+  EVIDENCE: pending
 
-- [x] G2: every open GitHub PR in the snapshot is classified in the audit
-  CHECK: node scripts/verify-inflight-audit.mjs
-  EXPECT: inflight audit verification passed
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/workspace; path=565d104854b0/35 entries; EXPECT=matched; output-sha256=9ec9054acb8805bdf783bf96b141fba8480d49ed3a01dc35d9aebff3250603c9; output-bytes=35
+- [ ] G1: Flutter presence words match the web companion
+  CHECK: node scripts/verify-remaining-companion.mjs flutter-presence
+  EXPECT: flutter presence verification passed
+  EVIDENCE: pending
 
-- [x] G3: leftover product items and stale-preview evidence are written, not implied
-  CHECK: node scripts/verify-inflight-audit.mjs
-  EXPECT: inflight audit verification passed
-  EVIDENCE: exit=0; shell=/bin/sh; cwd=/workspace; path=565d104854b0/35 entries; EXPECT=matched; output-sha256=9ec9054acb8805bdf783bf96b141fba8480d49ed3a01dc35d9aebff3250603c9; output-bytes=35
+- [ ] G2: Hermes JSON-RPC client streams tokens and never marks demo messages sent
+  CHECK: node scripts/verify-remaining-companion.mjs protocol
+  EXPECT: protocol verification passed
+  EVIDENCE: pending
+
+- [ ] G3: pairing handshake waits, expires, and names helper failures without scanning a QR
+  CHECK: node scripts/verify-remaining-companion.mjs pairing
+  EXPECT: pairing handshake verification passed
+  EVIDENCE: pending
+
+- [ ] G4: approval cards appear only from live requests and never offer YOLO on the phone
+  CHECK: node scripts/verify-remaining-companion.mjs approval
+  EXPECT: approval verification passed
+  EVIDENCE: pending
+
+- [ ] G5: Android overlay capability stays not granted unless the OS reports it
+  CHECK: node scripts/verify-remaining-companion.mjs overlay
+  EXPECT: overlay verification passed
+  EVIDENCE: pending
