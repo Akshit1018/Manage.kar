@@ -73,6 +73,7 @@ import { COMPOSER_OPEN_EVENT } from "@/lib/dialer/dialer"
 import type { ComposerOpenDetail } from "@/lib/dialer/types"
 import { filterTasks, type TaskListFilter } from "@/lib/tasks/filter"
 import {
+  homeGreeting,
   showDesktopSidebar,
   showGlobalCreateRow,
   showMobileTabBar,
@@ -122,7 +123,7 @@ export function Dashboard({ initialSearch }: DashboardProps) {
   const notes = workspace.notes
   const habits = workspace.habits
   const userName = workspace.profile.name
-  const greeting = userName.trim() && userName.trim() !== "User" ? `Hello, ${userName}` : "Your workspace"
+  const greeting = homeGreeting(userName)
   const dateFormat = workspace.settings.general.dateFormat
 
   useLocalReminders(workspace, persist, hydrated)

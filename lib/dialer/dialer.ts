@@ -1,3 +1,4 @@
+import { CANONICAL_BOT_CHAT_TITLE } from "@/lib/hermes/chat-identity"
 import type { KeyValueStore } from "@/lib/store/workspace"
 import {
   NEW_CHAT_TARGET,
@@ -45,7 +46,7 @@ export function demoSessions(now = new Date()): HermesSession[] {
     },
     {
       id: "demo-research",
-      title: "Research bot",
+      title: CANONICAL_BOT_CHAT_TITLE,
       presence: "offline",
       lastActivityAt: minutesAgo(60 * 26),
       source: "demo",

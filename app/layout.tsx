@@ -25,10 +25,10 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: "Manage.kar — local tasks, notes, and habits",
+  title: "Manage.kar — Hermes companion",
   description:
-    "Personal local-first workspace. Your data stays in this browser unless you export it.",
-  keywords: ["task management", "habits", "notes", "local-first"],
+    "Companion for a paired Hermes machine. Chats, tasks, notes, and habits stay on this device unless you export.",
+  keywords: ["hermes", "companion", "tasks", "notes", "habits", "local-first"],
   authors: [{ name: "Manage.kar" }],
   creator: "Manage.kar",
   publisher: "Manage.kar",

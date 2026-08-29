@@ -25,12 +25,14 @@ describe("Hermes Bot Chat title contract", () => {
 
   it("labels identity without inventing an online machine", () => {
     expect(chatIdentityKind({ title: "Bot Chat", source: "paired" })).toBe("bot-chat")
+    expect(chatIdentityKind({ title: "Bot Chat", source: "demo" })).toBe("bot-chat")
     expect(chatIdentityKind({ title: "Home VPS", source: "paired" })).toBe("machine")
+    expect(chatIdentityKind({ title: "Hermes · local", source: "demo" })).toBe("demo")
     expect(chatIdentityKind({ title: "Research bot", source: "demo" })).toBe("demo")
     expect(chatIdentityKind({ title: "New chat" })).toBe("new")
     expect(chatIdentityLabel("bot-chat", "Bot Chat")).toBe("Bot Chat")
     expect(chatIdentityLabel("machine", "Home VPS")).toBe("Home VPS")
-    expect(chatIdentityLabel("demo", "Research bot")).toBe("Research bot")
+    expect(chatIdentityLabel("demo", "Hermes · local")).toBe("Hermes · local")
     expect(chatIdentityLabel("new", "New chat")).toBe("New chat")
   })
 })
