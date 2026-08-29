@@ -1487,7 +1487,27 @@ html[data-skin="classic"].dark {
     margin-bottom: 0.45rem;
     color: var(--muted-foreground);
     font-size: 0.8rem;
+    font-weight: 500;
     letter-spacing: 0.02em;
+  }
+
+  .mk-home-briefing {
+    display: grid;
+    gap: 0.7rem;
+    padding: 1.15rem 1.2rem 1.25rem;
+    border-radius: 1.35rem;
+    background: var(--card);
+    color: var(--card-foreground);
+    border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+    box-shadow: 0 10px 28px color-mix(in srgb, var(--foreground) 6%, transparent);
+    font-size: 1.02rem;
+    font-weight: 500;
+    letter-spacing: -0.018em;
+    line-height: 1.45;
+  }
+
+  .mk-home-briefing p {
+    margin: 0;
   }
 
   .mk-home-heading {

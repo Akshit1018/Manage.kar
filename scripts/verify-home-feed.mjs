@@ -65,6 +65,7 @@ function verifyLogic() {
   requireIncludes("lib/ui/home-feed.ts", [
     "homeAgents",
     "agentDaySumUp",
+    "agentDayBriefing",
     "pickHomeSpotlight",
     "homeJumpTiles",
     'label: "Task"',
@@ -80,7 +81,7 @@ function verifyUi() {
   const dashboard = requireIncludes("components/workspace/dashboard.tsx", [
     "<HomeFeed",
     "homeGreeting",
-    "agentDaySumUp",
+    "agentDayBriefing",
     "openChat",
     "LayoutGrid",
     'aria-label="More"',
@@ -90,6 +91,7 @@ function verifyUi() {
     '"Your workspace"',
     "showToolLauncher",
     "aria-label=\"Goals\"",
+    'currentView === "overview" ? greeting',
   ])
   if (dashboard.includes("pending tasks") && dashboard.includes("mk-featured-numeral")) {
     fail("dashboard still shows overview count tiles")
@@ -107,9 +109,10 @@ function verifyUi() {
     ".mk-home-jump",
     ".mk-home-fade",
     ".mk-home-kicker",
+    ".mk-home-briefing",
     ".mk-home-spotlight.mk-featured-surface",
   ])
-  requireIncludes("apps/mobile/lib/src/ui/home_feed.dart", ["homeGreeting", "homeAgents", "agentDaySumUp"])
+  requireIncludes("apps/mobile/lib/src/ui/home_feed.dart", ["homeGreeting", "homeAgents", "agentDayBriefing"])
   requireIncludes("apps/mobile/lib/src/screens/shell_screen.dart", ["_JumpTile", "grid_view_outlined"])
 }
 

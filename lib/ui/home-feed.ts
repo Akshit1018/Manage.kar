@@ -84,6 +84,11 @@ export interface DaySumUpInput {
   paired: boolean
 }
 
+export interface DayBriefingInput extends DaySumUpInput {
+  agentTitle?: string
+  agentIsDemo?: boolean
+}
+
 export function agentDaySumUp(input: DaySumUpInput): string {
   if (input.thinkingTitle) {
     return `${input.thinkingTitle} is thinking.`
@@ -101,6 +106,73 @@ export function agentDaySumUp(input: DaySumUpInput): string {
     return "Paired. Nothing running."
   }
   return "Nothing running yet."
+}
+
+function briefingTaskPicture(input: Pick<DaySumUpInput, "doingCount" | "todayCount">): string {
+  if (input.doingCount > 0 && input.todayCount > 0) {
+    return `${input.doingCount} in progress, ${input.todayCount} due today.`
+  }
+  if (input.doingCount > 0) {
+    return `${input.doingCount} in progress today.`
+  }
+  if (input.todayCount > 0) {
+    return `${input.todayCount} due today.`
+  }
+  return "No tasks are in progress, and nothing is due today."
+}
+
+function briefingAgentPicture(input: DayBriefingInput): string | undefined {
+  const title = input.agentTitle?.trim()
+  if (!title) {
+    return undefined
+  }
+  if (input.agentIsDemo) {
+    return `${title} is here as a demo. It is not paired to a machine, so I can only brief what is on this phone.`
+  }
+  if (input.paired) {
+    return `${title} is paired.`
+  }
+  return `${title} is on this phone.`
+}
+
+function joinBriefing(parts: Array<string | undefined>): string {
+  return parts.filter((part): part is string => Boolean(part?.trim())).join("\n\n")
+}
+
+export function agentDayBriefing(input: DayBriefingInput): string {
+  const tasks = briefingTaskPicture(input)
+  const agent = briefingAgentPicture(input)
+  if (input.thinkingTitle) {
+    return joinBriefing([
+      `${input.thinkingTitle} is thinking right now.`,
+      tasks,
+      "I will rewrite this every time you open the app.",
+    ])
+  }
+  if (input.approvalTitle) {
+    return joinBriefing([
+      `${input.approvalTitle} is waiting for an approval.`,
+      tasks,
+      "Open that chat when you can decide.",
+    ])
+  }
+  if (input.doingCount > 0 || input.todayCount > 0) {
+    return joinBriefing([tasks, agent, "I will rewrite this every time you open the app."])
+  }
+  if (input.paired) {
+    return joinBriefing([
+      "You are paired. Nothing is running right now.",
+      tasks,
+      agent,
+      "I will rewrite this every time you open the app.",
+    ])
+  }
+  return joinBriefing([
+    "Nothing is moving yet.",
+    tasks,
+    agent,
+    "Add a task or pair Hermes and I will brief you here like a desk assistant.",
+  ])
 }
 
 export function taskProgressDetail(task: Pick<Task, "completed" | "status" | "checklist">): string {

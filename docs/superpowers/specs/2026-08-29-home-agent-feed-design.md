@@ -12,9 +12,9 @@ lists. Keep existing Hermes and Classic skins; add White and Black.
 
 Surgical overview-only change. Other tabs keep their lists and chrome.
 
-1. Header on overview: `homeGreeting` (`Today` or `Hello, {name}`) plus
-   `agentDaySumUp` from live doing/today/thinking/approval state. No fake
-   weekly percent.
+1. Header on overview: small **Today** kicker plus `agentDayBriefing` from
+   live doing/today/thinking/approval and the demo/paired agent. No Hello.
+   No fake weekly percent.
 2. Circles: bot-identity sessions (`Bot Chat`). If none, visible sessions.
    Tap opens that session on the Chats tab. Demo stays labeled Demo.
 3. Four square tiles in one row jump to the existing tabs.

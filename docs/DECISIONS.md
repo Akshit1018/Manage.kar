@@ -261,8 +261,9 @@ D001–D005.
 
 ### D014 — Home is greeting + agent feed; White and Black are extra skins
 
-- Overview heading is `homeGreeting` (`Today` or `Hello, {name}`) plus an
-  honest one-line agent day sum-up. Circles are the user's Bot Chat agents
+- Overview heading is a small **Today** kicker plus an honest multi-sentence
+  PA briefing (`agentDayBriefing`) from live doing/today/thinking/approval
+  and the demo/paired agent. No **Hello** on Home. Circles are the user's Bot Chat agents
   (or all visible sessions if none). Tap opens that chat. Four square jumps
   go to Task / Notes / Chat / Habit. The spotlight is the busy or last
   chat/task with real thinking or checklist progress — not a fake weekly

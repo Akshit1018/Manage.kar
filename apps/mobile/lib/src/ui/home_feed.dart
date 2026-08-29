@@ -28,6 +28,69 @@ String agentDaySumUp({
   return "Nothing running yet.";
 }
 
+String _briefingTaskPicture({required int doingCount, required int todayCount}) {
+  if (doingCount > 0 && todayCount > 0) {
+    return "$doingCount in progress, $todayCount due today.";
+  }
+  if (doingCount > 0) {
+    return "$doingCount in progress today.";
+  }
+  if (todayCount > 0) {
+    return "$todayCount due today.";
+  }
+  return "No tasks are in progress, and nothing is due today.";
+}
+
+String? _briefingAgentPicture({String? agentTitle, required bool paired, required bool agentIsDemo}) {
+  final title = agentTitle?.trim() ?? "";
+  if (title.isEmpty) {
+    return null;
+  }
+  if (agentIsDemo) {
+    return "$title is here as a demo. It is not paired to a machine, so I can only brief what is on this phone.";
+  }
+  if (paired) {
+    return "$title is paired.";
+  }
+  return "$title is on this phone.";
+}
+
+String agentDayBriefing({
+  required int doingCount,
+  required int todayCount,
+  required bool paired,
+  String? thinkingTitle,
+  String? approvalTitle,
+  String? agentTitle,
+  bool agentIsDemo = false,
+}) {
+  final tasks = _briefingTaskPicture(doingCount: doingCount, todayCount: todayCount);
+  final agent = _briefingAgentPicture(agentTitle: agentTitle, paired: paired, agentIsDemo: agentIsDemo);
+  if (thinkingTitle != null && thinkingTitle.isNotEmpty) {
+    return [thinkingTitle + " is thinking right now.", tasks, "I will rewrite this every time you open the app."].join("\n\n");
+  }
+  if (approvalTitle != null && approvalTitle.isNotEmpty) {
+    return [approvalTitle + " is waiting for an approval.", tasks, "Open that chat when you can decide."].join("\n\n");
+  }
+  if (doingCount > 0 || todayCount > 0) {
+    return [tasks, if (agent != null) agent, "I will rewrite this every time you open the app."].join("\n\n");
+  }
+  if (paired) {
+    return [
+      "You are paired. Nothing is running right now.",
+      tasks,
+      if (agent != null) agent,
+      "I will rewrite this every time you open the app.",
+    ].join("\n\n");
+  }
+  return [
+    "Nothing is moving yet.",
+    tasks,
+    if (agent != null) agent,
+    "Add a task or pair Hermes and I will brief you here like a desk assistant.",
+  ].join("\n\n");
+}
+
 List<DialerSession> homeAgents(List<DialerSession> sessions) {
   final bots = sessions.where((session) => session.title == "Bot Chat").toList();
   if (bots.isNotEmpty) {

@@ -5,6 +5,7 @@ import type { Habit, Note, Task } from "@/lib/domain/types"
 import { createCompanionRuntime } from "@/lib/hermes/runtime"
 import {
   agentCaption,
+  agentDayBriefing,
   agentDaySumUp,
   agentInitials,
   homeAgents,
@@ -102,6 +103,37 @@ describe("home feed helpers", () => {
     expect(agentDaySumUp({ doingCount: 0, todayCount: 1, paired: false })).toBe("1 due today.")
     expect(agentDaySumUp({ doingCount: 0, todayCount: 0, paired: true })).toBe("Paired. Nothing running.")
     expect(agentDaySumUp({ doingCount: 0, todayCount: 0, paired: false })).toBe("Nothing running yet.")
+  })
+
+  it("writes a full PA briefing instead of Hello plus a one-liner", () => {
+    const emptyDemo = agentDayBriefing({
+      doingCount: 0,
+      todayCount: 0,
+      paired: false,
+      agentTitle: "Bot Chat",
+      agentIsDemo: true,
+    })
+    expect(emptyDemo).toContain("Nothing is moving yet.")
+    expect(emptyDemo).toContain("No tasks are in progress, and nothing is due today.")
+    expect(emptyDemo).toContain("Bot Chat is here as a demo.")
+    expect(emptyDemo).toContain("I will brief you here")
+    expect(emptyDemo.includes("Hello")).toBe(false)
+    expect(emptyDemo.includes("89%")).toBe(false)
+    expect(emptyDemo.length).toBeGreaterThan(160)
+
+    const thinking = agentDayBriefing({
+      thinkingTitle: "Bot Chat",
+      doingCount: 2,
+      todayCount: 3,
+      paired: true,
+      agentTitle: "Bot Chat",
+    })
+    expect(thinking).toContain("Bot Chat is thinking right now.")
+    expect(thinking).toContain("2 in progress, 3 due today.")
+
+    const due = agentDayBriefing({ doingCount: 0, todayCount: 1, paired: false })
+    expect(due).toContain("1 due today.")
+    expect(due).toContain("I will rewrite this every time you open the app.")
   })
 
   it("picks a busy chat before a task", () => {

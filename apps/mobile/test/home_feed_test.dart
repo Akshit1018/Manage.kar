@@ -36,4 +36,18 @@ void main() {
     expect(agentDaySumUp(doingCount: 0, todayCount: 0, paired: true), "Paired. Nothing running.");
     expect(agentDaySumUp(doingCount: 0, todayCount: 0, paired: false), "Nothing running yet.");
   });
+
+  test("writes a full PA briefing without Hello", () {
+    final emptyDemo = agentDayBriefing(
+      doingCount: 0,
+      todayCount: 0,
+      paired: false,
+      agentTitle: "Bot Chat",
+      agentIsDemo: true,
+    );
+    expect(emptyDemo.contains("Nothing is moving yet."), isTrue);
+    expect(emptyDemo.contains("Bot Chat is here as a demo."), isTrue);
+    expect(emptyDemo.contains("Hello"), isFalse);
+    expect(emptyDemo.length, greaterThan(160));
+  });
 }

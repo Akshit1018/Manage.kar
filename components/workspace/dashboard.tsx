@@ -84,7 +84,7 @@ import {
   showWorkspaceSearch,
   workspaceNavItems,
 } from "@/lib/ui/home-chrome"
-import { agentDaySumUp, homeAgents, homeRuntimeSignals, pickHomeSpotlight } from "@/lib/ui/home-feed"
+import { agentDayBriefing, homeAgents, homeRuntimeSignals, pickHomeSpotlight } from "@/lib/ui/home-feed"
 
 function clipTitle(content: string, limit: number) {
   return content.length > limit ? `${content.slice(0, limit).trim()}…` : content.trim()
@@ -626,12 +626,15 @@ export function Dashboard({ initialSearch }: DashboardProps) {
   const homeChats = chatListItems(dialer)
   const homeAgentList = homeAgents(visibleSessions(dialer))
   const runtimeSignals = homeRuntimeSignals(runtime, homeChats)
-  const daySumUp = agentDaySumUp({
+  const briefAgent = homeAgentList[0]
+  const dayBriefing = agentDayBriefing({
     thinkingTitle: runtimeSignals.thinkingTitle,
     approvalTitle: runtimeSignals.approvalTitle,
     doingCount: doingTasksCount,
     todayCount: todayTasks.length,
     paired: pairedMachineCount > 0,
+    agentTitle: briefAgent?.title,
+    agentIsDemo: briefAgent?.source === "demo",
   })
   const homeSpotlight = pickHomeSpotlight({
     chats: homeChats,
@@ -772,11 +775,21 @@ export function Dashboard({ initialSearch }: DashboardProps) {
         </div>
 
         <div className="min-w-0">
-          {currentView === "overview" && greeting !== "Today" ? <p className="mk-home-kicker">Today</p> : null}
-          <h1 className="mk-workspace-heading">{currentView === "overview" ? greeting : workspaceViewTitle(currentView)}</h1>
-          <p className="mk-section-support mt-2">
-            {currentView === "overview" ? daySumUp : workspaceViewSupport(currentView, greeting)}
-          </p>
+          {currentView === "overview" ? (
+            <>
+              <h1 className="mk-home-kicker">Today</h1>
+              <div className="mk-home-briefing" aria-label="Today from your agent">
+                {dayBriefing.split("\n\n").map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <h1 className="mk-workspace-heading">{workspaceViewTitle(currentView)}</h1>
+              <p className="mk-section-support mt-2">{workspaceViewSupport(currentView, greeting)}</p>
+            </>
+          )}
         </div>
 
         {showGlobalCreateRow(currentView) ? (

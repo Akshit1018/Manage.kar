@@ -147,9 +147,9 @@ class _HomeTab extends StatelessWidget {
     final habits = workspace.habits.map(asMap).toList();
     final due = workspace.dueToday();
     final doingCount = tasks.where((item) => item["status"] == "doing" && item["completed"] != true).length;
-    final greeting = homeGreeting(workspace.user?["name"] as String?);
     final sessions = visibleSessions(dialer?.state ?? DialerState.empty());
     final agents = homeAgents(sessions);
+    final briefAgent = agents.isEmpty ? null : agents.first;
     final chats = chatListItems(dialer?.state ?? DialerState.empty());
     final taskPreview = homeTaskPreview(tasks);
     final notePreview = homeNotePreview(notes);
@@ -186,13 +186,22 @@ class _HomeTab extends StatelessWidget {
               ),
             ],
           ),
-          if (greeting != "Today")
-            Text("Today", style: Theme.of(context).textTheme.bodySmall),
-          Text(greeting, style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 6),
-          Text(
-            agentDaySumUp(doingCount: doingCount, todayCount: due.length, paired: false),
-            style: Theme.of(context).textTheme.bodyMedium,
+          Text("Today", style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+              child: Text(
+                agentDayBriefing(
+                  doingCount: doingCount,
+                  todayCount: due.length,
+                  paired: false,
+                  agentTitle: briefAgent?.title,
+                  agentIsDemo: briefAgent?.source == "demo",
+                ),
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+            ),
           ),
           const SizedBox(height: 18),
           if (agents.isNotEmpty)
