@@ -31,11 +31,14 @@ import {
   applyHelperProbe,
   completeHandshakePairing,
   handshakeStatusCopy,
-  probeLocalHelper,
   startHandshake,
 } from "@/lib/pairing/handshake"
 import { showSimulatedPairingControl } from "@/lib/pairing/developer"
 import type { MachineKind, PairingDraft, PairingState } from "@/lib/pairing/types"
+import { attachToHermesDashboard } from "@/lib/hermes/attach"
+import { HERMES_DEFAULT_BASE } from "@/lib/hermes/endpoint"
+import { connectCompanion, getCompanionClient } from "@/lib/hermes/session-client"
+import { bindHermesSession } from "@/lib/hermes/session-map"
 
 interface PairingSheetProps {
   open: boolean
@@ -46,7 +49,10 @@ interface DraftPairing {
   name: string
   kind: MachineKind
   code: string
+  endpoint: string
+  token: string
   handshake: PairingDraft
+  connecting?: boolean
 }
 
 function lastSeenCopy(iso: string, now = new Date()): string {
@@ -129,8 +135,14 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
   const startDraft = () => {
     const code = generatePairingCode()
     const nowIso = new Date().toISOString()
-    const handshake = startHandshake({ name: "", kind: "vps", code, nowIso })
-    setDraft({ name: "", kind: "vps", code, handshake })
+    const handshake = startHandshake({
+      name: "",
+      kind: "vps",
+      code,
+      nowIso,
+      endpoint: HERMES_DEFAULT_BASE,
+    })
+    setDraft({ name: "", kind: "vps", code, endpoint: HERMES_DEFAULT_BASE, token: "", handshake })
   }
 
   useEffect(() => {
@@ -143,27 +155,29 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
       if (!current || current.handshake.phase !== "waiting") {
         return
       }
-      const probe = await probeLocalHelper(fetch)
+      const probe = await attachToHermesDashboard({
+        fetchImpl: fetch,
+        openSocket: async () => undefined,
+        request: async () => ({}),
+        baseUrl: current.endpoint || HERMES_DEFAULT_BASE,
+        token: current.token,
+        machineId: generateMachineId(),
+        name: current.name,
+        nowIso: new Date().toISOString(),
+        mode: "probe",
+      })
       if (cancelled) {
+        return
+      }
+      if (probe.kind !== "waiting") {
         return
       }
       const nowIso = new Date().toISOString()
       const next = applyHelperProbe(current.handshake, probe, nowIso)
-      if (next.phase === current.handshake.phase && next.failure === current.handshake.failure) {
+      if (next.dashboardVersion === current.handshake.dashboardVersion) {
         return
       }
       setDraft((value) => (value ? { ...value, handshake: next } : value))
-      if (next.phase === "paired") {
-        const storage = browserStorage()
-        const result = completeHandshakePairing(loadPairing(storage), loadDialer(storage), next, nowIso)
-        if (result) {
-          persistPairing(storage, { ...result.pairing, draft: undefined })
-          persistDialer(storage, result.dialer)
-          setPairing(result.pairing)
-          setDraft(null)
-          toast.success(`${next.name} paired. Its chat is in the Chats tab.`)
-        }
-      }
     }
     void tick()
     const timer = window.setInterval(() => {
@@ -173,7 +187,62 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
       cancelled = true
       window.clearInterval(timer)
     }
-  }, [open, draft?.code, draft?.handshake.phase])
+  }, [open, draft?.code, draft?.handshake.phase, draft?.endpoint])
+
+  const connectHermes = async () => {
+    const current = draftRef.current
+    if (!current || current.connecting) {
+      return
+    }
+    setDraft({ ...current, connecting: true })
+    const machineId = generateMachineId()
+    const nowIso = new Date().toISOString()
+    const probe = await attachToHermesDashboard({
+      fetchImpl: fetch,
+      openSocket: async () => {
+        await connectCompanion({
+          baseUrl: current.endpoint || HERMES_DEFAULT_BASE,
+          token: current.token,
+        })
+        if (getCompanionClient().connectionState !== "open") {
+          throw new Error("WebSocket connection failed")
+        }
+      },
+      request: (method, params) => getCompanionClient().request(method, params),
+      baseUrl: current.endpoint || HERMES_DEFAULT_BASE,
+      token: current.token,
+      machineId,
+      name: current.name.trim() || "Hermes",
+      nowIso,
+      mode: "connect",
+    })
+    const next = applyHelperProbe(current.handshake, probe, nowIso)
+    if (next.phase === "paired") {
+      const storage = browserStorage()
+      const result = completeHandshakePairing(
+        loadPairing(storage),
+        loadDialer(storage),
+        next,
+        nowIso,
+        current.token,
+      )
+      if (result) {
+        persistPairing(storage, { ...result.pairing, draft: undefined })
+        persistDialer(storage, result.dialer)
+        setPairing(result.pairing)
+        if (next.hermesSessionId) {
+          bindHermesSession(machineSessionId(next.machineId ?? machineId), next.hermesSessionId)
+        }
+        setDraft(null)
+        toast.success(`${next.name} connected to Hermes. Its chat is in the Chats tab.`)
+        return
+      }
+    }
+    setDraft({ ...current, connecting: false, handshake: next })
+    if (next.failure) {
+      toast.error(handshakeStatusCopy(next))
+    }
+  }
 
   const simulatePairing = () => {
     if (!draft) {
@@ -225,7 +294,7 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
         open={open}
         onClose={onClose}
         title="Paired machines"
-        description="This phone waits for a Hermes helper. The helper is not running until you start one. Simulate pairing stays behind #dev."
+        description="This phone waits for a Hermes helper. It speaks the MIT dashboard: GET /api/status, then /api/ws with a session token. Simulate pairing stays behind #dev."
       >
         <div className="space-y-4">
           {pairing && pairing.machines.length > 0 ? (
@@ -279,7 +348,8 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
                 <div className="flex items-start gap-3">
                   <Cable className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                   <p className="text-sm text-muted-foreground">
-                    Generate a code, then open Hermes on the computer → Pair phone.
+                    Start Hermes with `hermes dashboard` on the computer. Paste its URL and
+                    session token, then Connect. This is dashboard attach, not DM pairing.
                   </p>
                 </div>
               </Card>
@@ -304,6 +374,34 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
                       })
                     }
                     placeholder="e.g. Home VPS"
+                    className="mk-touch rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="helper-url">Hermes URL</Label>
+                  <Input
+                    id="helper-url"
+                    value={draft.endpoint}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        endpoint: event.target.value,
+                        handshake: { ...draft.handshake, endpoint: event.target.value },
+                      })
+                    }
+                    placeholder="http://127.0.0.1:9119"
+                    className="mk-touch rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="helper-token">Dashboard token</Label>
+                  <Input
+                    id="helper-token"
+                    type="password"
+                    autoComplete="off"
+                    value={draft.token}
+                    onChange={(event) => setDraft({ ...draft, token: event.target.value })}
+                    placeholder="From hermes dashboard"
                     className="mk-touch rounded-xl"
                   />
                 </div>
@@ -347,6 +445,10 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
                 <Button variant="outline" className="mk-touch bg-transparent" onClick={() => setDraft(null)}>
                   Cancel
                 </Button>
+                <Button className="mk-touch" disabled={draft.connecting} onClick={() => void connectHermes()}>
+                  <Cable className="mr-2 h-4 w-4" />
+                  {draft.connecting ? "Connecting…" : "Connect"}
+                </Button>
                 {developerPairing ? (
                   <Button className="mk-touch" onClick={simulatePairing}>
                     <FlaskConical className="mr-2 h-4 w-4" />
@@ -361,7 +463,7 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
                 </p>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  This phone is the client; the machine confirms the pair. Showing a QR does not complete pairing.
+                  Connect talks to the MIT helper. Showing a QR does not complete pairing.
                 </p>
               )}
             </Card>

@@ -95,6 +95,24 @@ describe("persistence", () => {
     expect(loadPairing(storage).machines).toHaveLength(1)
   })
 
+  it("keeps the official helper endpoint and Hermes session id", () => {
+    const storage = new MemoryStore()
+    const { pairing } = completeSimulatedPairing(createEmptyPairing(), createEmptyDialer(), {
+      id: "m1",
+      name: "Home VPS",
+      kind: "vps",
+      nowIso: NOW_ISO,
+      endpoint: "http://127.0.0.1:9119",
+      hermesSessionId: "a1b2c3d4",
+      hermesVersion: "0.5.0",
+    })
+    savePairing(storage, pairing)
+    const loaded = loadPairing(storage).machines[0]
+    expect(loaded?.endpoint).toBe("http://127.0.0.1:9119")
+    expect(loaded?.hermesSessionId).toBe("a1b2c3d4")
+    expect(loaded?.hermesVersion).toBe("0.5.0")
+  })
+
   it("recovers from corrupt storage with an empty state", () => {
     const storage = new MemoryStore()
     storage.setItem(PAIRING_KEY, "{corrupt")

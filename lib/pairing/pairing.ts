@@ -32,6 +32,7 @@ function asPairingFailure(value: unknown): PairingFailure | undefined {
     case "helper_not_running":
     case "code_expired":
     case "unreachable":
+    case "needs_token":
       return value
     default:
       return undefined
@@ -56,6 +57,12 @@ function asDraft(value: unknown): PairingDraft | undefined {
     phase,
     ...(failure ? { failure } : {}),
     ...(typeof value.machineId === "string" ? { machineId: value.machineId } : {}),
+    ...(typeof value.endpoint === "string" ? { endpoint: value.endpoint } : {}),
+    ...(typeof value.dashboardVersion === "string" ? { dashboardVersion: value.dashboardVersion } : {}),
+    ...(typeof value.hermesSessionId === "string" ? { hermesSessionId: value.hermesSessionId } : {}),
+    ...(typeof value.installId === "string" ? { installId: value.installId } : {}),
+    ...(typeof value.hermesVersion === "string" ? { hermesVersion: value.hermesVersion } : {}),
+    ...(value.authRequired === true ? { authRequired: true } : {}),
   }
 }
 
@@ -107,6 +114,19 @@ function asMachine(value: unknown): PairedMachine | null {
     pairedAt: typeof value.pairedAt === "string" ? value.pairedAt : new Date(0).toISOString(),
     lastSeenAt: typeof value.lastSeenAt === "string" ? value.lastSeenAt : new Date(0).toISOString(),
     ...(skills.length > 0 ? { skills } : {}),
+    ...(typeof value.endpoint === "string" && value.endpoint.trim() !== ""
+      ? { endpoint: value.endpoint.trim().slice(0, 300) }
+      : {}),
+    ...(typeof value.token === "string" && value.token.trim() !== "" ? { token: value.token.trim().slice(0, 512) } : {}),
+    ...(typeof value.installId === "string" && value.installId.trim() !== ""
+      ? { installId: value.installId.trim().slice(0, 128) }
+      : {}),
+    ...(typeof value.hermesVersion === "string" && value.hermesVersion.trim() !== ""
+      ? { hermesVersion: value.hermesVersion.trim().slice(0, 64) }
+      : {}),
+    ...(typeof value.hermesSessionId === "string" && value.hermesSessionId.trim() !== ""
+      ? { hermesSessionId: value.hermesSessionId.trim().slice(0, 128) }
+      : {}),
   }
 }
 
@@ -164,6 +184,11 @@ export interface SimulatedPairingInput {
   name: string
   kind: MachineKind
   nowIso: string
+  endpoint?: string
+  token?: string
+  installId?: string
+  hermesVersion?: string
+  hermesSessionId?: string
 }
 
 /**
@@ -184,6 +209,15 @@ export function completeSimulatedPairing(
     pairedAt: existing?.pairedAt ?? input.nowIso,
     lastSeenAt: input.nowIso,
     ...(existing?.skills && existing.skills.length > 0 ? { skills: existing.skills } : {}),
+    ...(input.endpoint || existing?.endpoint ? { endpoint: input.endpoint ?? existing?.endpoint } : {}),
+    ...(input.token || existing?.token ? { token: input.token ?? existing?.token } : {}),
+    ...(input.installId || existing?.installId ? { installId: input.installId ?? existing?.installId } : {}),
+    ...(input.hermesVersion || existing?.hermesVersion
+      ? { hermesVersion: input.hermesVersion ?? existing?.hermesVersion }
+      : {}),
+    ...(input.hermesSessionId || existing?.hermesSessionId
+      ? { hermesSessionId: input.hermesSessionId ?? existing?.hermesSessionId }
+      : {}),
   }
   const machines = existing
     ? pairing.machines.map((item) => (item.id === input.id ? machine : item))

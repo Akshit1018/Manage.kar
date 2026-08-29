@@ -76,6 +76,22 @@ describe("sendCompanionMessage", () => {
     expect(result.state.outbox.every((item) => item.status === "sent")).toBe(true)
   })
 
+  it("submits the official Hermes session_id when the machine stored one", async () => {
+    const result = await sendCompanionMessage({
+      state: withSession(paired("active")),
+      target: "machine-m1",
+      text: "hello",
+      nowIso: "2026-08-29T10:00:00.000Z",
+      connection: "open",
+      hermesSessionId: "a1b2c3d4",
+      submit: async (params) => {
+        expect(params.session_id).toBe("a1b2c3d4")
+        return { ok: true }
+      },
+    })
+    expect(result.submitted).toBe(true)
+  })
+
   it("keeps the queued copy if submit fails", async () => {
     const result = await sendCompanionMessage({
       state: withSession(paired("active")),

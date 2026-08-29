@@ -16,6 +16,9 @@ describe("Hermes JSON-RPC protocol", () => {
     expect(buildHermesWsUrl({ host: "vps.example", port: 443, protocol: "wss" })).toBe(
       "wss://vps.example:443/api/ws",
     )
+    expect(buildHermesWsUrl({ baseUrl: "http://127.0.0.1:9119", token: "dash" })).toBe(
+      "ws://127.0.0.1:9119/api/ws?token=dash",
+    )
   })
 
   it("encodes a newline-free JSON-RPC request for prompt.submit", () => {
@@ -49,6 +52,15 @@ describe("Hermes JSON-RPC protocol", () => {
     const result = decodeJsonRpc(JSON.stringify({ jsonrpc: "2.0", id: "r1", result: { ok: true } }))
     expect(result).toEqual({ kind: "result", id: "r1", result: { ok: true } })
     expect(decodeJsonRpc("{nope")).toBeNull()
+    const idFirst = decodeJsonRpc(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        id: "r2",
+        method: "event",
+        result: { session_id: "s1" },
+      }),
+    )
+    expect(idFirst).toEqual({ kind: "result", id: "r2", result: { session_id: "s1" } })
   })
 
   it("labels the methods this companion speaks", () => {
@@ -56,5 +68,7 @@ describe("Hermes JSON-RPC protocol", () => {
     expect(hermesMethodLabel("session.interrupt")).toBe("Stop")
     expect(hermesMethodLabel("approval.respond")).toBe("Respond to approval")
     expect(hermesMethodLabel("session.create")).toBe("Create session")
+    expect(hermesMethodLabel("gateway.ping")).toBe("Ping gateway")
+    expect(hermesMethodLabel("session.steer")).toBe("Steer")
   })
 })

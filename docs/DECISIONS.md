@@ -192,12 +192,15 @@ D001–D005.
 - Machines live in `managekar.pairing.v1` (backed up and wiped with everything else).
   Pairing codes/links are generated on-device; the QR is labeled **Not a real QR yet**.
   The client handshake is `waiting` with expiry, then named failures
-  (`helper_not_running`, `code_expired`, `unreachable`). Showing the QR does not
-  complete a pair. Completion requires a helper confirm (or "Simulate pairing (dev)"
-  behind `#dev` / `?dev=1` only). Simulated pairing creates a dialer session with
-  `source: "paired"`, `presence: "active"` — the only sessions whose sends may read "Sent".
-- **Reversal:** Replace the simulate action with a live QR/magic-link helper when one
-  is reachable; the storage shape is designed to survive that swap.
+  (`helper_not_running`, `code_expired`, `unreachable`, `needs_token`). Showing the QR does not
+  complete a pair. A live attach uses the MIT dashboard contract: `GET /api/status`,
+  then `/api/ws?token=`, then `session.create`. Status alone never pairs.
+  "Simulate pairing (dev)" stays behind `#dev` / `?dev=1` only. Attached or simulated
+  sessions use `source: "paired"`, `presence: "active"` — the only sessions whose sends
+  may read "Sent". Hermes DM pairing (`hermes pairing approve <platform> <code>`) is not
+  machine pairing.
+- **Reversal:** Replace the QR placeholder with a real scannable ticket when Hermes
+  ships a companion QR; keep the same storage shape.
 
 ### D010 — Home is Today; chrome is per-tab
 
