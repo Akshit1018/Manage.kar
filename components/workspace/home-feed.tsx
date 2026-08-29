@@ -140,7 +140,6 @@ export function HomeFeed({
       <HomePreview
         title="Chat"
         hasMore={remainingChatTotal > remainingChats.length}
-        fade={remainingChats.length > 0}
         onViewAll={() => onOpenView("chats")}
       >
         {remainingChats.length === 0 ? (
@@ -164,7 +163,6 @@ export function HomeFeed({
       <HomePreview
         title="Task"
         hasMore={openTasks.length > previewTasks.length}
-        fade={previewTasks.length > 0}
         onViewAll={() => onOpenView("tasks")}
       >
         {previewTasks.length === 0 ? (
@@ -188,7 +186,6 @@ export function HomeFeed({
       <HomePreview
         title="Notes"
         hasMore={notes.length > previewNotes.length}
-        fade={previewNotes.length > 0}
         onViewAll={() => onOpenView("notes")}
       >
         {previewNotes.length === 0 ? (
@@ -212,7 +209,6 @@ export function HomeFeed({
       <HomePreview
         title="Habits"
         hasMore={habits.length > previewHabits.length}
-        fade={previewHabits.length > 0}
         onViewAll={() => onOpenView("habits")}
       >
         {previewHabits.length === 0 ? (
@@ -239,20 +235,18 @@ export function HomeFeed({
 function HomePreview({
   title,
   hasMore,
-  fade,
   onViewAll,
   children,
 }: {
   title: string
   hasMore: boolean
-  fade: boolean
   onViewAll: () => void
   children: ReactNode
 }) {
   return (
     <section aria-label={title}>
       <h2 className="mk-section-title mb-3">{title}</h2>
-      <div className={fade ? "mk-home-fade" : undefined}>
+      <div className={hasMore ? "mk-home-fade" : undefined}>
         <div className="grid gap-3">{children}</div>
       </div>
       {hasMore ? (
