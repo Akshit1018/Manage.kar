@@ -361,7 +361,7 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
                 </p>
               ) : (
                 <p className="text-xs text-muted-foreground">
-                  Waiting for the computer. This phone is the client; the machine confirms the pair.
+                  This phone is the client; the machine confirms the pair. Showing a QR does not complete pairing.
                 </p>
               )}
             </Card>
