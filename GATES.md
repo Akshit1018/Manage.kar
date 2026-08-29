@@ -1,35 +1,25 @@
-# Gates: Hermes bridge plugin
+# Gates: Assistive ball bugs and pair listener
 
-OWNS: GATES.md, scripts/verify-hermes-bridge.mjs, scripts/hermes-bridge-stub.mjs, lib/hermes/plugin-pair.ts, lib/hermes/plugin-pair.test.ts, lib/hermes/qr-byte.ts, lib/hermes/qr-byte.test.ts, lib/hermes/status.ts, lib/pairing/types.ts, lib/pairing/handshake.ts, lib/pairing/pairing.ts, components/pairing-sheet.tsx, components/pair-qr.tsx, app/claim/page.tsx, app/globals.css, lib/theme/hermes-tokens.ts, lib/theme/hermes-tokens.test.ts, packages/hermes-managekar-plugin/**, docs/DECISIONS.md, docs/KNOWN_LIMITATIONS.md, docs/superpowers/grillme/2026-08-29-hermes-bridge-50.md, docs/superpowers/specs/2026-08-29-hermes-bridge-plugin.md
+OWNS: GATES.md, scripts/verify-ball-bugs.mjs, app/claim/page.tsx, lib/ui/orb-gesture.ts, lib/ui/orb-gesture.test.ts, components/floating-toggle.tsx, apps/mobile/lib/src/widgets/assist_orb.dart, apps/mobile/lib/src/widgets/assist_orb_geometry.dart, apps/mobile/lib/src/screens/shell_screen.dart, apps/mobile/test/widget_test.dart, apps/mobile/test/assist_orb_geometry_test.dart, packages/hermes-managekar-plugin/pairing.py, packages/hermes-managekar-plugin/pairing_test.py, packages/hermes-managekar-plugin/serve.py, packages/hermes-managekar-plugin/serve_test.py, packages/hermes-managekar-plugin/cli.py, packages/hermes-managekar-plugin/adapter.py, packages/hermes-managekar-plugin/README.md, packages/hermes-managekar-plugin/plugin.yaml, packages/hermes-managekar-plugin/dashboard/plugin_api.py, docs/DECISIONS.md
 
-Scope: Extractable MIT Hermes plugin that mints a host QR or claim link; the companion claims it once and attaches over the official dashboard WebSocket; a local stub on this VM proves pair, claim, and session.create.
+Scope: The in-app ball parks on an edge, its tray does not cover it, tap still opens actions after lost capture, long-press matches WhatsApp timing, the Flutter ball hides on Chats and snaps after a drag, and `hermes managekar --serve` lets a phone claim without dashboard auth while returning the dashboard endpoint.
 
-- [ ] G1: managekar.pair.v1 tickets parse and reject garbage
-  CHECK: node scripts/verify-hermes-bridge.mjs protocol
-  EXPECT: hermes bridge protocol verification passed
+- [ ] G1: default park snaps to the right edge and the tray misses the disk
+  CHECK: node scripts/verify-ball-bugs.mjs geometry
+  EXPECT: ball geometry verification passed
   EVIDENCE: pending
 
-- [ ] G2: plugin package is installable as hermes plugins install owner/repo
-  CHECK: node scripts/verify-hermes-bridge.mjs plugin
-  EXPECT: hermes bridge plugin verification passed
+- [ ] G2: hover and lost-capture policies do not swallow taps
+  CHECK: node scripts/verify-ball-bugs.mjs gesture
+  EXPECT: ball gesture verification passed
   EVIDENCE: pending
 
-- [ ] G3: local stub pair is single-use and session.create returns a Hermes session_id
-  CHECK: node scripts/verify-hermes-bridge.mjs live
-  EXPECT: hermes bridge live verification passed
+- [ ] G3: pairing sheet and Flutter orb stay honest
+  CHECK: node scripts/verify-ball-bugs.mjs ui
+  EXPECT: ball ui verification passed
   EVIDENCE: pending
 
-- [ ] G4: companion claim UI and Bot Chat stay honest
-  CHECK: node scripts/verify-hermes-bridge.mjs ui
-  EXPECT: hermes bridge ui verification passed
-  EVIDENCE: pending
-
-- [ ] G5: editorial surfaces use the dashboard 0.5rem radius
-  CHECK: node scripts/verify-hermes-bridge.mjs theme
-  EXPECT: hermes bridge theme verification passed
-  EVIDENCE: pending
-
-- [ ] G6: fifty grill questions have answers and recommendations
-  CHECK: node scripts/verify-hermes-bridge.mjs grill
-  EXPECT: hermes bridge grill verification passed
+- [ ] G4: pair listener claim returns the dashboard and rejects reuse
+  CHECK: node scripts/verify-ball-bugs.mjs serve
+  EXPECT: ball serve verification passed
   EVIDENCE: pending

@@ -220,3 +220,16 @@ D001–D005.
   phone pill. The hydrate preloader never blocks the workspace.
 - **Reversal:** Only if Nous publishes a single official companion token sheet that
   replaces both the marketing site and the dashboard palettes.
+
+### D012 — Phone claim uses a dedicated pair listener
+
+- Official Hermes auth-gates `/api/plugins/*` with a dashboard session token. A
+  phone cannot send that header, so `hermes managekar --serve` binds a small
+  stdlib listener (default `:9120`) for mint / claim / QR only. Claim still
+  returns the dashboard `{ endpoint, token }` so the companion attaches to
+  `/api/ws` on `:9119`. `--pair-base` / `MANAGEKAR_PUBLIC_BASE` must be a
+  LAN, Tailscale, or tunnel URL for a real phone. Loopback is not a public host.
+  The in-app ball parks on an edge, keeps its tray off the disk, and hides on
+  the Chats tab.
+- **Reversal:** If Hermes ships an unauthenticated companion claim route on the
+  dashboard, retire `--serve` and keep the same ticket shape.

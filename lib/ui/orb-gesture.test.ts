@@ -10,6 +10,10 @@ import {
   clampOrbPosition,
   defaultOrbPosition,
   iconBarPosition,
+  LONG_PRESS_MS,
+  orbHoverOpensTray,
+  orbLostPointerPolicy,
+  rectsOverlap,
   movementExceeded,
   orbGestureOutcome,
   orbKeyboardIntent,
@@ -56,8 +60,10 @@ describe("orbReleaseAction", () => {
 })
 
 describe("orb placement", () => {
-  it("parks the ball near the bottom-right", () => {
-    expect(defaultOrbPosition(IPHONE_390)).toEqual({ x: 290, y: 712 })
+  it("parks the ball on the snapped right edge, not inset by 100px", () => {
+    expect(LONG_PRESS_MS).toBe(500)
+    expect(defaultOrbPosition(IPHONE_390)).toEqual({ x: 326, y: 712 })
+    expect(defaultOrbPosition(IPHONE_SE)).toEqual({ x: 256, y: 436 })
   })
 
   it("keeps a 56px orb above a 76px bottom reserve", () => {
@@ -68,7 +74,7 @@ describe("orb placement", () => {
   })
 
   it("sits the icon bar above and inward from a left-side ball", () => {
-    expect(iconBarPosition({ x: 100, y: 744 }, IPHONE_390)).toEqual({ x: 160, y: 684 })
+    expect(iconBarPosition({ x: 100, y: 744 }, IPHONE_390)).toEqual({ x: 164, y: 684 })
   })
 
   it("sizes the tray for four 44px buttons plus gaps and padding", () => {
@@ -119,9 +125,26 @@ describe("orb placement", () => {
   it("keeps the tray visible and inward on the right edge", () => {
     const orb = { x: IPHONE_390.width - ORB_SIZE - 8, y: 400 }
     const bar = iconBarPosition(orb, IPHONE_390)
-    expect(bar.x + ICON_BAR_WIDTH).toBeLessThanOrEqual(orb.x + ORB_SIZE)
+    expect(bar.x + ICON_BAR_WIDTH).toBeLessThanOrEqual(orb.x)
     expect(bar.x).toBeGreaterThanOrEqual(8)
     expect(bar.x + ICON_BAR_WIDTH).toBeLessThanOrEqual(IPHONE_390.width - 8)
+  })
+
+  it("never covers the ball disk with the tray", () => {
+    const spots = [
+      { orb: { x: 8, y: 400 }, bounds: IPHONE_390 },
+      { orb: { x: 326, y: 400 }, bounds: IPHONE_390 },
+      { orb: snapOrbToEdge({ x: 300, y: 400 }, IPHONE_SE), bounds: IPHONE_SE },
+    ]
+    for (const { orb, bounds } of spots) {
+      const bar = iconBarPosition(orb, bounds)
+      expect(
+        rectsOverlap(
+          { x: bar.x, y: bar.y, width: ICON_BAR_WIDTH, height: 60 },
+          { x: orb.x, y: orb.y, width: ORB_SIZE, height: ORB_SIZE },
+        ),
+      ).toBe(false)
+    }
   })
 
   it("snaps a right-side release to the nearest edge", () => {
@@ -435,6 +458,25 @@ describe("orbPlacementTransitionMs", () => {
 
   it("allows a short snap animation otherwise", () => {
     expect(orbPlacementTransitionMs(false)).toBe(180)
+  })
+})
+
+describe("orbHoverOpensTray", () => {
+  it("opens on a fine mouse, not on a coarse phone pointer", () => {
+    expect(orbHoverOpensTray({ hoverCapable: true, finePointer: true })).toBe(true)
+    expect(orbHoverOpensTray({ hoverCapable: false, finePointer: false })).toBe(false)
+    expect(orbHoverOpensTray({ hoverCapable: true, finePointer: false })).toBe(false)
+  })
+})
+
+describe("orbLostPointerPolicy", () => {
+  it("hands a live gesture to window listeners instead of cancelling the tap", () => {
+    expect(
+      orbLostPointerPolicy({ activePointerId: 7, eventPointerId: 7, gestureEnded: false }),
+    ).toBe("handoff")
+    expect(
+      orbLostPointerPolicy({ activePointerId: 7, eventPointerId: 7, gestureEnded: true }),
+    ).toBe("ignore")
   })
 })
 

@@ -39,8 +39,18 @@ Or standalone (no Hermes install):
 
 ```bash
 python3 pairing_test.py
+python3 serve_test.py
 python3 -c "from cli import print_pair; print_pair('http://127.0.0.1:9119', 'stub')"
+python3 cli.py --serve --host http://127.0.0.1:9119 --port 9120 --bind 127.0.0.1
 ```
+
+`--serve` is the phone path. Official Hermes gates `/api/plugins/*` with a
+dashboard session token, so a handset cannot claim on `:9119` without one.
+The listener on `:9120` mints and claims without that header, then returns
+`{ endpoint, token }` for the real dashboard WebSocket. Point `--pair-base`
+(or `MANAGEKAR_PAIR_BASE`) at a LAN / Tailscale / tunnel URL the phone can
+reach. Pass `--token` / `MANAGEKAR_DASHBOARD_TOKEN` so claim returns a real
+dashboard session, not a stub `mk_` token.
 
 On this Manage.kar repo the companion also ships `scripts/hermes-bridge-stub.mjs`,
 which implements the same routes plus a tiny `/api/ws` so the bridge can be

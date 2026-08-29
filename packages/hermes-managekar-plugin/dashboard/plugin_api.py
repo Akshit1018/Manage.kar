@@ -30,7 +30,8 @@ def _public_base() -> str:
 async def mint_pair(body: dict | None = None) -> dict:
     payload = body or {}
     label = str(payload.get("host_label") or payload.get("label") or "Hermes")
-    ticket = _store().mint(_public_base(), label)
+    token = os.environ.get("MANAGEKAR_DASHBOARD_TOKEN") or None
+    ticket = _store().mint(_public_base(), label, token=token)
     return {
         "ticket": ticket,
         "pair_id": ticket["pairId"],

@@ -5,6 +5,7 @@ import "package:managekar/src/api/api_client.dart";
 import "package:managekar/src/screens/chats_screen.dart";
 import "package:managekar/src/state/dialer.dart";
 import "package:managekar/src/widgets/assist_orb.dart";
+import "package:managekar/src/widgets/assist_orb_geometry.dart";
 import "package:shared_preferences/shared_preferences.dart";
 
 void main() {
@@ -73,6 +74,55 @@ void main() {
     await tester.longPress(find.bySemanticsLabel("Record, add a task or note, or open chats"));
     await tester.pump();
     expect(records, 1);
+  });
+
+  testWidgets("hidden orb is gone on Chats and a drag parks on the left edge", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Stack(
+            children: [
+              AssistOrb(
+                visible: false,
+                onRecord: () {},
+                onTask: () {},
+                onNote: () {},
+                onChats: () {},
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("assist-orb")), findsNothing);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Stack(
+            children: [
+              AssistOrb(
+                onRecord: () {},
+                onTask: () {},
+                onNote: () {},
+                onChats: () {},
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final orb = find.byKey(const Key("assist-orb"));
+    expect(tester.getTopLeft(orb), const Offset(326, 712));
+    await tester.drag(orb, const Offset(-250, 0));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(orb).dx, 8);
+    final prefs = await SharedPreferences.getInstance();
+    expect(parseSavedOrbPosition(prefs.getString(kOrbPositionKey))?.dx, 8);
   });
 
   testWidgets("chats tab lists demo machines and never claims delivery", (tester) async {

@@ -12,6 +12,11 @@ from typing import Any
 
 from .pairing import PairStore, default_store_path
 
+try:
+    from .cli import main as cli_main
+except ImportError:
+    from cli import main as cli_main
+
 
 def check_requirements() -> bool:
     return os.environ.get("MANAGEKAR_ENABLED", "true").strip().lower() not in {"0", "false", "no"}
@@ -31,11 +36,21 @@ def register(ctx: Any) -> None:
     def setup_pair(parser: Any) -> None:
         parser.add_argument("--host", default=os.environ.get("MANAGEKAR_PUBLIC_BASE", "http://127.0.0.1:9119"))
         parser.add_argument("--label", default="Hermes")
+        parser.add_argument("--serve", action="store_true")
+        parser.add_argument("--port", type=int, default=9120)
+        parser.add_argument("--bind", default="127.0.0.1")
+        parser.add_argument("--pair-base", default=None)
+        parser.add_argument("--token", default=os.environ.get("MANAGEKAR_DASHBOARD_TOKEN"))
 
     def handle_pair(args: Any) -> None:
-        from .cli import print_pair
-
-        print_pair(args.host, args.label)
+        extra: list[str] = ["--host", args.host, "--label", args.label]
+        if getattr(args, "serve", False):
+            extra.extend(["--serve", "--port", str(args.port), "--bind", args.bind])
+            if args.pair_base:
+                extra.extend(["--pair-base", args.pair_base])
+            if args.token:
+                extra.extend(["--token", args.token])
+        cli_main(extra)
 
     if hasattr(ctx, "register_cli_command"):
         ctx.register_cli_command(
