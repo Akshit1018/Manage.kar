@@ -68,11 +68,19 @@ export function wheelItems(sessions: HermesSession[]): WheelItem[] {
   const sorted = [...sessions].sort((a, b) => b.lastActivityAt.localeCompare(a.lastActivityAt))
   return [
     { id: NEW_CHAT_TARGET, title: "New chat" },
-    ...sorted.map((session) => ({ id: session.id, title: session.title, presence: session.presence })),
+    ...sorted.map((session) => ({
+      id: session.id,
+      title: session.title,
+      presence: session.presence,
+      source: session.source,
+    })),
   ]
 }
 
-export function presenceDotClass(presence: SessionPresence): string {
+export function presenceDotClass(presence: SessionPresence, source?: SessionSource): string {
+  if (source === "demo") {
+    return "bg-muted-foreground/50"
+  }
   switch (presence) {
     case "active":
       return "bg-emerald-500"
@@ -87,14 +95,17 @@ export function presenceDotClass(presence: SessionPresence): string {
   }
 }
 
-export function presenceLabel(presence: SessionPresence): string {
+export function presenceLabel(presence: SessionPresence, source?: SessionSource): string {
+  if (source === "demo") {
+    return "not paired"
+  }
   switch (presence) {
     case "active":
-      return "online"
+      return "reachable"
     case "idle":
-      return "idle"
+      return "asleep"
     case "offline":
-      return "offline"
+      return "unreachable"
     default: {
       const _exhaustive: never = presence
       throw new Error(`Unhandled presence: ${_exhaustive}`)
@@ -169,7 +180,7 @@ export function queueCopy(input: QueueCopyInput): string {
     case "active":
     case "idle":
     case "offline":
-      return "Queued — sends when the agent is back online"
+      return "Queued — sends when the machine is reachable"
     case undefined:
       return "Saved locally — will send after pairing"
     default: {

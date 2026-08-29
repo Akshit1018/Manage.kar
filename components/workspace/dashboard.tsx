@@ -24,6 +24,7 @@ import {
   MessageCircle,
 } from "lucide-react"
 import { ChatComposer } from "@/components/chat-composer"
+import { MobileSheet } from "@/components/mobile-sheet"
 import { FloatingToggle } from "@/components/floating-toggle"
 import { TaskModal } from "@/components/task-modal"
 import { NoteModal, type NoteSaveExtras } from "@/components/note-modal"
@@ -70,6 +71,7 @@ import {
 import { COMPOSER_OPEN_EVENT } from "@/lib/dialer/dialer"
 import type { ComposerOpenDetail } from "@/lib/dialer/types"
 import { filterTasks, type TaskListFilter } from "@/lib/tasks/filter"
+import { showGlobalCreateRow, showToolLauncher, showWorkspaceSearch } from "@/lib/ui/home-chrome"
 
 function clipTitle(content: string, limit: number) {
   return content.length > limit ? `${content.slice(0, limit).trim()}…` : content.trim()
@@ -145,6 +147,8 @@ export function Dashboard({ initialSearch }: DashboardProps) {
   const [timeTrackerModal, setTimeTrackerModal] = useState(false)
   const [goalManagerModal, setGoalManagerModal] = useState(false)
   const [voiceRecorderOpen, setVoiceRecorderOpen] = useState(false)
+  const [moreToolsOpen, setMoreToolsOpen] = useState(false)
+  const [viewportWidth, setViewportWidth] = useState(320)
 
   const weekStartsOn = workspace.settings.general.weekStartsOn
   const todayKey = localDateKey()
@@ -159,6 +163,13 @@ export function Dashboard({ initialSearch }: DashboardProps) {
       window.removeEventListener(PAIRING_CHANGED_EVENT, reload)
       window.removeEventListener("storage", reload)
     }
+  }, [])
+
+  useEffect(() => {
+    const updateWidth = () => setViewportWidth(window.innerWidth)
+    updateWidth()
+    window.addEventListener("resize", updateWidth)
+    return () => window.removeEventListener("resize", updateWidth)
   }, [])
 
   useEffect(() => {
@@ -688,6 +699,7 @@ export function Dashboard({ initialSearch }: DashboardProps) {
           <p className="mk-section-support mt-2">{workspaceViewSupport(currentView, greeting)}</p>
         </div>
 
+        {showGlobalCreateRow(currentView) ? (
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Button onClick={() => setTaskModal({ isOpen: true, mode: "create" })} className="w-full rounded-2xl sm:w-auto">
             <Plus className="h-4 w-4" />
@@ -704,7 +716,19 @@ export function Dashboard({ initialSearch }: DashboardProps) {
             </Button>
           </div>
         </div>
+        ) : null}
 
+        {currentView === "overview" && !showToolLauncher(currentView, viewportWidth) ? (
+          <Button
+            variant="outline"
+            className="mk-touch w-full rounded-2xl bg-transparent"
+            onClick={() => setMoreToolsOpen(true)}
+          >
+            More
+          </Button>
+        ) : null}
+
+        {showToolLauncher(currentView, viewportWidth) ? (
         <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
           <Button
             variant="ghost"
@@ -740,7 +764,9 @@ export function Dashboard({ initialSearch }: DashboardProps) {
             <span className="hidden text-xs min-[375px]:inline">Counts</span>
           </Button>
         </div>
+        ) : null}
 
+        {showWorkspaceSearch(currentView) ? (
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -752,11 +778,26 @@ export function Dashboard({ initialSearch }: DashboardProps) {
             aria-label="Search workspace"
           />
         </div>
+        ) : null}
       </header>
 
       <main className="mb-10">
         {currentView === "overview" && (
           <div className="space-y-6">
+            <TodaySection
+              tasks={tasks}
+              todayTasks={todayTasks}
+              todayHabits={todayHabits}
+              labels={workspace.labels}
+              dateFormat={dateFormat}
+              onToggleTask={handleTaskToggle}
+              onEditTask={(task) => setTaskModal({ isOpen: true, mode: "edit", task })}
+              onToggleHabit={handleHabitToggle}
+              onAddTask={() => setTaskModal({ isOpen: true, mode: "create" })}
+            />
+
+            <FollowUpSection tasks={followUpsDue} onToggleTask={handleTaskToggle} onNudge={handleNudgeFollowUp} />
+
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
               <button type="button" className="col-span-2 text-left lg:col-span-2" onClick={() => selectView("tasks")} aria-label={`${pendingTasksCount} pending tasks`}>
                 <div className="mk-featured-surface p-5">
@@ -812,20 +853,6 @@ export function Dashboard({ initialSearch }: DashboardProps) {
                 </Card>
               </button>
             </div>
-
-            <FollowUpSection tasks={followUpsDue} onToggleTask={handleTaskToggle} onNudge={handleNudgeFollowUp} />
-
-            <TodaySection
-              tasks={tasks}
-              todayTasks={todayTasks}
-              todayHabits={todayHabits}
-              labels={workspace.labels}
-              dateFormat={dateFormat}
-              onToggleTask={handleTaskToggle}
-              onEditTask={(task) => setTaskModal({ isOpen: true, mode: "edit", task })}
-              onToggleHabit={handleHabitToggle}
-              onAddTask={() => setTaskModal({ isOpen: true, mode: "create" })}
-            />
           </div>
         )}
 
@@ -911,7 +938,7 @@ export function Dashboard({ initialSearch }: DashboardProps) {
         onAddNote={() => setNoteModal({ isOpen: true, mode: "create" })}
         onVoiceNote={handleVoiceNote}
         onCreateTaskFromVoice={handleVoiceTask}
-        suppressed={composerExpanded}
+        suppressed={composerExpanded || currentView === "chats"}
       />
 
       <ChatComposer
@@ -987,6 +1014,28 @@ export function Dashboard({ initialSearch }: DashboardProps) {
         stats={{ tasksCompleted: completedTasksCount, habitsTracked: habits.length }}
         onProfileChange={(profile) => persist((current) => ({ ...current, profile }))}
       />
+      <MobileSheet open={moreToolsOpen} onClose={() => setMoreToolsOpen(false)} title="More">
+        <div className="grid gap-2">
+          <Button variant="outline" className="mk-touch justify-start bg-transparent" onClick={() => { setMoreToolsOpen(false); setHabitDashboard(true) }}>
+            Habits dashboard
+          </Button>
+          <Button variant="outline" className="mk-touch justify-start bg-transparent" onClick={() => { setMoreToolsOpen(false); setGoalManagerModal(true) }}>
+            Goals
+          </Button>
+          <Button variant="outline" className="mk-touch justify-start bg-transparent" onClick={() => { setMoreToolsOpen(false); setTimeTrackerModal(true) }}>
+            Time
+          </Button>
+          <Button variant="outline" className="mk-touch justify-start bg-transparent" onClick={() => { setMoreToolsOpen(false); setFocusModal(true) }}>
+            Focus
+          </Button>
+          <Button variant="outline" className="mk-touch justify-start bg-transparent" onClick={() => { setMoreToolsOpen(false); setShareModal(true) }}>
+            Share
+          </Button>
+          <Button variant="outline" className="mk-touch justify-start bg-transparent" onClick={() => { setMoreToolsOpen(false); setAnalyticsModal(true) }}>
+            Counts
+          </Button>
+        </div>
+      </MobileSheet>
       <SettingsModal isOpen={settingsModal} onClose={() => setSettingsModal(false)} />
       <AnalyticsDashboard isOpen={analyticsModal} onClose={() => setAnalyticsModal(false)} tasks={tasks} habits={habits} />
       <TimeTracker isOpen={timeTrackerModal} onClose={() => setTimeTrackerModal(false)} workspace={workspace} persist={persist} />

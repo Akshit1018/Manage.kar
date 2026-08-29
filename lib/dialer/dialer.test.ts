@@ -66,9 +66,12 @@ describe("presence", () => {
   })
 
   it("labels presence for screen readers", () => {
-    expect(presenceLabel("active")).toBe("online")
-    expect(presenceLabel("idle")).toBe("idle")
-    expect(presenceLabel("offline")).toBe("offline")
+    expect(presenceLabel("active")).toBe("reachable")
+    expect(presenceLabel("idle")).toBe("asleep")
+    expect(presenceLabel("offline")).toBe("unreachable")
+    expect(presenceLabel("active", "demo")).toBe("not paired")
+    expect(presenceLabel("offline", "demo")).toBe("not paired")
+    expect(presenceDotClass("active", "demo")).not.toContain("emerald")
   })
 })
 
@@ -259,7 +262,8 @@ describe("visibleSessions and chat list", () => {
   it("uses honest copy until a real send exists", () => {
     expect(queueCopy({ status: "queued", source: "demo" })).toMatch(/pairing/i)
     expect(queueCopy({ status: "sent", source: "demo" })).toMatch(/pairing/i)
-    expect(queueCopy({ status: "queued", source: "paired", presence: "offline" })).toMatch(/online/i)
+    expect(queueCopy({ status: "queued", source: "paired", presence: "offline" })).toMatch(/reachable/i)
+    expect(queueCopy({ status: "queued", source: "paired", presence: "offline" })).not.toMatch(/online/i)
     expect(queueCopy({ status: "sent" })).toMatch(/sent/i)
   })
 

@@ -123,6 +123,10 @@ describe("workspace section source contract", () => {
     expect(contract.chatsRowHasNoHeadingInButton).toBe(true)
     expect(contract.chatsPreviewUsesLineClamp).toBe(true)
     expect(contract.chatsTitleUsesEntityTitle).toBe(true)
+    expect(contract.chatsThreadHasNoHeaderMessage).toBe(true)
+    expect(contract.chatsEmptyHasNoMessageCta).toBe(true)
+    expect(contract.chatsLoadingUsesSkeletons).toBe(true)
+    expect(contract.chatsMountsApprovalCard).toBe(true)
     expect(contract.habitDescriptionWraps).toBe(true)
     expect(contract.composerNotifiesExpandedBeforeSetState).toBe(true)
     expect(contract.composerUsesComposerBar).toBe(true)
@@ -196,6 +200,15 @@ describe("chat row accessible name", () => {
         preview: "Queued note",
       }),
     ).toBe("Hermes · local, Demo, 2 queued. Queued note")
+    expect(
+      chatRowAccessibleName({
+        title: "Hermes · local",
+        source: "demo",
+        statusWord: "not paired",
+        queuedCount: 0,
+        preview: "No messages yet",
+      }),
+    ).toBe("Hermes · local, Demo, not paired. No messages yet")
     expect(
       chatRowAccessibleName({
         title: "Same title",

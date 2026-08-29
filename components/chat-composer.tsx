@@ -223,8 +223,8 @@ export function ChatComposer({ onVoice, onExpandedChange, preferredTarget }: Cha
                 >
                   {item.presence ? (
                     <span
-                      className={cn("h-2 w-2 shrink-0 rounded-full", presenceDotClass(item.presence))}
-                      title={presenceLabel(item.presence)}
+                      className={cn("h-2 w-2 shrink-0 rounded-full", presenceDotClass(item.presence, item.source))}
+                      title={presenceLabel(item.presence, item.source)}
                     />
                   ) : (
                     <Plus className="h-3 w-3 shrink-0 text-primary" />
@@ -257,7 +257,7 @@ export function ChatComposer({ onVoice, onExpandedChange, preferredTarget }: Cha
           className="mk-composer-target mk-touch rounded-full bg-secondary px-3 text-xs font-medium"
         >
           {selected?.presence ? (
-            <span className={cn("h-2 w-2 shrink-0 rounded-full", presenceDotClass(selected.presence))} />
+            <span className={cn("h-2 w-2 shrink-0 rounded-full", presenceDotClass(selected.presence, selected.source))} />
           ) : (
             <Plus className="h-3 w-3 shrink-0 text-primary" />
           )}
