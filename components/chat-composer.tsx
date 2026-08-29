@@ -15,13 +15,14 @@ import {
   presenceDotClass,
   presenceLabel,
   queueCopy,
-  queueMessage,
   queuedCountFor,
   resolveSession,
   targetTitle,
   visibleSessions,
   wheelItems,
 } from "@/lib/dialer/dialer"
+import { getCompanionClient } from "@/lib/hermes/session-client"
+import { sendCompanionMessage } from "@/lib/hermes/send"
 import { NEW_CHAT_TARGET, type ComposerOpenDetail, type DialerState } from "@/lib/dialer/types"
 import { useVisualViewportInset } from "@/lib/ui/use-visual-viewport"
 import { applyComposerExpandedChange } from "@/lib/ui/workspace-sections-layout"
@@ -138,23 +139,31 @@ export function ChatComposer({ onVoice, onExpandedChange, preferredTarget }: Cha
     }
     sendingRef.current = true
     const base = dialer ?? loadDialer(window.localStorage)
-    const result = queueMessage(base, target, draft, new Date().toISOString())
-    if (!result) {
-      sendingRef.current = false
-      return
-    }
-    setText("")
-    persistDialer(window.localStorage, result.state)
-    setDialer(result.state)
-    const session = resolveSession(result.state, target)
-    const title = targetTitle(visibleSessions(result.state), target)
-    const copy = queueCopy({
-      status: result.message.status,
-      source: session?.source,
-      presence: session?.presence,
+    const client = getCompanionClient()
+    void sendCompanionMessage({
+      state: base,
+      target,
+      text: draft,
+      nowIso: new Date().toISOString(),
+      connection: client.connectionState,
+      submit: (params) => client.request(params.method, { session_id: params.session_id, text: params.text }),
     })
-    toast(result.message.status === "sent" ? `Sent to ${title}` : `${copy} · ${title}`)
-    sendingRef.current = false
+      .then((result) => {
+        setText("")
+        persistDialer(window.localStorage, result.state)
+        setDialer(result.state)
+        const session = resolveSession(result.state, target)
+        const title = targetTitle(visibleSessions(result.state), target)
+        const copy = queueCopy({
+          status: result.message.status,
+          source: session?.source,
+          presence: session?.presence,
+        })
+        toast(result.message.status === "sent" ? `Sent to ${title}` : `${copy} · ${title}`)
+      })
+      .finally(() => {
+        sendingRef.current = false
+      })
   }
 
   if (!dialer) {

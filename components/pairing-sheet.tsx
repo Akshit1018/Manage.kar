@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Cable, Copy, FlaskConical, Plus, Server, Smartphone, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -27,8 +27,15 @@ import {
   persistPairing,
   removeMachine,
 } from "@/lib/pairing/pairing"
+import {
+  applyHelperProbe,
+  completeHandshakePairing,
+  handshakeStatusCopy,
+  probeLocalHelper,
+  startHandshake,
+} from "@/lib/pairing/handshake"
 import { showSimulatedPairingControl } from "@/lib/pairing/developer"
-import type { MachineKind, PairingState } from "@/lib/pairing/types"
+import type { MachineKind, PairingDraft, PairingState } from "@/lib/pairing/types"
 
 interface PairingSheetProps {
   open: boolean
@@ -39,6 +46,7 @@ interface DraftPairing {
   name: string
   kind: MachineKind
   code: string
+  handshake: PairingDraft
 }
 
 function lastSeenCopy(iso: string, now = new Date()): string {
@@ -88,6 +96,8 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
   const [draft, setDraft] = useState<DraftPairing | null>(null)
   const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null)
   const [developerPairing, setDeveloperPairing] = useState(false)
+  const draftRef = useRef<DraftPairing | null>(null)
+  draftRef.current = draft
 
   useEffect(() => {
     if (!open) {
@@ -117,8 +127,53 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
   }, [open])
 
   const startDraft = () => {
-    setDraft({ name: "", kind: "vps", code: generatePairingCode() })
+    const code = generatePairingCode()
+    const nowIso = new Date().toISOString()
+    const handshake = startHandshake({ name: "", kind: "vps", code, nowIso })
+    setDraft({ name: "", kind: "vps", code, handshake })
   }
+
+  useEffect(() => {
+    if (!open || !draft || draft.handshake.phase !== "waiting") {
+      return
+    }
+    let cancelled = false
+    const tick = async () => {
+      const current = draftRef.current
+      if (!current || current.handshake.phase !== "waiting") {
+        return
+      }
+      const probe = await probeLocalHelper(fetch)
+      if (cancelled) {
+        return
+      }
+      const nowIso = new Date().toISOString()
+      const next = applyHelperProbe(current.handshake, probe, nowIso)
+      if (next.phase === current.handshake.phase && next.failure === current.handshake.failure) {
+        return
+      }
+      setDraft((value) => (value ? { ...value, handshake: next } : value))
+      if (next.phase === "paired") {
+        const storage = browserStorage()
+        const result = completeHandshakePairing(loadPairing(storage), loadDialer(storage), next, nowIso)
+        if (result) {
+          persistPairing(storage, { ...result.pairing, draft: undefined })
+          persistDialer(storage, result.dialer)
+          setPairing(result.pairing)
+          setDraft(null)
+          toast.success(`${next.name} paired. Its chat is in the Chats tab.`)
+        }
+      }
+    }
+    void tick()
+    const timer = window.setInterval(() => {
+      void tick()
+    }, 4000)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [open, draft?.code, draft?.handshake.phase])
 
   const simulatePairing = () => {
     if (!draft) {
@@ -170,7 +225,7 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
         open={open}
         onClose={onClose}
         title="Paired machines"
-        description="Pairing is a local scaffold until a Hermes backend is connected. Nothing talks to a server yet."
+        description="This phone waits for a Hermes helper. The helper is not running until you start one. Simulate pairing stays behind #dev."
       >
         <div className="space-y-4">
           {pairing && pairing.machines.length > 0 ? (
@@ -241,7 +296,13 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
                   <Input
                     id="machine-name"
                     value={draft.name}
-                    onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        name: event.target.value,
+                        handshake: { ...draft.handshake, name: event.target.value },
+                      })
+                    }
                     placeholder="e.g. Home VPS"
                     className="mk-touch rounded-xl"
                   />
@@ -250,7 +311,9 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
                   <Label>Kind</Label>
                   <Select
                     value={draft.kind}
-                    onValueChange={(value: MachineKind) => setDraft({ ...draft, kind: value })}
+                    onValueChange={(value: MachineKind) =>
+                      setDraft({ ...draft, kind: value, handshake: { ...draft.handshake, kind: value } })
+                    }
                   >
                     <SelectTrigger className="mk-touch rounded-xl">
                       <SelectValue />
@@ -271,9 +334,9 @@ export function PairingSheet({ open, onClose }: PairingSheetProps) {
                   {pairingLink(draft.code)}
                 </p>
                 <p className="text-center text-xs text-muted-foreground">
-                  QR placeholder — generated on this device. Nothing is listening for this code until a
-                  Hermes backend is connected.
+                  QR placeholder — generated on this device. Showing it does not mean a QR was scanned.
                 </p>
+                <p className="text-center text-sm">{handshakeStatusCopy(draft.handshake)}</p>
                 <Button variant="outline" size="sm" className="mk-touch w-full bg-transparent" onClick={copyCode}>
                   <Copy className="mr-2 h-4 w-4" />
                   Copy link

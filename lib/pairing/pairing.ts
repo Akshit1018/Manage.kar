@@ -1,9 +1,10 @@
 import type { KeyValueStore } from "@/lib/store/workspace"
 import type { DialerState, HermesSession } from "@/lib/dialer/types"
 import { parseMachineSkills } from "@/lib/hermes/skills"
-import type { MachineKind, PairedMachine, PairingState } from "./types"
+import type { HandshakePhase, MachineKind, PairedMachine, PairingDraft, PairingFailure, PairingState } from "./types"
+import { PAIRING_STORAGE_KEY } from "./types"
 
-export const PAIRING_KEY = "managekar.pairing.v1"
+export const PAIRING_KEY = PAIRING_STORAGE_KEY
 export const PAIRING_CHANGED_EVENT = "managekar:pairing-changed"
 
 /** No O/0/1/I/L so codes survive being read out loud or retyped. */
@@ -13,6 +14,49 @@ const CODE_GROUP_LENGTH = 4
 
 export function createEmptyPairing(): PairingState {
   return { schemaVersion: 1, machines: [] }
+}
+
+function asHandshakePhase(value: unknown): HandshakePhase | null {
+  switch (value) {
+    case "waiting":
+    case "failed":
+    case "paired":
+      return value
+    default:
+      return null
+  }
+}
+
+function asPairingFailure(value: unknown): PairingFailure | undefined {
+  switch (value) {
+    case "helper_not_running":
+    case "code_expired":
+    case "unreachable":
+      return value
+    default:
+      return undefined
+  }
+}
+
+function asDraft(value: unknown): PairingDraft | undefined {
+  if (!isRecord(value) || typeof value.code !== "string" || typeof value.name !== "string") {
+    return undefined
+  }
+  const phase = asHandshakePhase(value.phase)
+  if (!phase || typeof value.startedAt !== "string" || typeof value.expiresAt !== "string") {
+    return undefined
+  }
+  const failure = asPairingFailure(value.failure)
+  return {
+    name: value.name.trim().slice(0, 120) || "Unnamed machine",
+    kind: asMachineKind(value.kind),
+    code: value.code,
+    startedAt: value.startedAt,
+    expiresAt: value.expiresAt,
+    phase,
+    ...(failure ? { failure } : {}),
+    ...(typeof value.machineId === "string" ? { machineId: value.machineId } : {}),
+  }
 }
 
 /**
@@ -73,7 +117,8 @@ export function parsePairing(value: unknown): PairingState {
   const machines = value.machines
     .map(asMachine)
     .filter((item): item is PairedMachine => item !== null)
-  return { schemaVersion: 1, machines }
+  const draft = asDraft(value.draft)
+  return { schemaVersion: 1, machines, ...(draft ? { draft } : {}) }
 }
 
 export function loadPairing(storage: KeyValueStore): PairingState {

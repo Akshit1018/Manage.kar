@@ -191,11 +191,13 @@ D001–D005.
 
 - Machines live in `managekar.pairing.v1` (backed up and wiped with everything else).
   Pairing codes/links are generated on-device; the QR is labeled **Not a real QR yet**.
-  The only completion path is still "Simulate pairing (dev)", but that control renders
-  only with `#dev` or `?dev=1`. Simulated pairing creates a dialer session with
+  The client handshake is `waiting` with expiry, then named failures
+  (`helper_not_running`, `code_expired`, `unreachable`). Showing the QR does not
+  complete a pair. Completion requires a helper confirm (or "Simulate pairing (dev)"
+  behind `#dev` / `?dev=1` only). Simulated pairing creates a dialer session with
   `source: "paired"`, `presence: "active"` — the only sessions whose sends may read "Sent".
-- **Reversal:** Replace the simulate action with the real QR/magic-link handshake when
-  the Hermes backend module ships; the storage shape is designed to survive that swap.
+- **Reversal:** Replace the simulate action with a live QR/magic-link helper when one
+  is reachable; the storage shape is designed to survive that swap.
 
 ### D010 — Home is Today; chrome is per-tab
 
