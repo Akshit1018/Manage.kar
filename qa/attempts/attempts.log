@@ -1,0 +1,40 @@
+at: 2026-08-30T19:24:25.170Z
+action: use-owner-db-url
+blocked: true
+requested: postgresql://managekar:***@127.0.0.1:5432/managekar
+reason: QA refused owner database URL for role managekar. Use qa_agent.
+at: 2026-08-30T19:24:25.193Z
+action: sql-write
+blocked: true
+requested: DELETE FROM "Task"
+reason: QA refused mutating SQL. SELECT/EXPLAIN/SHOW only. Write cleanup to a review file.
+at: 2026-08-30T19:24:25.215Z
+action: execute-cleanup
+blocked: true
+requested: execute
+reason: Cleanup files are review-only. A human runs them after reading.
+at: 2026-08-30T19:24:25.237Z
+action: query-sentry-without-dsn
+blocked: true
+requested: p50/p95/error-rate
+reason: No Sentry DSN. Observability queries fail closed instead of guessing.
+at: 2026-08-30T19:26:29.550Z
+action: use-owner-db-url
+blocked: true
+requested: postgresql://managekar:***@127.0.0.1:5432/managekar
+reason: QA refused owner database URL for role managekar. Use qa_agent.
+at: 2026-08-30T19:26:29.571Z
+action: sql-write
+blocked: true
+requested: DELETE FROM "Task"
+reason: QA refused mutating SQL. SELECT/EXPLAIN/SHOW only. Write cleanup to a review file.
+at: 2026-08-30T19:26:29.592Z
+action: execute-cleanup
+blocked: true
+requested: execute
+reason: Cleanup files are review-only. A human runs them after reading.
+at: 2026-08-30T19:26:29.612Z
+action: query-sentry-without-dsn
+blocked: true
+requested: p50/p95/error-rate
+reason: No Sentry DSN. Observability queries fail closed instead of guessing.
