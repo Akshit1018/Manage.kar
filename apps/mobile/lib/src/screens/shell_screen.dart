@@ -281,7 +281,6 @@ class _HomeTab extends StatelessWidget {
           ],
           if (showHomeListPreview(chatPreview.length)) ...[
             const SizedBox(height: 20),
-            Text("Chat", style: Theme.of(context).textTheme.titleMedium),
             ...chatPreview.map((item) {
               return ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -292,7 +291,6 @@ class _HomeTab extends StatelessWidget {
             }),
           ],
           if (showHomeListPreview(taskPreview.length)) ...[
-            Text("Task", style: Theme.of(context).textTheme.titleMedium),
             ...taskPreview.map((item) {
               return ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -305,7 +303,6 @@ class _HomeTab extends StatelessWidget {
               TextButton(onPressed: () => onOpenTab(1), child: const Text("View all")),
           ],
           if (showHomeListPreview(notePreview.length)) ...[
-            Text("Notes", style: Theme.of(context).textTheme.titleMedium),
             ...notePreview.map((item) {
               return ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -318,7 +315,6 @@ class _HomeTab extends StatelessWidget {
               TextButton(onPressed: () => onOpenTab(2), child: const Text("View all")),
           ],
           if (showHomeListPreview(habitPreview.length)) ...[
-            Text("Habits", style: Theme.of(context).textTheme.titleMedium),
             ...habitPreview.map((item) {
               return ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -399,7 +395,6 @@ class _ListTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        appBar: AppBar(title: Text(title)),
         floatingActionButton: FloatingActionButton(
           tooltip: "Add $title",
           onPressed: onAdd,
@@ -438,7 +433,6 @@ class _HabitsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        appBar: AppBar(title: const Text("Habits")),
         floatingActionButton: FloatingActionButton(
           tooltip: "Add habit",
           onPressed: () => openHabitEditor(context, workspace),

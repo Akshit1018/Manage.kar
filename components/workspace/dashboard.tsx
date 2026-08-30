@@ -821,8 +821,8 @@ export function Dashboard({ initialSearch }: DashboardProps) {
             </>
           ) : (
             <>
-              <h1 className="mk-workspace-heading">{workspaceViewTitle(currentView)}</h1>
-              <p className="mk-section-support mt-2">{workspaceViewSupport(currentView, greeting)}</p>
+              <h1 className="sr-only">{workspaceViewTitle(currentView)}</h1>
+              <p className="mk-section-support">{workspaceViewSupport(currentView, greeting)}</p>
             </>
           )}
         </div>

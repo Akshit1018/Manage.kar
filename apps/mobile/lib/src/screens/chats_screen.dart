@@ -42,7 +42,6 @@ class ChatsTab extends StatelessWidget {
         final items = chatListItems(dialer.state);
         return SafeArea(
           child: Scaffold(
-            appBar: AppBar(title: const Text("Chats")),
             floatingActionButton: FloatingActionButton.extended(
               heroTag: "new-chat",
               onPressed: () => openChatThread(context, dialer, newChatTarget),

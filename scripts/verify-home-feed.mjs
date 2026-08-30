@@ -98,6 +98,7 @@ function verifyUi() {
     "showToolLauncher",
     "aria-label=\"Goals\"",
     'currentView === "overview" ? greeting',
+    "mk-workspace-heading",
   ])
   if (dashboard.includes("pending tasks") && dashboard.includes("mk-featured-numeral")) {
     fail("dashboard still shows overview count tiles")
@@ -116,6 +117,7 @@ function verifyUi() {
     "No open tasks.",
     "No notes yet.",
     "No habits yet.",
+    "mk-home-heading",
   ])
   requireIncludes("lib/ui/home-chrome.ts", ["overviewUsesHomeFeed", "showWorkspaceExport", "showComposerDock"])
   requireIncludes("app/globals.css", [
@@ -147,7 +149,11 @@ function verifyUi() {
     "No open tasks.",
     "No notes yet.",
     "No habits yet.",
+    'Text("Chat"',
+    'Text("Task"',
+    "AppBar(title:",
   ])
+  requireAbsent("apps/mobile/lib/src/screens/chats_screen.dart", ['title: const Text("Chats")'])
 }
 
 function verifyTheme() {
