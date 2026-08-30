@@ -133,8 +133,7 @@ export function HomeFeed({
           }}
           aria-label={`${spotlight.title}. ${spotlight.detail}`}
         >
-          <p className="text-sm opacity-80">{spotlight.kind === "chat" ? "Chat" : "Task"}</p>
-          <p className="mt-1 text-2xl font-semibold tracking-tight">{spotlight.title}</p>
+          <p className="text-2xl font-semibold tracking-tight">{spotlight.title}</p>
           <p className="mt-2 text-sm">{spotlight.detail}</p>
         </button>
       ) : null}
