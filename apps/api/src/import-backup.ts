@@ -66,7 +66,7 @@ const settingsSchema = z
     appearance: z
       .object({
         theme: z.enum(["light", "dark", "system"]).optional(),
-        skin: z.enum(["hermes", "classic"]).optional(),
+        skin: z.enum(["hermes", "classic", "white", "black"]).optional(),
         fontSize: z.enum(["small", "medium", "large"]).optional(),
         animations: z.boolean().optional(),
       })

@@ -3,15 +3,12 @@ import "package:managekar/src/notifications/local_reminders.dart";
 import "package:managekar/src/screens/chats_screen.dart";
 import "package:managekar/src/screens/counts_screen.dart";
 import "package:managekar/src/screens/editors.dart";
-import "package:managekar/src/screens/focus_screen.dart";
-import "package:managekar/src/screens/goals_screen.dart";
 import "package:managekar/src/screens/profile_screen.dart";
 import "package:managekar/src/screens/settings_screen.dart";
-import "package:managekar/src/screens/share_screen.dart";
-import "package:managekar/src/screens/time_screen.dart";
 import "package:managekar/src/state/dialer.dart";
 import "package:managekar/src/state/session.dart";
 import "package:managekar/src/state/workspace.dart";
+import "package:managekar/src/ui/home_feed.dart";
 import "package:managekar/src/util/format.dart";
 import "package:managekar/src/widgets/assist_orb.dart";
 import "package:managekar/src/widgets/assist_orb_geometry.dart";
@@ -56,7 +53,13 @@ class _ShellScreenState extends State<ShellScreen> {
       animation: widget.workspace,
       builder: (context, _) {
         final pages = [
-          _HomeTab(workspace: widget.workspace, session: widget.session, reminders: widget.reminders, dialer: dialer),
+          _HomeTab(
+            workspace: widget.workspace,
+            session: widget.session,
+            reminders: widget.reminders,
+            dialer: dialer,
+            onOpenTab: (value) => setState(() => index = value),
+          ),
           _ListTab(
             title: "Tasks",
             empty: "Add one task. It is stored in PostgreSQL.",
@@ -123,32 +126,54 @@ class _ShellScreenState extends State<ShellScreen> {
 }
 
 class _HomeTab extends StatelessWidget {
-  const _HomeTab({required this.workspace, required this.session, required this.reminders, this.dialer});
+  const _HomeTab({
+    required this.workspace,
+    required this.session,
+    required this.reminders,
+    required this.onOpenTab,
+    this.dialer,
+  });
 
   final WorkspaceController workspace;
   final SessionController session;
   final LocalReminders reminders;
+  final ValueChanged<int> onOpenTab;
   final DialerController? dialer;
 
   @override
   Widget build(BuildContext context) {
-    final pending = workspace.tasks.where((item) => asMap(item)["completed"] != true).length;
-    final notes = workspace.notes.length;
-    final habitsDone = workspace.habits.where((item) => asMap(item)["completedToday"] == true).length;
+    final tasks = workspace.tasks.map(asMap).toList();
+    final notes = workspace.notes.map(asMap).toList();
+    final habits = workspace.habits.map(asMap).toList();
     final due = workspace.dueToday();
+    final doingCount = tasks.where((item) => item["status"] == "doing" && item["completed"] != true).length;
+    final sessions = visibleSessions(dialer?.state ?? DialerState.empty());
+    final agents = homeAgents(sessions);
+    final briefAgent = agents.isEmpty ? null : agents.first;
+    final chats = chatListItems(dialer?.state ?? DialerState.empty());
+    final paired = sessions.any((session) => session.source == "paired");
+    final taskPreview = homeTaskPreview(tasks);
+    final notePreview = homeNotePreview(notes);
+    final habitPreview = homeHabitPreview(habits);
+    final chatPreview = homeChatPreview(chats);
+    final doing = tasks.where((item) => item["status"] == "doing" && item["completed"] != true);
+    final spotlight = doing.isNotEmpty ? doing.first : (due.isEmpty ? null : due.first);
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           Row(
             children: [
-              Expanded(
-                child: Text("Home", style: Theme.of(context).textTheme.headlineSmall),
-              ),
               IconButton(
                 tooltip: "Open profile",
                 onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => ProfileScreen(workspace: workspace))),
                 icon: const Icon(Icons.person_outline),
+              ),
+              const Spacer(),
+              IconButton(
+                tooltip: "More",
+                onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => CountsScreen(workspace: workspace))),
+                icon: const Icon(Icons.grid_view_outlined),
               ),
               IconButton(
                 tooltip: "Open settings",
@@ -162,56 +187,145 @@ class _HomeTab extends StatelessWidget {
               ),
             ],
           ),
-          Text("Signed in as ${workspace.user?["name"] ?? "you"}. Data lives in PostgreSQL."),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          Text("Today", style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    agentDayBriefing(
+                      doingCount: doingCount,
+                      todayCount: due.length,
+                      paired: paired,
+                      agentTitle: briefAgent?.title,
+                      agentIsDemo: briefAgent?.source == "demo",
+                    ),
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      FilledButton(
+                        onPressed: () => openTaskEditor(context, workspace),
+                        child: const Text("Add a task"),
+                      ),
+                      if (!paired)
+                        OutlinedButton(
+                          onPressed: () => onOpenTab(3),
+                          child: const Text("Pair a machine"),
+                        ),
+                      if (briefAgent != null)
+                        OutlinedButton(
+                          onPressed: dialer == null ? null : () => openChatThread(context, dialer!, briefAgent.id),
+                          child: Text("Ask ${briefAgent.title}"),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          if (agents.isNotEmpty)
+            SizedBox(
+              height: 96,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: agents.map((agent) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: InkWell(
+                      onTap: dialer == null ? null : () => openChatThread(context, dialer!, agent.id),
+                      child: SizedBox(
+                        width: 72,
+                        child: Column(
+                          children: [
+                            CircleAvatar(radius: 28, child: Text(agentInitials(agent.title))),
+                            const SizedBox(height: 6),
+                            Text(agent.title, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.labelMedium),
+                            Text(agentCaption(agent), style: Theme.of(context).textTheme.labelSmall),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          const SizedBox(height: 12),
+          Row(
             children: [
-              _StatCard(label: "Pending", value: "$pending"),
-              _StatCard(label: "Notes", value: "$notes"),
-              _StatCard(label: "Habits today", value: "$habitsDone/${workspace.habits.length}"),
+              _JumpTile(label: "Task", icon: Icons.check_circle_outline, onTap: () => onOpenTab(1)),
+              const SizedBox(width: 8),
+              _JumpTile(label: "Notes", icon: Icons.sticky_note_2_outlined, onTap: () => onOpenTab(2)),
+              const SizedBox(width: 8),
+              _JumpTile(label: "Chat", icon: Icons.chat_bubble_outline, onTap: () => onOpenTab(3)),
+              const SizedBox(width: 8),
+              _JumpTile(label: "Habit", icon: Icons.local_fire_department_outlined, onTap: () => onOpenTab(4)),
             ],
           ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            children: [
-              ActionChip(
-                label: const Text("Goals"),
-                onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => GoalsScreen(workspace: workspace))),
+          if (spotlight != null) ...[
+            const SizedBox(height: 16),
+            Card(
+              child: ListTile(
+                title: Text(spotlight["title"] as String? ?? "Task"),
+                subtitle: Text(taskProgressDetail(spotlight)),
+                onTap: () => openTaskEditor(context, workspace, spotlight),
               ),
-              ActionChip(
-                label: const Text("Time"),
-                onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => TimeScreen(workspace: workspace))),
-              ),
-              ActionChip(
-                label: const Text("Focus"),
-                onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => FocusScreen(workspace: workspace))),
-              ),
-              ActionChip(
-                label: const Text("Counts"),
-                onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => CountsScreen(workspace: workspace))),
-              ),
-              ActionChip(
-                label: const Text("Share"),
-                onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => ShareScreen(workspace: workspace))),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Text("Due today", style: Theme.of(context).textTheme.titleMedium),
-          if (due.isEmpty)
-            const ListTile(contentPadding: EdgeInsets.zero, title: Text("Nothing due today."))
-          else
-            ...due.map((task) {
+            ),
+          ],
+          if (showHomeListPreview(chatPreview.length)) ...[
+            const SizedBox(height: 20),
+            ...chatPreview.map((item) {
               return ListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text(task["title"] as String? ?? ""),
-                subtitle: Text("${task["priority"]}"),
-                onTap: () => openTaskEditor(context, workspace, task),
+                title: Text(item.title),
+                subtitle: Text(item.preview),
+                onTap: dialer == null ? null : () => openChatThread(context, dialer!, item.id),
               );
             }),
+          ],
+          if (showHomeListPreview(taskPreview.length)) ...[
+            ...taskPreview.map((item) {
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(item["title"] as String? ?? ""),
+                subtitle: Text(taskProgressDetail(item)),
+                onTap: () => openTaskEditor(context, workspace, item),
+              );
+            }),
+            if (tasks.where((item) => item["completed"] != true).length > taskPreview.length)
+              TextButton(onPressed: () => onOpenTab(1), child: const Text("View all")),
+          ],
+          if (showHomeListPreview(notePreview.length)) ...[
+            ...notePreview.map((item) {
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(item["title"] as String? ?? "Untitled note"),
+                subtitle: Text((item["content"] as String?)?.isEmpty == true ? "Empty" : item["content"] as String? ?? "Empty"),
+                onTap: () => openNoteEditor(context, workspace, item),
+              );
+            }),
+            if (notes.length > notePreview.length)
+              TextButton(onPressed: () => onOpenTab(2), child: const Text("View all")),
+          ],
+          if (showHomeListPreview(habitPreview.length)) ...[
+            ...habitPreview.map((item) {
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(item["name"] as String? ?? ""),
+                subtitle: Text(item["completedToday"] == true ? "Done today" : "Not yet today"),
+                onTap: () => openHabitEditor(context, workspace, item),
+              );
+            }),
+            if (habits.length > habitPreview.length)
+              TextButton(onPressed: () => onOpenTab(4), child: const Text("View all")),
+          ],
           if (workspace.error != null) Text(workspace.error!, style: const TextStyle(color: Colors.red)),
         ],
       ),
@@ -219,17 +333,36 @@ class _HomeTab extends StatelessWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({required this.label, required this.value});
+class _JumpTile extends StatelessWidget {
+  const _JumpTile({required this.label, required this.icon, required this.onTap});
+
   final String label;
-  final String value;
+  final IconData icon;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(children: [Text(value, style: Theme.of(context).textTheme.headlineSmall), Text(label)]),
+    return Expanded(
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Ink(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon),
+                const SizedBox(height: 6),
+                Text(label, style: Theme.of(context).textTheme.labelLarge),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -262,7 +395,6 @@ class _ListTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        appBar: AppBar(title: Text(title)),
         floatingActionButton: FloatingActionButton(
           tooltip: "Add $title",
           onPressed: onAdd,
@@ -301,7 +433,6 @@ class _HabitsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        appBar: AppBar(title: const Text("Habits")),
         floatingActionButton: FloatingActionButton(
           tooltip: "Add habit",
           onPressed: () => openHabitEditor(context, workspace),

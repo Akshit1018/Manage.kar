@@ -6,14 +6,9 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
-  Target,
   Settings,
   User,
-  Share2,
-  Zap,
   Plus,
-  BarChart3,
-  Clock,
   FileText,
   CheckSquare,
   Search,
@@ -21,9 +16,11 @@ import {
   Activity,
   Home,
   Download,
+  LayoutGrid,
   MessageCircle,
 } from "lucide-react"
 import { ChatComposer } from "@/components/chat-composer"
+import { PairingSheet } from "@/components/pairing-sheet"
 import { MobileSheet } from "@/components/mobile-sheet"
 import { FloatingToggle } from "@/components/floating-toggle"
 import { TaskModal } from "@/components/task-modal"
@@ -39,7 +36,7 @@ import { AnalyticsDashboard } from "@/components/analytics-dashboard"
 import { TimeTracker } from "@/components/time-tracker"
 import { GoalManager } from "@/components/goal-manager"
 import { ClipboardMonitor } from "@/components/clipboard-monitor"
-import { TodaySection } from "@/components/workspace/today-section"
+import { HomeFeed } from "@/components/workspace/home-feed"
 import { TaskList } from "@/components/workspace/task-list"
 import { NoteList } from "@/components/workspace/note-list"
 import { HabitList } from "@/components/workspace/habit-list"
@@ -69,18 +66,28 @@ import {
   workspaceViewTitle,
   type WorkspaceView,
 } from "@/lib/navigation/workspace-url"
-import { COMPOSER_OPEN_EVENT } from "@/lib/dialer/dialer"
-import type { ComposerOpenDetail } from "@/lib/dialer/types"
+import {
+  COMPOSER_OPEN_EVENT,
+  DIALER_CHANGED_EVENT,
+  chatListItems,
+  createEmptyDialer,
+  loadDialer,
+  visibleSessions,
+} from "@/lib/dialer/dialer"
+import type { ComposerOpenDetail, DialerState } from "@/lib/dialer/types"
+import { getCompanionRuntime, subscribeCompanionRuntime } from "@/lib/hermes/runtime"
 import { filterTasks, type TaskListFilter } from "@/lib/tasks/filter"
 import {
   homeGreeting,
+  showComposerDock,
   showDesktopSidebar,
   showGlobalCreateRow,
   showMobileTabBar,
-  showToolLauncher,
+  showWorkspaceExport,
   showWorkspaceSearch,
   workspaceNavItems,
 } from "@/lib/ui/home-chrome"
+import { agentDayBriefing, homeAgents, homeRuntimeSignals, pickHomeSpotlight } from "@/lib/ui/home-feed"
 
 function clipTitle(content: string, limit: number) {
   return content.length > limit ? `${content.slice(0, limit).trim()}…` : content.trim()
@@ -157,22 +164,33 @@ export function Dashboard({ initialSearch }: DashboardProps) {
   const [goalManagerModal, setGoalManagerModal] = useState(false)
   const [voiceRecorderOpen, setVoiceRecorderOpen] = useState(false)
   const [moreToolsOpen, setMoreToolsOpen] = useState(false)
+  const [pairingOpen, setPairingOpen] = useState(false)
   const [viewportWidth, setViewportWidth] = useState(320)
+  const [dialer, setDialer] = useState<DialerState>(createEmptyDialer)
+  const [runtime, setRuntime] = useState(getCompanionRuntime)
 
   const weekStartsOn = workspace.settings.general.weekStartsOn
   const todayKey = localDateKey()
   const [pairedMachineCount, setPairedMachineCount] = useState(0)
 
   useEffect(() => {
-    const reload = () => setPairedMachineCount(loadPairing(browserStorage()).machines.length)
+    const reload = () => {
+      const storage = browserStorage()
+      setPairedMachineCount(loadPairing(storage).machines.length)
+      setDialer(loadDialer(storage))
+    }
     reload()
     window.addEventListener(PAIRING_CHANGED_EVENT, reload)
+    window.addEventListener(DIALER_CHANGED_EVENT, reload)
     window.addEventListener("storage", reload)
     return () => {
       window.removeEventListener(PAIRING_CHANGED_EVENT, reload)
+      window.removeEventListener(DIALER_CHANGED_EVENT, reload)
       window.removeEventListener("storage", reload)
     }
   }, [])
+
+  useEffect(() => subscribeCompanionRuntime(setRuntime), [])
 
   useEffect(() => {
     const updateWidth = () => setViewportWidth(window.innerWidth)
@@ -606,12 +624,30 @@ export function Dashboard({ initialSearch }: DashboardProps) {
   }
 
   const completedTasksCount = tasks.filter((task) => task.completed).length
-  const pendingTasksCount = tasks.filter((task) => !task.completed).length
-  const pinnedNotesCount = notes.filter((note) => note.pinned).length
   const doingTasksCount = tasks.filter((task) => taskStatus(task) === "doing").length
   const followUpsDue = dueFollowUps(tasks)
   const todayTasks = tasks.filter((task) => isTaskDueTodayOrOverdue(task.dueDate, task.completed))
-  const todayHabits = habits.filter((habit) => isHabitScheduledOn(habit, todayKey, weekStartsOn))
+  const homeChats = chatListItems(dialer)
+  const homeAgentList = homeAgents(visibleSessions(dialer))
+  const runtimeSignals = homeRuntimeSignals(runtime, homeChats)
+  const briefAgent = homeAgentList[0]
+  const dayBriefing = agentDayBriefing({
+    thinkingTitle: runtimeSignals.thinkingTitle,
+    approvalTitle: runtimeSignals.approvalTitle,
+    doingCount: doingTasksCount,
+    todayCount: todayTasks.length,
+    paired: pairedMachineCount > 0,
+    agentTitle: briefAgent?.title,
+    agentIsDemo: briefAgent?.source === "demo",
+  })
+  const homeSpotlight = pickHomeSpotlight({
+    chats: homeChats,
+    tasks,
+    todayTasks,
+    busyChatId: runtimeSignals.busyChatId,
+    busyDetail: runtimeSignals.busyDetail,
+    approvalChatId: runtimeSignals.approvalChatId,
+  })
   const query = searchQuery.toLowerCase()
   const searchedTasks = tasks.filter(
     (task) =>
@@ -635,6 +671,11 @@ export function Dashboard({ initialSearch }: DashboardProps) {
     if (view === "chats") {
       setChatSession("")
     }
+  }
+
+  const openChat = (sessionId: string) => {
+    setCurrentView("chats")
+    setChatSession(sessionId)
   }
 
   return (
@@ -704,16 +745,29 @@ export function Dashboard({ initialSearch }: DashboardProps) {
           </Button>
           <HermesWordmark />
           <div className="flex shrink-0 items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              className="rounded-2xl bg-transparent sm:w-auto sm:px-4"
-              onClick={() => setShareModal(true)}
-              aria-label="Export workspace"
-            >
-              <Download className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Export</span>
-            </Button>
+            {showWorkspaceExport(currentView) ? (
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-2xl bg-transparent sm:w-auto sm:px-4"
+                onClick={() => setShareModal(true)}
+                aria-label="Export workspace"
+              >
+                <Download className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+            ) : null}
+            {currentView === "overview" ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="modern-card rounded-2xl"
+                onClick={() => setMoreToolsOpen(true)}
+                aria-label="More"
+              >
+                <LayoutGrid className="h-5 w-5" />
+              </Button>
+            ) : null}
             <Button
               variant="ghost"
               size="icon"
@@ -727,8 +781,50 @@ export function Dashboard({ initialSearch }: DashboardProps) {
         </div>
 
         <div className="min-w-0">
-          <h1 className="mk-workspace-heading">{workspaceViewTitle(currentView)}</h1>
-          <p className="mk-section-support mt-2">{workspaceViewSupport(currentView, greeting)}</p>
+          {currentView === "overview" ? (
+            <>
+              <h1 className="mk-home-kicker">Today</h1>
+              <div className="mk-home-briefing" aria-label="Today from your agent">
+                {dayBriefing.split("\n\n").map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+                <div className="mk-home-briefing-actions">
+                  <Button
+                    type="button"
+                    className="mk-touch rounded-2xl"
+                    onClick={() => setTaskModal({ isOpen: true, mode: "create" })}
+                  >
+                    Add a task
+                  </Button>
+                  {pairedMachineCount === 0 ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mk-touch rounded-2xl bg-transparent"
+                      onClick={() => setPairingOpen(true)}
+                    >
+                      Pair a machine
+                    </Button>
+                  ) : null}
+                  {briefAgent ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mk-touch rounded-2xl bg-transparent"
+                      onClick={() => openChat(briefAgent.id)}
+                    >
+                      Ask {briefAgent.title}
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <h1 className="sr-only">{workspaceViewTitle(currentView)}</h1>
+              <p className="mk-section-support">{workspaceViewSupport(currentView, greeting)}</p>
+            </>
+          )}
         </div>
 
         {showGlobalCreateRow(currentView) ? (
@@ -750,54 +846,6 @@ export function Dashboard({ initialSearch }: DashboardProps) {
         </div>
         ) : null}
 
-        {currentView === "overview" && !showToolLauncher(currentView, viewportWidth) ? (
-          <Button
-            variant="outline"
-            className="mk-touch w-full rounded-2xl bg-transparent"
-            onClick={() => setMoreToolsOpen(true)}
-          >
-            More
-          </Button>
-        ) : null}
-
-        {showToolLauncher(currentView, viewportWidth) ? (
-        <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
-          <Button
-            variant="ghost"
-            className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14"
-            onClick={() => selectView("chats")}
-            aria-label="Chats"
-          >
-            <MessageCircle className="h-4 w-4" />
-            <span className="hidden text-xs min-[375px]:inline">Chats</span>
-          </Button>
-          <Button variant="ghost" className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14" onClick={() => setHabitDashboard(true)} aria-label="Habits dashboard">
-            <Activity className="h-4 w-4" />
-            <span className="hidden text-xs min-[375px]:inline">Habits</span>
-          </Button>
-          <Button variant="ghost" className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14" onClick={() => setGoalManagerModal(true)} aria-label="Goals">
-            <Target className="h-4 w-4" />
-            <span className="hidden text-xs min-[375px]:inline">Goals</span>
-          </Button>
-          <Button variant="ghost" className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14" onClick={() => setTimeTrackerModal(true)} aria-label="Time">
-            <Clock className="h-4 w-4" />
-            <span className="hidden text-xs min-[375px]:inline">Time</span>
-          </Button>
-          <Button variant="ghost" className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14" onClick={() => setFocusModal(true)} aria-label="Focus">
-            <Zap className="h-4 w-4" />
-            <span className="hidden text-xs min-[375px]:inline">Focus</span>
-          </Button>
-          <Button variant="ghost" className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14" onClick={() => setShareModal(true)} aria-label="Share">
-            <Share2 className="h-4 w-4" />
-            <span className="hidden text-xs min-[375px]:inline">Share</span>
-          </Button>
-          <Button variant="ghost" className="modern-card h-12 flex-col gap-1 rounded-xl sm:h-14" onClick={() => setAnalyticsModal(true)} aria-label="Counts">
-            <BarChart3 className="h-4 w-4" />
-            <span className="hidden text-xs min-[375px]:inline">Counts</span>
-          </Button>
-        </div>
-        ) : null}
-
         {showWorkspaceSearch(currentView) ? (
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -816,75 +864,22 @@ export function Dashboard({ initialSearch }: DashboardProps) {
       <main className="mb-10">
         {currentView === "overview" && (
           <div className="space-y-6">
-            <TodaySection
+            <HomeFeed
+              agents={homeAgentList}
+              chats={homeChats}
               tasks={tasks}
-              todayTasks={todayTasks}
-              todayHabits={todayHabits}
-              labels={workspace.labels}
-              dateFormat={dateFormat}
-              onToggleTask={handleTaskToggle}
-              onEditTask={(task) => setTaskModal({ isOpen: true, mode: "edit", task })}
-              onToggleHabit={handleHabitToggle}
-              onAddTask={() => setTaskModal({ isOpen: true, mode: "create" })}
+              notes={notes}
+              habits={habits}
+              spotlight={homeSpotlight}
+              onOpenAgent={openChat}
+              onOpenChat={openChat}
+              onOpenTask={(task) => setTaskModal({ isOpen: true, mode: "edit", task })}
+              onOpenNote={(note) => setNoteModal({ isOpen: true, mode: "edit", note })}
+              onOpenHabit={(habit) => setHabitModal({ isOpen: true, mode: "edit", habit })}
+              onOpenView={selectView}
             />
 
             <FollowUpSection tasks={followUpsDue} onToggleTask={handleTaskToggle} onNudge={handleNudgeFollowUp} />
-
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <button type="button" className="col-span-2 text-left lg:col-span-2" onClick={() => selectView("tasks")} aria-label={`${pendingTasksCount} pending tasks`}>
-                <div className="mk-featured-surface p-5">
-                  <p className="mk-featured-numeral">{pendingTasksCount}</p>
-                  <p className="mt-2 text-sm">pending tasks</p>
-                </div>
-              </button>
-              <button type="button" className="text-left" onClick={() => selectView("tasks")} aria-label={`${completedTasksCount} completed tasks`}>
-                <Card className="mk-editorial-card p-4">
-                  <p className="text-2xl font-bold">{completedTasksCount}</p>
-                  <p className="mk-section-support text-xs">Done</p>
-                </Card>
-              </button>
-              <button type="button" className="text-left" onClick={() => selectView("habits")} aria-label={`${habits.filter((habit) => habit.completedToday).length} of ${habits.length} habits done today`}>
-                <Card className="mk-editorial-card p-4">
-                  <p className="text-2xl font-bold">{habits.filter((habit) => habit.completedToday).length}/{habits.length}</p>
-                  <p className="mk-section-support text-xs">Habits today</p>
-                </Card>
-              </button>
-              <button type="button" className="text-left" onClick={() => selectView("notes")} aria-label={`${notes.length} notes`}>
-                <Card className="mk-editorial-card p-4">
-                  <p className="text-2xl font-bold">{notes.length}</p>
-                  <p className="mk-section-support text-xs">Notes</p>
-                </Card>
-              </button>
-              <button type="button" className="text-left" onClick={() => selectView("tasks")} aria-label={`${doingTasksCount} tasks in progress`}>
-                <Card className="mk-editorial-card p-4">
-                  <p className="text-2xl font-bold">{doingTasksCount}</p>
-                  <p className="mk-section-support text-xs">Doing</p>
-                </Card>
-              </button>
-              <button type="button" className="text-left" onClick={() => selectView("tasks")} aria-label={`${followUpsDue.length} follow-ups due`}>
-                <Card className="mk-editorial-card p-4">
-                  <p className="text-2xl font-bold">{followUpsDue.length}</p>
-                  <p className="mk-section-support text-xs">Follow-ups due</p>
-                </Card>
-              </button>
-              <button type="button" className="text-left" onClick={() => selectView("notes")} aria-label={`${pinnedNotesCount} pinned notes`}>
-                <Card className="mk-editorial-card p-4">
-                  <p className="text-2xl font-bold">{pinnedNotesCount}</p>
-                  <p className="mk-section-support text-xs">Pinned notes</p>
-                </Card>
-              </button>
-              <button
-                type="button"
-                className="text-left"
-                onClick={() => selectView("chats")}
-                aria-label={`${pairedMachineCount} paired machines`}
-              >
-                <Card className="mk-editorial-card p-4">
-                  <p className="text-2xl font-bold">{pairedMachineCount}</p>
-                  <p className="mk-section-support text-xs">Machines paired</p>
-                </Card>
-              </button>
-            </div>
           </div>
         )}
 
@@ -980,11 +975,14 @@ export function Dashboard({ initialSearch }: DashboardProps) {
         suppressed={composerExpanded || currentView === "chats"}
       />
 
-      <ChatComposer
-        onVoice={() => setVoiceRecorderOpen(true)}
-        onExpandedChange={setComposerExpanded}
-        preferredTarget={chatSession || undefined}
-      />
+      {showComposerDock(currentView) ? (
+        <ChatComposer
+          onVoice={() => setVoiceRecorderOpen(true)}
+          onExpandedChange={setComposerExpanded}
+          preferredTarget={chatSession || undefined}
+        />
+      ) : null}
+      <PairingSheet open={pairingOpen} onClose={() => setPairingOpen(false)} />
 
       <TaskModal
         isOpen={taskModal.isOpen}

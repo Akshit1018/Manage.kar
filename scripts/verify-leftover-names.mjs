@@ -53,17 +53,17 @@ requireIncludes("components/workspace/dashboard.tsx", ["homeGreeting"])
 requireAbsent("components/workspace/dashboard.tsx", ['"Your workspace"'])
 requireIncludes("app/layout.tsx", ["Hermes companion"])
 requireAbsent("app/layout.tsx", ["local tasks, notes, and habits"])
-requireIncludes("apps/mobile/lib/src/screens/shell_screen.dart", ['Text("Home"'])
+requireIncludes("apps/mobile/lib/src/screens/shell_screen.dart", ['label: "Home"'])
 requireAbsent("apps/mobile/lib/src/screens/shell_screen.dart", ["Your workspace"])
 requireIncludes("docs/DECISIONS.md", ["Bot Chat", "not a marketplace name"])
 
 const tests = spawnSync(
-  "pnpm",
-  ["test", "lib/dialer/dialer.test.ts", "lib/hermes/chat-identity.test.ts", "lib/ui/home-chrome.test.ts"],
+  "./node_modules/.bin/vitest",
+  ["run", "lib/dialer/dialer.test.ts", "lib/hermes/chat-identity.test.ts", "lib/ui/home-chrome.test.ts"],
   { cwd: root, encoding: "utf8" },
 )
 if (tests.status !== 0) {
-  fail(`pnpm test exited ${tests.status}`)
+  fail(`vitest exited ${tests.status}`)
   if (tests.stdout) {
     process.stderr.write(tests.stdout)
   }

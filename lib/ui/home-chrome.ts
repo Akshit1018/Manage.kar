@@ -23,9 +23,9 @@ export function workspaceNavItems(): ReadonlyArray<readonly [WorkspaceView, stri
 
 export function showGlobalCreateRow(view: WorkspaceView): boolean {
   switch (view) {
-    case "overview":
     case "tasks":
       return true
+    case "overview":
     case "notes":
     case "chats":
     case "habits":
@@ -40,8 +40,8 @@ export function showGlobalCreateRow(view: WorkspaceView): boolean {
 export function showWorkspaceSearch(view: WorkspaceView): boolean {
   switch (view) {
     case "chats":
-      return false
     case "overview":
+      return false
     case "tasks":
     case "notes":
     case "habits":
@@ -53,8 +53,52 @@ export function showWorkspaceSearch(view: WorkspaceView): boolean {
   }
 }
 
+export function showWorkspaceExport(view: WorkspaceView): boolean {
+  switch (view) {
+    case "overview":
+      return false
+    case "tasks":
+    case "notes":
+    case "chats":
+    case "habits":
+      return true
+    default: {
+      const _exhaustive: never = view
+      return _exhaustive
+    }
+  }
+}
+
+export function showComposerDock(view: WorkspaceView): boolean {
+  switch (view) {
+    case "overview":
+      return false
+    case "tasks":
+    case "notes":
+    case "chats":
+    case "habits":
+      return true
+    default: {
+      const _exhaustive: never = view
+      return _exhaustive
+    }
+  }
+}
+
 export function showToolLauncher(view: WorkspaceView, width: number): boolean {
-  return view === "overview" && width >= TOOL_LAUNCHER_MIN_WIDTH
+  void width
+  switch (view) {
+    case "overview":
+    case "tasks":
+    case "notes":
+    case "chats":
+    case "habits":
+      return false
+    default: {
+      const _exhaustive: never = view
+      return _exhaustive
+    }
+  }
 }
 
 export function homeGreeting(profileName: string): string {
@@ -65,8 +109,6 @@ export function homeGreeting(profileName: string): string {
   return "Today"
 }
 
-export function overviewPlacesTodayBeforeCounts(source: string): boolean {
-  const today = source.indexOf("<TodaySection")
-  const featured = source.indexOf("mk-featured-surface")
-  return today >= 0 && featured >= 0 && today < featured
+export function overviewUsesHomeFeed(source: string): boolean {
+  return source.includes("<HomeFeed") && !source.includes("<TodaySection")
 }

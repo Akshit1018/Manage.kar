@@ -1,30 +1,20 @@
-# Gates: Hermes host install and live bridge
+# Gates: Home greeting, agent circles, jump tiles
 
-OWNS: GATES.md, scripts/verify-hermes-host-install.mjs, docs/superpowers/grillme/2026-08-29-hermes-host-50.md, docs/superpowers/specs/2026-08-29-hermes-host-install-design.md, docs/DECISIONS.md, packages/hermes-managekar-plugin/**, scripts/hermes-bridge-stub.mjs, scripts/verify-hermes-bridge.mjs, lib/hermes/**, components/pair-qr.tsx, app/globals.css, lib/theme/hermes-tokens.ts
+OWNS: GATES.md, scripts/verify-home-feed.mjs, docs/superpowers/specs/2026-08-29-home-agent-feed-design.md, docs/DECISIONS.md, lib/ui/home-feed.ts, lib/ui/home-feed.test.ts, lib/ui/home-chrome.ts, lib/ui/home-chrome.test.ts, components/workspace/home-feed.tsx, components/workspace/dashboard.tsx, lib/theme/apply-theme.ts, lib/theme/apply-theme.test.ts, lib/theme/hermes-tokens.ts, lib/theme/hermes-tokens.test.ts, app/globals.css, lib/domain/types.ts, components/settings-modal.tsx, apps/mobile/lib/src/theme/app_theme.dart, apps/mobile/lib/src/screens/settings_screen.dart, apps/mobile/test/theme_test.dart, apps/api/src/app.ts, apps/api/src/import-backup.ts
 
-Scope: Hermes is installed on this VM far enough to mint a host QR, claim once, and attach over the official dashboard socket; leftover companion chrome matches Hermes; a 50-question grill records what last-30-days MIT code actually allows. A separate public plugin GitHub repo is not claimed if `gh` cannot create it.
+Scope: Overview header becomes greeting + honest day sum-up. Agent circles open Bot Chat. Four square jump tiles. Spotlight + faded previews. Hermes and Classic stay; White and Black skins are added. Other tabs stay as they are.
 
-- [ ] G1: last-30-days plugin, dashboard, Bot Chat, and theme facts are recorded from clone plus search
-  CHECK: node scripts/verify-hermes-host-install.mjs research
-  EXPECT: hermes host research verification passed
-  EVIDENCE: pending
+- [x] G1: home-feed helpers pick agents, sum-up, spotlight, and preview slices
+  CHECK: node scripts/verify-home-feed.mjs logic
+  EXPECT: home feed logic verification passed
+  EVIDENCE: 2026-08-29 verify-home-feed.mjs + vitest 379 passed
 
-- [ ] G2: fifty grill questions have answers and suggestions
-  CHECK: node scripts/verify-hermes-host-install.mjs grill
-  EXPECT: hermes host grill verification passed
-  EVIDENCE: pending
+- [x] G2: overview chrome uses HomeFeed, greeting, and four jump tiles
+  CHECK: node scripts/verify-home-feed.mjs ui
+  EXPECT: home feed ui verification passed
+  EVIDENCE: 2026-08-29 dashboard renders HomeFeed; leftover-names passed
 
-- [ ] G3: pair listener claim returns the dashboard endpoint and a second claim is 409
-  CHECK: node scripts/verify-hermes-host-install.mjs serve
-  EXPECT: hermes host serve verification passed
-  EVIDENCE: pending
-
-- [ ] G4: live attach path talks /api/status then /api/ws session.create
-  CHECK: node scripts/verify-hermes-host-install.mjs live
-  EXPECT: hermes host live verification passed
-  EVIDENCE: pending
-
-- [ ] G5: plugin folder stays extractable MIT and the companion keeps Bot Chat plus dashboard radius
-  CHECK: node scripts/verify-hermes-host-install.mjs companion
-  EXPECT: hermes host companion verification passed
-  EVIDENCE: pending
+- [x] G3: White and Black skins exist without replacing Hermes or Classic
+  CHECK: node scripts/verify-home-feed.mjs theme
+  EXPECT: home feed theme verification passed
+  EVIDENCE: 2026-08-29 apply-theme + Flutter theme_test white/black passed

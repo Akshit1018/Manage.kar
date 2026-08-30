@@ -4,33 +4,45 @@ import { describe, expect, it } from "vitest"
 import {
   DESKTOP_SIDEBAR_MIN_WIDTH,
   homeGreeting,
-  overviewPlacesTodayBeforeCounts,
+  overviewUsesHomeFeed,
+  showComposerDock,
   showDesktopSidebar,
   showGlobalCreateRow,
   showMobileTabBar,
   showToolLauncher,
+  showWorkspaceExport,
   showWorkspaceSearch,
   workspaceNavItems,
 } from "./home-chrome"
 
 describe("home chrome", () => {
   it("hides global create on chats, notes, and habits", () => {
-    expect(showGlobalCreateRow("overview")).toBe(true)
+    expect(showGlobalCreateRow("overview")).toBe(false)
     expect(showGlobalCreateRow("tasks")).toBe(true)
     expect(showGlobalCreateRow("chats")).toBe(false)
     expect(showGlobalCreateRow("notes")).toBe(false)
     expect(showGlobalCreateRow("habits")).toBe(false)
   })
 
-  it("drops the permanent search field on chats", () => {
+  it("drops the permanent search field on chats and Home", () => {
     expect(showWorkspaceSearch("chats")).toBe(false)
-    expect(showWorkspaceSearch("overview")).toBe(true)
+    expect(showWorkspaceSearch("overview")).toBe(false)
+    expect(showWorkspaceSearch("tasks")).toBe(true)
   })
 
-  it("hides the tool launcher below 640px", () => {
+  it("hides Export and the composer dock on Home", () => {
+    expect(showWorkspaceExport("overview")).toBe(false)
+    expect(showWorkspaceExport("tasks")).toBe(true)
+    expect(showWorkspaceExport("chats")).toBe(true)
+    expect(showComposerDock("overview")).toBe(false)
+    expect(showComposerDock("chats")).toBe(true)
+    expect(showComposerDock("tasks")).toBe(true)
+  })
+
+  it("keeps the tool strip off Home so the feed can breathe", () => {
     expect(showToolLauncher("overview", 320)).toBe(false)
-    expect(showToolLauncher("overview", 639)).toBe(false)
-    expect(showToolLauncher("overview", 640)).toBe(true)
+    expect(showToolLauncher("overview", 640)).toBe(false)
+    expect(showToolLauncher("overview", 1280)).toBe(false)
     expect(showToolLauncher("chats", 1280)).toBe(false)
   })
 
@@ -58,12 +70,21 @@ describe("home chrome", () => {
     expect(homeGreeting("Ada")).toBe("Hello, Ada")
   })
 
-  it("places Today before count tiles in the dashboard source", () => {
+  it("renders the home feed instead of Today and count tiles", () => {
     const source = readFileSync(resolve(process.cwd(), "components/workspace/dashboard.tsx"), "utf8")
-    expect(overviewPlacesTodayBeforeCounts(source)).toBe(true)
+    expect(overviewUsesHomeFeed(source)).toBe(true)
     expect(source).toContain("setMoreToolsOpen(true)")
     expect(source).toContain("moreToolsOpen")
     expect(source).toContain("homeGreeting")
+    expect(source).toContain("agentDayBriefing")
+    expect(source).toContain("mk-home-briefing")
+    expect(source).toContain("showWorkspaceExport")
+    expect(source).toContain("showComposerDock")
+    expect(source).toContain("<PairingSheet")
+    expect(source).toContain('className="sr-only"')
+    expect(source).toContain("workspaceViewTitle")
+    expect(source.includes("mk-workspace-heading")).toBe(false)
+    expect(source.includes("currentView === \"overview\" ? greeting")).toBe(false)
     expect(source.includes('greeting = "Your workspace"')).toBe(false)
   })
 })
