@@ -68,13 +68,15 @@ function verifyLogic() {
     "agentDayBriefing",
     "pickHomeSpotlight",
     "homeJumpTiles",
+    "showHomeListPreview",
+    "chatHasHomePreview",
     'label: "Task"',
     'label: "Notes"',
     'label: "Chat"',
     'label: "Habit"',
   ])
   requireAbsent("lib/ui/home-feed.ts", ["89%", "weekly plan"])
-  run("pnpm", ["test", "lib/ui/home-feed.test.ts", "lib/ui/home-chrome.test.ts"])
+  run("./node_modules/.bin/vitest", ["run", "lib/ui/home-feed.test.ts", "lib/ui/home-chrome.test.ts"])
 }
 
 function verifyUi() {
@@ -85,6 +87,10 @@ function verifyUi() {
     "openChat",
     "LayoutGrid",
     'aria-label="More"',
+    "showWorkspaceExport",
+    "showComposerDock",
+    "mk-home-briefing-actions",
+    "<PairingSheet",
   ])
   requireAbsent("components/workspace/dashboard.tsx", [
     "<TodaySection",
@@ -102,18 +108,46 @@ function verifyUi() {
     "mk-home-fade",
     "View all",
     "homeJumpTiles",
+    "showHomeListPreview",
+    "chatHasHomePreview",
   ])
-  requireIncludes("lib/ui/home-chrome.ts", ["overviewUsesHomeFeed"])
+  requireAbsent("components/workspace/home-feed.tsx", [
+    "No other chats yet.",
+    "No open tasks.",
+    "No notes yet.",
+    "No habits yet.",
+  ])
+  requireIncludes("lib/ui/home-chrome.ts", ["overviewUsesHomeFeed", "showWorkspaceExport", "showComposerDock"])
   requireIncludes("app/globals.css", [
     ".mk-home-circle",
     ".mk-home-jump",
     ".mk-home-fade",
     ".mk-home-kicker",
     ".mk-home-briefing",
+    ".mk-home-briefing-actions",
     ".mk-home-spotlight.mk-featured-surface",
+    'html[data-skin="white"] .mk-home-briefing',
+    'html[data-skin="black"] .mk-home-briefing',
   ])
-  requireIncludes("apps/mobile/lib/src/ui/home_feed.dart", ["homeGreeting", "homeAgents", "agentDayBriefing"])
-  requireIncludes("apps/mobile/lib/src/screens/shell_screen.dart", ["_JumpTile", "grid_view_outlined"])
+  requireIncludes("apps/mobile/lib/src/ui/home_feed.dart", [
+    "homeGreeting",
+    "homeAgents",
+    "agentDayBriefing",
+    "showHomeListPreview",
+    "chatHasHomePreview",
+  ])
+  requireIncludes("apps/mobile/lib/src/screens/shell_screen.dart", [
+    "_JumpTile",
+    "grid_view_outlined",
+    "Add a task",
+    "Pair a machine",
+  ])
+  requireAbsent("apps/mobile/lib/src/screens/shell_screen.dart", [
+    "No other chats yet.",
+    "No open tasks.",
+    "No notes yet.",
+    "No habits yet.",
+  ])
 }
 
 function verifyTheme() {
@@ -133,7 +167,7 @@ function verifyTheme() {
   requireIncludes("apps/mobile/lib/src/screens/settings_screen.dart", ['"white", "black"'])
   requireIncludes("apps/api/src/app.ts", ['z.enum(["hermes", "classic", "white", "black"])'])
   requireIncludes("docs/DECISIONS.md", ["D014"])
-  run("pnpm", ["test", "lib/theme/apply-theme.test.ts"])
+  run("./node_modules/.bin/vitest", ["run", "lib/theme/apply-theme.test.ts"])
 }
 
 if (mode === "logic" || mode === "all") {

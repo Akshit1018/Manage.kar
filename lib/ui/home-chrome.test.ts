@@ -5,10 +5,12 @@ import {
   DESKTOP_SIDEBAR_MIN_WIDTH,
   homeGreeting,
   overviewUsesHomeFeed,
+  showComposerDock,
   showDesktopSidebar,
   showGlobalCreateRow,
   showMobileTabBar,
   showToolLauncher,
+  showWorkspaceExport,
   showWorkspaceSearch,
   workspaceNavItems,
 } from "./home-chrome"
@@ -26,6 +28,15 @@ describe("home chrome", () => {
     expect(showWorkspaceSearch("chats")).toBe(false)
     expect(showWorkspaceSearch("overview")).toBe(false)
     expect(showWorkspaceSearch("tasks")).toBe(true)
+  })
+
+  it("hides Export and the composer dock on Home", () => {
+    expect(showWorkspaceExport("overview")).toBe(false)
+    expect(showWorkspaceExport("tasks")).toBe(true)
+    expect(showWorkspaceExport("chats")).toBe(true)
+    expect(showComposerDock("overview")).toBe(false)
+    expect(showComposerDock("chats")).toBe(true)
+    expect(showComposerDock("tasks")).toBe(true)
   })
 
   it("keeps the tool strip off Home so the feed can breathe", () => {
@@ -67,6 +78,9 @@ describe("home chrome", () => {
     expect(source).toContain("homeGreeting")
     expect(source).toContain("agentDayBriefing")
     expect(source).toContain("mk-home-briefing")
+    expect(source).toContain("showWorkspaceExport")
+    expect(source).toContain("showComposerDock")
+    expect(source).toContain("<PairingSheet")
     expect(source.includes("currentView === \"overview\" ? greeting")).toBe(false)
     expect(source.includes('greeting = "Your workspace"')).toBe(false)
   })

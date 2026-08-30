@@ -121,58 +121,44 @@ function briefingTaskPicture(input: Pick<DaySumUpInput, "doingCount" | "todayCou
   return "No tasks are in progress, and nothing is due today."
 }
 
-function briefingAgentPicture(input: DayBriefingInput): string | undefined {
-  const title = input.agentTitle?.trim()
-  if (!title) {
-    return undefined
-  }
-  if (input.agentIsDemo) {
-    return `${title} is here as a demo. It is not paired to a machine, so I can only brief what is on this phone.`
-  }
-  if (input.paired) {
-    return `${title} is paired.`
-  }
-  return `${title} is on this phone.`
-}
-
 function joinBriefing(parts: Array<string | undefined>): string {
   return parts.filter((part): part is string => Boolean(part?.trim())).join("\n\n")
 }
 
+export function showHomeListPreview(count: number): boolean {
+  return count > 0
+}
+
+export function chatHasHomePreview(item: Pick<ChatListItem, "preview">): boolean {
+  const preview = item.preview.trim()
+  return preview !== "" && preview !== "No messages yet" && preview !== "Start a conversation"
+}
+
 export function agentDayBriefing(input: DayBriefingInput): string {
   const tasks = briefingTaskPicture(input)
-  const agent = briefingAgentPicture(input)
+  const title = input.agentTitle?.trim()
   if (input.thinkingTitle) {
     return joinBriefing([
       `${input.thinkingTitle} is thinking right now.`,
-      tasks,
-      "I will rewrite this every time you open the app.",
+      `${tasks} I will rewrite this every time you open the app.`,
     ])
   }
   if (input.approvalTitle) {
-    return joinBriefing([
-      `${input.approvalTitle} is waiting for an approval.`,
-      tasks,
-      "Open that chat when you can decide.",
-    ])
+    return joinBriefing([`${input.approvalTitle} is waiting for an approval.`, "Open that chat when you can decide."])
   }
   if (input.doingCount > 0 || input.todayCount > 0) {
-    return joinBriefing([tasks, agent, "I will rewrite this every time you open the app."])
+    return joinBriefing([tasks, "I will rewrite this every time you open the app."])
   }
   if (input.paired) {
+    return joinBriefing(["You are paired. Nothing is running right now.", "I will rewrite this every time you open the app."])
+  }
+  if (title && input.agentIsDemo) {
     return joinBriefing([
-      "You are paired. Nothing is running right now.",
-      tasks,
-      agent,
-      "I will rewrite this every time you open the app.",
+      "Nothing is moving yet.",
+      `${title} is here as a demo on this phone. Add a task or pair Hermes and I will brief you here.`,
     ])
   }
-  return joinBriefing([
-    "Nothing is moving yet.",
-    tasks,
-    agent,
-    "Add a task or pair Hermes and I will brief you here like a desk assistant.",
-  ])
+  return joinBriefing(["Nothing is moving yet.", "Add a task or pair Hermes and I will brief you here."])
 }
 
 export function taskProgressDetail(task: Pick<Task, "completed" | "status" | "checklist">): string {
@@ -244,7 +230,7 @@ export function pickHomeSpotlight(input: {
     }
   }
   const lastChat = [...chats].sort((left, right) => right.lastAt.localeCompare(left.lastAt))[0]
-  if (lastChat && lastChat.preview !== "No messages yet" && lastChat.preview !== "Start a conversation") {
+  if (lastChat && chatHasHomePreview(lastChat)) {
     return {
       kind: "chat",
       sessionId: lastChat.id,
@@ -300,7 +286,7 @@ export function homeHabitPreview(habits: Habit[]): Habit[] {
 
 export function homeChatPreview(chats: ChatListItem[], excludeId?: string): ChatListItem[] {
   return previewAfter(
-    chats.filter((item) => item.id !== NEW_CHAT_TARGET),
+    chats.filter((item) => item.id !== NEW_CHAT_TARGET && chatHasHomePreview(item)),
     excludeId,
     HOME_CHAT_PREVIEW_LIMIT,
   )

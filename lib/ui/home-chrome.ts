@@ -53,6 +53,38 @@ export function showWorkspaceSearch(view: WorkspaceView): boolean {
   }
 }
 
+export function showWorkspaceExport(view: WorkspaceView): boolean {
+  switch (view) {
+    case "overview":
+      return false
+    case "tasks":
+    case "notes":
+    case "chats":
+    case "habits":
+      return true
+    default: {
+      const _exhaustive: never = view
+      return _exhaustive
+    }
+  }
+}
+
+export function showComposerDock(view: WorkspaceView): boolean {
+  switch (view) {
+    case "overview":
+      return false
+    case "tasks":
+    case "notes":
+    case "chats":
+    case "habits":
+      return true
+    default: {
+      const _exhaustive: never = view
+      return _exhaustive
+    }
+  }
+}
+
 export function showToolLauncher(view: WorkspaceView, width: number): boolean {
   void width
   switch (view) {

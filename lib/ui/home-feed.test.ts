@@ -8,6 +8,7 @@ import {
   agentDayBriefing,
   agentDaySumUp,
   agentInitials,
+  chatHasHomePreview,
   homeAgents,
   homeChatPreview,
   homeHabitPreview,
@@ -16,6 +17,7 @@ import {
   homeRuntimeSignals,
   homeTaskPreview,
   pickHomeSpotlight,
+  showHomeListPreview,
   taskProgressDetail,
   threadBusyDetail,
 } from "./home-feed"
@@ -113,13 +115,12 @@ describe("home feed helpers", () => {
       agentTitle: "Bot Chat",
       agentIsDemo: true,
     })
-    expect(emptyDemo).toContain("Nothing is moving yet.")
-    expect(emptyDemo).toContain("No tasks are in progress, and nothing is due today.")
-    expect(emptyDemo).toContain("Bot Chat is here as a demo.")
-    expect(emptyDemo).toContain("I will brief you here")
+    expect(emptyDemo).toBe(
+      "Nothing is moving yet.\n\nBot Chat is here as a demo on this phone. Add a task or pair Hermes and I will brief you here.",
+    )
     expect(emptyDemo.includes("Hello")).toBe(false)
     expect(emptyDemo.includes("89%")).toBe(false)
-    expect(emptyDemo.length).toBeGreaterThan(160)
+    expect(emptyDemo.includes("No tasks are in progress")).toBe(false)
 
     const thinking = agentDayBriefing({
       thinkingTitle: "Bot Chat",
@@ -200,5 +201,19 @@ describe("home feed helpers", () => {
         "a",
       ).map((item) => item.id),
     ).toEqual(["b"])
+  })
+
+  it("hides empty Home list previews and idle chat placeholders", () => {
+    expect(showHomeListPreview(0)).toBe(false)
+    expect(showHomeListPreview(1)).toBe(true)
+    expect(chatHasHomePreview(chat("idle", { preview: "No messages yet" }))).toBe(false)
+    expect(chatHasHomePreview(chat("blank", { preview: "Start a conversation" }))).toBe(false)
+    expect(chatHasHomePreview(chat("live", { preview: "Need the host QR" }))).toBe(true)
+    expect(
+      homeChatPreview([
+        chat("idle", { preview: "No messages yet" }),
+        chat("live", { preview: "Need the host QR" }),
+      ]).map((item) => item.id),
+    ).toEqual(["live"])
   })
 })

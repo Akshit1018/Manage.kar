@@ -20,6 +20,7 @@ import {
   MessageCircle,
 } from "lucide-react"
 import { ChatComposer } from "@/components/chat-composer"
+import { PairingSheet } from "@/components/pairing-sheet"
 import { MobileSheet } from "@/components/mobile-sheet"
 import { FloatingToggle } from "@/components/floating-toggle"
 import { TaskModal } from "@/components/task-modal"
@@ -78,9 +79,11 @@ import { getCompanionRuntime, subscribeCompanionRuntime } from "@/lib/hermes/run
 import { filterTasks, type TaskListFilter } from "@/lib/tasks/filter"
 import {
   homeGreeting,
+  showComposerDock,
   showDesktopSidebar,
   showGlobalCreateRow,
   showMobileTabBar,
+  showWorkspaceExport,
   showWorkspaceSearch,
   workspaceNavItems,
 } from "@/lib/ui/home-chrome"
@@ -161,6 +164,7 @@ export function Dashboard({ initialSearch }: DashboardProps) {
   const [goalManagerModal, setGoalManagerModal] = useState(false)
   const [voiceRecorderOpen, setVoiceRecorderOpen] = useState(false)
   const [moreToolsOpen, setMoreToolsOpen] = useState(false)
+  const [pairingOpen, setPairingOpen] = useState(false)
   const [viewportWidth, setViewportWidth] = useState(320)
   const [dialer, setDialer] = useState<DialerState>(createEmptyDialer)
   const [runtime, setRuntime] = useState(getCompanionRuntime)
@@ -741,16 +745,18 @@ export function Dashboard({ initialSearch }: DashboardProps) {
           </Button>
           <HermesWordmark />
           <div className="flex shrink-0 items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              className="rounded-2xl bg-transparent sm:w-auto sm:px-4"
-              onClick={() => setShareModal(true)}
-              aria-label="Export workspace"
-            >
-              <Download className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Export</span>
-            </Button>
+            {showWorkspaceExport(currentView) ? (
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-2xl bg-transparent sm:w-auto sm:px-4"
+                onClick={() => setShareModal(true)}
+                aria-label="Export workspace"
+              >
+                <Download className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+            ) : null}
             {currentView === "overview" ? (
               <Button
                 variant="ghost"
@@ -782,6 +788,35 @@ export function Dashboard({ initialSearch }: DashboardProps) {
                 {dayBriefing.split("\n\n").map((paragraph) => (
                   <p key={paragraph}>{paragraph}</p>
                 ))}
+                <div className="mk-home-briefing-actions">
+                  <Button
+                    type="button"
+                    className="mk-touch rounded-2xl"
+                    onClick={() => setTaskModal({ isOpen: true, mode: "create" })}
+                  >
+                    Add a task
+                  </Button>
+                  {pairedMachineCount === 0 ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mk-touch rounded-2xl bg-transparent"
+                      onClick={() => setPairingOpen(true)}
+                    >
+                      Pair a machine
+                    </Button>
+                  ) : null}
+                  {briefAgent ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mk-touch rounded-2xl bg-transparent"
+                      onClick={() => openChat(briefAgent.id)}
+                    >
+                      Ask {briefAgent.title}
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             </>
           ) : (
@@ -940,11 +975,14 @@ export function Dashboard({ initialSearch }: DashboardProps) {
         suppressed={composerExpanded || currentView === "chats"}
       />
 
-      <ChatComposer
-        onVoice={() => setVoiceRecorderOpen(true)}
-        onExpandedChange={setComposerExpanded}
-        preferredTarget={chatSession || undefined}
-      />
+      {showComposerDock(currentView) ? (
+        <ChatComposer
+          onVoice={() => setVoiceRecorderOpen(true)}
+          onExpandedChange={setComposerExpanded}
+          preferredTarget={chatSession || undefined}
+        />
+      ) : null}
+      <PairingSheet open={pairingOpen} onClose={() => setPairingOpen(false)} />
 
       <TaskModal
         isOpen={taskModal.isOpen}

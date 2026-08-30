@@ -151,6 +151,7 @@ class _HomeTab extends StatelessWidget {
     final agents = homeAgents(sessions);
     final briefAgent = agents.isEmpty ? null : agents.first;
     final chats = chatListItems(dialer?.state ?? DialerState.empty());
+    final paired = sessions.any((session) => session.source == "paired");
     final taskPreview = homeTaskPreview(tasks);
     final notePreview = homeNotePreview(notes);
     final habitPreview = homeHabitPreview(habits);
@@ -191,15 +192,41 @@ class _HomeTab extends StatelessWidget {
           Card(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
-              child: Text(
-                agentDayBriefing(
-                  doingCount: doingCount,
-                  todayCount: due.length,
-                  paired: false,
-                  agentTitle: briefAgent?.title,
-                  agentIsDemo: briefAgent?.source == "demo",
-                ),
-                style: Theme.of(context).textTheme.bodyLarge,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    agentDayBriefing(
+                      doingCount: doingCount,
+                      todayCount: due.length,
+                      paired: paired,
+                      agentTitle: briefAgent?.title,
+                      agentIsDemo: briefAgent?.source == "demo",
+                    ),
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      FilledButton(
+                        onPressed: () => openTaskEditor(context, workspace),
+                        child: const Text("Add a task"),
+                      ),
+                      if (!paired)
+                        OutlinedButton(
+                          onPressed: () => onOpenTab(3),
+                          child: const Text("Pair a machine"),
+                        ),
+                      if (briefAgent != null)
+                        OutlinedButton(
+                          onPressed: dialer == null ? null : () => openChatThread(context, dialer!, briefAgent.id),
+                          child: Text("Ask ${briefAgent.title}"),
+                        ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
@@ -252,11 +279,9 @@ class _HomeTab extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 20),
-          Text("Chat", style: Theme.of(context).textTheme.titleMedium),
-          if (chatPreview.isEmpty)
-            const ListTile(contentPadding: EdgeInsets.zero, title: Text("No other chats yet."))
-          else
+          if (showHomeListPreview(chatPreview.length)) ...[
+            const SizedBox(height: 20),
+            Text("Chat", style: Theme.of(context).textTheme.titleMedium),
             ...chatPreview.map((item) {
               return ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -265,10 +290,9 @@ class _HomeTab extends StatelessWidget {
                 onTap: dialer == null ? null : () => openChatThread(context, dialer!, item.id),
               );
             }),
-          Text("Task", style: Theme.of(context).textTheme.titleMedium),
-          if (taskPreview.isEmpty)
-            const ListTile(contentPadding: EdgeInsets.zero, title: Text("No open tasks."))
-          else
+          ],
+          if (showHomeListPreview(taskPreview.length)) ...[
+            Text("Task", style: Theme.of(context).textTheme.titleMedium),
             ...taskPreview.map((item) {
               return ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -277,12 +301,11 @@ class _HomeTab extends StatelessWidget {
                 onTap: () => openTaskEditor(context, workspace, item),
               );
             }),
-          if (tasks.where((item) => item["completed"] != true).length > taskPreview.length)
-            TextButton(onPressed: () => onOpenTab(1), child: const Text("View all")),
-          Text("Notes", style: Theme.of(context).textTheme.titleMedium),
-          if (notePreview.isEmpty)
-            const ListTile(contentPadding: EdgeInsets.zero, title: Text("No notes yet."))
-          else
+            if (tasks.where((item) => item["completed"] != true).length > taskPreview.length)
+              TextButton(onPressed: () => onOpenTab(1), child: const Text("View all")),
+          ],
+          if (showHomeListPreview(notePreview.length)) ...[
+            Text("Notes", style: Theme.of(context).textTheme.titleMedium),
             ...notePreview.map((item) {
               return ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -291,12 +314,11 @@ class _HomeTab extends StatelessWidget {
                 onTap: () => openNoteEditor(context, workspace, item),
               );
             }),
-          if (notes.length > notePreview.length)
-            TextButton(onPressed: () => onOpenTab(2), child: const Text("View all")),
-          Text("Habits", style: Theme.of(context).textTheme.titleMedium),
-          if (habitPreview.isEmpty)
-            const ListTile(contentPadding: EdgeInsets.zero, title: Text("No habits yet."))
-          else
+            if (notes.length > notePreview.length)
+              TextButton(onPressed: () => onOpenTab(2), child: const Text("View all")),
+          ],
+          if (showHomeListPreview(habitPreview.length)) ...[
+            Text("Habits", style: Theme.of(context).textTheme.titleMedium),
             ...habitPreview.map((item) {
               return ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -305,8 +327,9 @@ class _HomeTab extends StatelessWidget {
                 onTap: () => openHabitEditor(context, workspace, item),
               );
             }),
-          if (habits.length > habitPreview.length)
-            TextButton(onPressed: () => onOpenTab(4), child: const Text("View all")),
+            if (habits.length > habitPreview.length)
+              TextButton(onPressed: () => onOpenTab(4), child: const Text("View all")),
+          ],
           if (workspace.error != null) Text(workspace.error!, style: const TextStyle(color: Colors.red)),
         ],
       ),

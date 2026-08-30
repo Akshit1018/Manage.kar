@@ -1510,6 +1510,24 @@ html[data-skin="classic"].dark {
     margin: 0;
   }
 
+  .mk-home-briefing-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-top: 0.15rem;
+  }
+
+  html[data-skin="white"] .mk-home-briefing {
+    background: #ffffff;
+    border: 1px solid color-mix(in srgb, var(--foreground) 16%, transparent);
+    box-shadow: 0 12px 32px color-mix(in srgb, var(--foreground) 10%, transparent);
+  }
+
+  html[data-skin="black"] .mk-home-briefing {
+    background: color-mix(in srgb, var(--mk-mid) 10%, var(--mk-canvas));
+    border: 1px solid color-mix(in srgb, var(--foreground) 22%, transparent);
+  }
+
   .mk-home-heading {
     color: var(--foreground);
     font-size: 1.15rem;

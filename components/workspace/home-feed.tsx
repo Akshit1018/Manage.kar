@@ -10,11 +10,13 @@ import type { WorkspaceView } from "@/lib/navigation/workspace-url"
 import {
   agentCaption,
   agentInitials,
+  chatHasHomePreview,
   homeChatPreview,
   homeHabitPreview,
   homeJumpTiles,
   homeNotePreview,
   homeTaskPreview,
+  showHomeListPreview,
   taskProgressDetail,
   type HomeSpotlight,
 } from "@/lib/ui/home-feed"
@@ -61,7 +63,7 @@ export function HomeFeed({
   const previewHabits = homeHabitPreview(habits)
   const openTasks = tasks.filter((task) => !task.completed)
   const remainingChatTotal = chats.filter((item) => {
-    if (item.id === NEW_CHAT_TARGET) {
+    if (item.id === NEW_CHAT_TARGET || !chatHasHomePreview(item)) {
       return false
     }
     return spotlight?.kind !== "chat" || item.id !== spotlight.sessionId
@@ -137,15 +139,13 @@ export function HomeFeed({
         </button>
       ) : null}
 
-      <HomePreview
-        title="Chat"
-        hasMore={remainingChatTotal > remainingChats.length}
-        onViewAll={() => onOpenView("chats")}
-      >
-        {remainingChats.length === 0 ? (
-          <p className="mk-section-support">No other chats yet.</p>
-        ) : (
-          remainingChats.map((item) => (
+      {showHomeListPreview(remainingChats.length) ? (
+        <HomePreview
+          title="Chat"
+          hasMore={remainingChatTotal > remainingChats.length}
+          onViewAll={() => onOpenView("chats")}
+        >
+          {remainingChats.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -156,19 +156,17 @@ export function HomeFeed({
               <span className="mk-entity-title">{item.title}</span>
               <span className="mk-section-support line-clamp-2">{item.preview}</span>
             </button>
-          ))
-        )}
-      </HomePreview>
+          ))}
+        </HomePreview>
+      ) : null}
 
-      <HomePreview
-        title="Task"
-        hasMore={openTasks.length > previewTasks.length}
-        onViewAll={() => onOpenView("tasks")}
-      >
-        {previewTasks.length === 0 ? (
-          <p className="mk-section-support">No open tasks.</p>
-        ) : (
-          previewTasks.map((item) => (
+      {showHomeListPreview(previewTasks.length) ? (
+        <HomePreview
+          title="Task"
+          hasMore={openTasks.length > previewTasks.length}
+          onViewAll={() => onOpenView("tasks")}
+        >
+          {previewTasks.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -179,19 +177,17 @@ export function HomeFeed({
               <span className="mk-entity-title">{item.title}</span>
               <span className="mk-section-support">{taskProgressDetail(item)}</span>
             </button>
-          ))
-        )}
-      </HomePreview>
+          ))}
+        </HomePreview>
+      ) : null}
 
-      <HomePreview
-        title="Notes"
-        hasMore={notes.length > previewNotes.length}
-        onViewAll={() => onOpenView("notes")}
-      >
-        {previewNotes.length === 0 ? (
-          <p className="mk-section-support">No notes yet.</p>
-        ) : (
-          previewNotes.map((item) => (
+      {showHomeListPreview(previewNotes.length) ? (
+        <HomePreview
+          title="Notes"
+          hasMore={notes.length > previewNotes.length}
+          onViewAll={() => onOpenView("notes")}
+        >
+          {previewNotes.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -202,19 +198,17 @@ export function HomeFeed({
               <span className="mk-entity-title">{item.title || "Untitled note"}</span>
               <span className="mk-section-support line-clamp-2">{item.content || "Empty"}</span>
             </button>
-          ))
-        )}
-      </HomePreview>
+          ))}
+        </HomePreview>
+      ) : null}
 
-      <HomePreview
-        title="Habits"
-        hasMore={habits.length > previewHabits.length}
-        onViewAll={() => onOpenView("habits")}
-      >
-        {previewHabits.length === 0 ? (
-          <p className="mk-section-support">No habits yet.</p>
-        ) : (
-          previewHabits.map((item) => (
+      {showHomeListPreview(previewHabits.length) ? (
+        <HomePreview
+          title="Habits"
+          hasMore={habits.length > previewHabits.length}
+          onViewAll={() => onOpenView("habits")}
+        >
+          {previewHabits.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -225,9 +219,9 @@ export function HomeFeed({
               <span className="mk-entity-title">{item.name}</span>
               <span className="mk-section-support">{item.completedToday ? "Done today" : "Not yet today"}</span>
             </button>
-          ))
-        )}
-      </HomePreview>
+          ))}
+        </HomePreview>
+      ) : null}
     </div>
   )
 }

@@ -41,18 +41,15 @@ String _briefingTaskPicture({required int doingCount, required int todayCount}) 
   return "No tasks are in progress, and nothing is due today.";
 }
 
-String? _briefingAgentPicture({String? agentTitle, required bool paired, required bool agentIsDemo}) {
-  final title = agentTitle?.trim() ?? "";
-  if (title.isEmpty) {
-    return null;
-  }
-  if (agentIsDemo) {
-    return "$title is here as a demo. It is not paired to a machine, so I can only brief what is on this phone.";
-  }
-  if (paired) {
-    return "$title is paired.";
-  }
-  return "$title is on this phone.";
+String _joinBriefing(List<String> parts) {
+  return parts.where((part) => part.trim().isNotEmpty).join("\n\n");
+}
+
+bool showHomeListPreview(int count) => count > 0;
+
+bool chatHasHomePreview(ChatListItem item) {
+  final preview = item.preview.trim();
+  return preview.isNotEmpty && preview != "No messages yet" && preview != "Start a conversation";
 }
 
 String agentDayBriefing({
@@ -65,30 +62,32 @@ String agentDayBriefing({
   bool agentIsDemo = false,
 }) {
   final tasks = _briefingTaskPicture(doingCount: doingCount, todayCount: todayCount);
-  final agent = _briefingAgentPicture(agentTitle: agentTitle, paired: paired, agentIsDemo: agentIsDemo);
+  final title = agentTitle?.trim() ?? "";
   if (thinkingTitle != null && thinkingTitle.isNotEmpty) {
-    return [thinkingTitle + " is thinking right now.", tasks, "I will rewrite this every time you open the app."].join("\n\n");
+    return _joinBriefing([
+      "$thinkingTitle is thinking right now.",
+      "$tasks I will rewrite this every time you open the app.",
+    ]);
   }
   if (approvalTitle != null && approvalTitle.isNotEmpty) {
-    return [approvalTitle + " is waiting for an approval.", tasks, "Open that chat when you can decide."].join("\n\n");
+    return _joinBriefing(["$approvalTitle is waiting for an approval.", "Open that chat when you can decide."]);
   }
   if (doingCount > 0 || todayCount > 0) {
-    return [tasks, if (agent != null) agent, "I will rewrite this every time you open the app."].join("\n\n");
+    return _joinBriefing([tasks, "I will rewrite this every time you open the app."]);
   }
   if (paired) {
-    return [
+    return _joinBriefing([
       "You are paired. Nothing is running right now.",
-      tasks,
-      if (agent != null) agent,
       "I will rewrite this every time you open the app.",
-    ].join("\n\n");
+    ]);
   }
-  return [
-    "Nothing is moving yet.",
-    tasks,
-    if (agent != null) agent,
-    "Add a task or pair Hermes and I will brief you here like a desk assistant.",
-  ].join("\n\n");
+  if (title.isNotEmpty && agentIsDemo) {
+    return _joinBriefing([
+      "Nothing is moving yet.",
+      "$title is here as a demo on this phone. Add a task or pair Hermes and I will brief you here.",
+    ]);
+  }
+  return _joinBriefing(["Nothing is moving yet.", "Add a task or pair Hermes and I will brief you here."]);
 }
 
 List<DialerSession> homeAgents(List<DialerSession> sessions) {
@@ -116,7 +115,10 @@ String agentInitials(String title) {
 String agentCaption(DialerSession session) => session.source == "demo" ? "Demo" : "Paired";
 
 List<ChatListItem> homeChatPreview(List<ChatListItem> chats, {String? excludeId}) {
-  return chats.where((item) => item.id != newChatTarget && item.id != excludeId).take(homeChatPreviewLimit).toList();
+  return chats
+      .where((item) => item.id != newChatTarget && item.id != excludeId && chatHasHomePreview(item))
+      .take(homeChatPreviewLimit)
+      .toList();
 }
 
 List<Map<String, dynamic>> homeTaskPreview(List<Map<String, dynamic>> tasks) {

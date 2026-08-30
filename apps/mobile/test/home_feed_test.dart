@@ -37,7 +37,7 @@ void main() {
     expect(agentDaySumUp(doingCount: 0, todayCount: 0, paired: false), "Nothing running yet.");
   });
 
-  test("writes a full PA briefing without Hello", () {
+  test("writes a short PA briefing without Hello", () {
     final emptyDemo = agentDayBriefing(
       doingCount: 0,
       todayCount: 0,
@@ -45,9 +45,35 @@ void main() {
       agentTitle: "Bot Chat",
       agentIsDemo: true,
     );
-    expect(emptyDemo.contains("Nothing is moving yet."), isTrue);
-    expect(emptyDemo.contains("Bot Chat is here as a demo."), isTrue);
+    expect(
+      emptyDemo,
+      "Nothing is moving yet.\n\nBot Chat is here as a demo on this phone. Add a task or pair Hermes and I will brief you here.",
+    );
     expect(emptyDemo.contains("Hello"), isFalse);
-    expect(emptyDemo.length, greaterThan(160));
+    expect(emptyDemo.contains("89%"), isFalse);
+    expect(emptyDemo.contains("No tasks are in progress"), isFalse);
+
+    final thinking = agentDayBriefing(
+      thinkingTitle: "Bot Chat",
+      doingCount: 2,
+      todayCount: 3,
+      paired: true,
+      agentTitle: "Bot Chat",
+    );
+    expect(thinking.contains("Bot Chat is thinking right now."), isTrue);
+    expect(thinking.contains("2 in progress, 3 due today."), isTrue);
+  });
+
+  test("hides empty Home list previews and idle chat placeholders", () {
+    expect(showHomeListPreview(0), isFalse);
+    expect(showHomeListPreview(1), isTrue);
+    expect(
+      chatHasHomePreview(const ChatListItem(id: "idle", title: "Bot Chat", queuedCount: 0, preview: "No messages yet")),
+      isFalse,
+    );
+    expect(
+      chatHasHomePreview(const ChatListItem(id: "live", title: "Bot Chat", queuedCount: 0, preview: "Need the host QR")),
+      isTrue,
+    );
   });
 }
