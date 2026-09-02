@@ -23,9 +23,8 @@ export function workspaceNavItems(): ReadonlyArray<readonly [WorkspaceView, stri
 
 export function showGlobalCreateRow(view: WorkspaceView): boolean {
   switch (view) {
-    case "tasks":
-      return true
     case "overview":
+    case "tasks":
     case "notes":
     case "chats":
     case "habits":
@@ -72,12 +71,46 @@ export function showWorkspaceExport(view: WorkspaceView): boolean {
 export function showComposerDock(view: WorkspaceView): boolean {
   switch (view) {
     case "overview":
-      return false
     case "tasks":
+      return false
     case "notes":
     case "chats":
     case "habits":
       return true
+    default: {
+      const _exhaustive: never = view
+      return _exhaustive
+    }
+  }
+}
+
+export function showViewSupport(view: WorkspaceView): boolean {
+  switch (view) {
+    case "overview":
+    case "tasks":
+      return false
+    case "notes":
+    case "chats":
+    case "habits":
+      return true
+    default: {
+      const _exhaustive: never = view
+      return _exhaustive
+    }
+  }
+}
+
+export function workspaceSearchPlaceholder(view: WorkspaceView): string {
+  switch (view) {
+    case "tasks":
+      return "Search tasks"
+    case "notes":
+      return "Search notes"
+    case "habits":
+      return "Search habits"
+    case "overview":
+    case "chats":
+      return "Search tasks, notes, habits, and chats..."
     default: {
       const _exhaustive: never = view
       return _exhaustive

@@ -10,15 +10,17 @@ import {
   showGlobalCreateRow,
   showMobileTabBar,
   showToolLauncher,
+  showViewSupport,
   showWorkspaceExport,
   showWorkspaceSearch,
+  workspaceSearchPlaceholder,
   workspaceNavItems,
 } from "./home-chrome"
 
 describe("home chrome", () => {
-  it("hides global create on chats, notes, and habits", () => {
+  it("hides global create on chats, notes, habits, and Tasks", () => {
     expect(showGlobalCreateRow("overview")).toBe(false)
-    expect(showGlobalCreateRow("tasks")).toBe(true)
+    expect(showGlobalCreateRow("tasks")).toBe(false)
     expect(showGlobalCreateRow("chats")).toBe(false)
     expect(showGlobalCreateRow("notes")).toBe(false)
     expect(showGlobalCreateRow("habits")).toBe(false)
@@ -28,15 +30,18 @@ describe("home chrome", () => {
     expect(showWorkspaceSearch("chats")).toBe(false)
     expect(showWorkspaceSearch("overview")).toBe(false)
     expect(showWorkspaceSearch("tasks")).toBe(true)
+    expect(workspaceSearchPlaceholder("tasks")).toBe("Search tasks")
   })
 
-  it("hides Export and the composer dock on Home", () => {
+  it("hides Export and the composer dock on Home, and the composer on Tasks", () => {
     expect(showWorkspaceExport("overview")).toBe(false)
     expect(showWorkspaceExport("tasks")).toBe(true)
     expect(showWorkspaceExport("chats")).toBe(true)
     expect(showComposerDock("overview")).toBe(false)
     expect(showComposerDock("chats")).toBe(true)
-    expect(showComposerDock("tasks")).toBe(true)
+    expect(showComposerDock("tasks")).toBe(false)
+    expect(showViewSupport("tasks")).toBe(false)
+    expect(showViewSupport("notes")).toBe(true)
   })
 
   it("keeps the tool strip off Home so the feed can breathe", () => {
