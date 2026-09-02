@@ -8,11 +8,9 @@ import { Input } from "@/components/ui/input"
 import {
   Settings,
   User,
-  Plus,
   FileText,
   CheckSquare,
   Search,
-  StickyNote,
   Activity,
   Home,
   Download,
@@ -81,11 +79,12 @@ import {
   homeGreeting,
   showComposerDock,
   showDesktopSidebar,
-  showGlobalCreateRow,
+  showHeaderWordmark,
   showMobileTabBar,
   showViewSupport,
   showWorkspaceExport,
   showWorkspaceSearch,
+  workspaceHeaderMode,
   workspaceNavItems,
   workspaceSearchPlaceholder,
 } from "@/lib/ui/home-chrome"
@@ -735,7 +734,7 @@ export function Dashboard({ initialSearch }: DashboardProps) {
         </Card>
       )}
 
-      <header className="mk-workspace-header pt-1 sm:pt-3">
+      <header className="mk-workspace-header pt-1 sm:pt-3" data-mk-header={workspaceHeaderMode(currentView)}>
         <div className="flex items-start justify-between gap-2">
           <Button
             variant="ghost"
@@ -746,7 +745,7 @@ export function Dashboard({ initialSearch }: DashboardProps) {
           >
             <User className="h-5 w-5" />
           </Button>
-          <HermesWordmark />
+          {showHeaderWordmark(viewportWidth) ? <HermesWordmark /> : null}
           <div className="flex shrink-0 items-center gap-2">
             {showWorkspaceExport(currentView) ? (
               <Button
@@ -831,25 +830,6 @@ export function Dashboard({ initialSearch }: DashboardProps) {
             </>
           )}
         </div>
-
-        {showGlobalCreateRow(currentView) ? (
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Button onClick={() => setTaskModal({ isOpen: true, mode: "create" })} className="w-full rounded-2xl sm:w-auto">
-            <Plus className="h-4 w-4" />
-            Add task
-          </Button>
-          <div className="grid flex-1 grid-cols-2 gap-2">
-            <Button variant="outline" className="rounded-xl bg-transparent" onClick={() => setNoteModal({ isOpen: true, mode: "create" })}>
-              <StickyNote className="h-4 w-4" />
-              Note
-            </Button>
-            <Button variant="outline" className="rounded-xl bg-transparent" onClick={() => setHabitModal({ isOpen: true, mode: "create" })}>
-              <Activity className="h-4 w-4" />
-              Habit
-            </Button>
-          </div>
-        </div>
-        ) : null}
 
         {showWorkspaceSearch(currentView) ? (
         <div className="relative">

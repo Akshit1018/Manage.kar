@@ -8,11 +8,13 @@ import {
   showComposerDock,
   showDesktopSidebar,
   showGlobalCreateRow,
+  showHeaderWordmark,
   showMobileTabBar,
   showToolLauncher,
   showViewSupport,
   showWorkspaceExport,
   showWorkspaceSearch,
+  workspaceHeaderMode,
   workspaceSearchPlaceholder,
   workspaceNavItems,
 } from "./home-chrome"
@@ -83,6 +85,11 @@ describe("home chrome", () => {
       ["habits", "Habits"],
     ])
     expect(workspaceNavItems().some(([, label]) => /plugin/i.test(label))).toBe(false)
+    expect(showHeaderWordmark(390)).toBe(true)
+    expect(showHeaderWordmark(1024)).toBe(false)
+    expect(workspaceHeaderMode("overview")).toBe("home")
+    expect(workspaceHeaderMode("tasks")).toBe("module")
+    expect(workspaceHeaderMode("chats")).toBe("module")
   })
 
   it("greets unnamed profiles as Today, not Your workspace", () => {
@@ -108,5 +115,8 @@ describe("home chrome", () => {
     expect(source.includes("mk-workspace-heading")).toBe(false)
     expect(source.includes("currentView === \"overview\" ? greeting")).toBe(false)
     expect(source.includes('greeting = "Your workspace"')).toBe(false)
+    expect(source.includes("showHeaderWordmark")).toBe(true)
+    expect(source.includes("data-mk-header")).toBe(true)
+    expect(source.includes("showGlobalCreateRow")).toBe(false)
   })
 })

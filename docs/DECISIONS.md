@@ -323,3 +323,12 @@ D001–D005.
   the inbox (skills stay on the Machines sheet). The ball stays hidden.
 - **Reversal:** Only if the founder wants workspace export or the skills
   card back on the session list.
+
+### D020 — Dashboard shell is header and nav, not a create row
+
+- The shell is the header and the five-item nav. The header wordmark
+  hides from 1024px (the desktop sidebar already has it). Module tabs
+  use a compact header (`data-mk-header="module"`). The global Add-task
+  / Note / Habit row is gone from the shell. More stays on Home only.
+- **Reversal:** Only if the founder wants the double wordmark or the
+  shell create row back.

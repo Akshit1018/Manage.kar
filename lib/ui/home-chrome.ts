@@ -11,6 +11,28 @@ export function showMobileTabBar(width: number): boolean {
   return !showDesktopSidebar(width)
 }
 
+export function showHeaderWordmark(width: number): boolean {
+  return !showDesktopSidebar(width)
+}
+
+export type WorkspaceHeaderMode = "home" | "module"
+
+export function workspaceHeaderMode(view: WorkspaceView): WorkspaceHeaderMode {
+  switch (view) {
+    case "overview":
+      return "home"
+    case "tasks":
+    case "notes":
+    case "chats":
+    case "habits":
+      return "module"
+    default: {
+      const _exhaustive: never = view
+      return _exhaustive
+    }
+  }
+}
+
 export function workspaceNavItems(): ReadonlyArray<readonly [WorkspaceView, string]> {
   return [
     ["overview", "Home"],
