@@ -307,3 +307,11 @@ D001–D005.
   filters, and Export stay. The edge ball stays.
 - **Reversal:** Only if the founder wants a second search field or the
   chat composer back on Notes.
+
+### D018 — Habits tab is habit-only chrome
+
+- Habits hides the composer dock, the support kicker, and the generic
+  workspace search. Add habit, today toggle, streak, and Export stay.
+  The edge ball stays.
+- **Reversal:** Only if the founder wants a search field or the chat
+  composer back on Habits.
