@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest"
 import {
   ICON_BAR_WIDTH,
+  HOME_BALL_STAGE_MIN_PX,
+  HOME_ORB_SIZE,
   ORB_BOTTOM_RESERVE,
   ORB_INSET,
   ORB_NUDGE_PX,
@@ -9,6 +11,8 @@ import {
   attachOrbPointerFallback,
   clampOrbPosition,
   defaultOrbPosition,
+  homeOrbPosition,
+  homeOrbPositionFromRect,
   iconBarPosition,
   LONG_PRESS_MS,
   orbHoverOpensTray,
@@ -27,6 +31,7 @@ import {
   resolveCustomPropertyPx,
   resolveOrbPlacement,
   resolveSafeAreaInsets,
+  shouldStageHomeBall,
   snapOrbToEdge,
   WORKSPACE_CHROME_FALLBACK_PX,
   type OrbBounds,
@@ -557,6 +562,57 @@ describe("resolveOrbPlacement", () => {
     expect(first).toEqual(second)
     expect(first.next).toEqual({ x: 256, y: 436 })
     expect(first.persist).toBe(true)
+  })
+
+  it("centers a 120px ball on Home and does not persist that park", () => {
+    const stageRect = { left: 16, top: 240, width: 358, height: HOME_BALL_STAGE_MIN_PX }
+    const result = resolveOrbPlacement({
+      prev: { x: 326, y: 712 },
+      saved: { x: 326, y: 712 },
+      bounds: IPHONE_390,
+      reason: "hydrate",
+      stage: "home",
+      size: HOME_ORB_SIZE,
+      stageRect,
+    })
+    expect(HOME_ORB_SIZE).toBe(120)
+    expect(HOME_BALL_STAGE_MIN_PX).toBe(168)
+    expect(result.next).toEqual(homeOrbPositionFromRect(stageRect, HOME_ORB_SIZE))
+    expect(result.next).toEqual({ x: 135, y: 264 })
+    expect(result.persist).toBe(false)
+  })
+})
+
+describe("home ball stage", () => {
+  it("stages the ball only on phone Home", () => {
+    expect(shouldStageHomeBall("overview", 390)).toBe(true)
+    expect(shouldStageHomeBall("overview", 1023)).toBe(true)
+    expect(shouldStageHomeBall("overview", 1024)).toBe(false)
+    expect(shouldStageHomeBall("tasks", 390)).toBe(false)
+    expect(shouldStageHomeBall("chats", 390)).toBe(false)
+  })
+
+  it("centers the ball in the Home stage hole", () => {
+    expect(homeOrbPositionFromRect({ left: 16, top: 240, width: 358, height: 168 }, 120)).toEqual({
+      x: 135,
+      y: 264,
+    })
+  })
+
+  it("falls back to the usable viewport center when the stage is missing", () => {
+    expect(homeOrbPosition(IPHONE_390, 120)).toEqual({ x: 135, y: 328 })
+  })
+
+  it("keeps a Home-sized tray off the 120px disk", () => {
+    const orb = { x: 135, y: 264 }
+    const bar = iconBarPosition(orb, IPHONE_390, ICON_BAR_WIDTH, HOME_ORB_SIZE)
+    expect(bar.y + 60).toBeLessThanOrEqual(orb.y)
+    expect(
+      rectsOverlap(
+        { x: bar.x, y: bar.y, width: ICON_BAR_WIDTH, height: 60 },
+        { x: orb.x, y: orb.y, width: HOME_ORB_SIZE, height: HOME_ORB_SIZE },
+      ),
+    ).toBe(false)
   })
 })
 

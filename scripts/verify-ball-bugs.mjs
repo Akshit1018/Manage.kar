@@ -71,7 +71,7 @@ function verifyGeometry() {
     "export const LONG_PRESS_MS = 500",
     "export function defaultOrbPosition",
     "snapOrbToEdge",
-    "orb.x + ORB_SIZE + inset",
+    "orb.x + size + inset",
     "orb.x - barWidth - inset",
     "export function rectsOverlap",
   ])
@@ -133,6 +133,8 @@ function verifyUi() {
   requireIncludes("apps/mobile/lib/src/widgets/assist_orb_geometry.dart", [
     "bool orbVisibleOnTab(int index) => index != 3",
     "kOrbLongPressMs = 500",
+    "kHomeOrbSize = 120.0",
+    "shouldStageHomeBall",
   ])
   requireIncludes("apps/mobile/test/widget_test.dart", [
     "hidden orb is gone on Chats and a drag parks on the left edge",

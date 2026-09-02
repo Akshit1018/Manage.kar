@@ -279,3 +279,14 @@ D001–D005.
   Do not invent a beige third product face.
 - **Reversal:** Only if the founder replaces Home with a different first
   screen and retires White/Black.
+
+### D015 — Home stages the ball
+
+- Below 1024px, Home reserves a hole (`mk-home-ball-stage`, 168px) and parks a
+  **120px ball** in its center. Other tabs keep the 56px edge-parked ball.
+  Chats still hides it. The disk is a ball, not a plus FAB. Idle has no Plus
+  glyph. Tap still opens Record / Task / Note / Open chats. Long-press still
+  records. Home keeps Today, briefing actions, Bot Chat circles, and jump
+  tiles. A Home-stage park is not written over the saved edge position.
+- **Reversal:** Only if the founder wants the ball only as an edge
+  AssistiveTouch and retires the Home stage.
