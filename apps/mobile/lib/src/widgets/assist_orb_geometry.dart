@@ -18,7 +18,10 @@ const kIconBarHeight = 60.0;
 /// Chats is the fourth shell tab (0 Home, 1 Tasks, 2 Notes, 3 Chats, 4 Habits).
 bool orbVisibleOnTab(int index) => index != 3;
 
-bool shouldStageHomeBall(int tabIndex, double width) => tabIndex == 0 && width < 1024;
+bool shouldStageHomeBall(int tabIndex, double width) {
+  // Home is an edge park like the other tabs. The center stage is retired (D022).
+  return tabIndex < 0 && width < 0;
+}
 
 Offset homeOrbPositionFromRect(Rect rect, {double size = kHomeOrbSize}) {
   return Offset(rect.left + (rect.width - size) / 2, rect.top + (rect.height - size) / 2);

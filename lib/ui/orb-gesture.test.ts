@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 import {
   ICON_BAR_WIDTH,
@@ -608,12 +610,14 @@ describe("resolveOrbPlacement", () => {
 })
 
 describe("home ball stage", () => {
-  it("stages the ball only on phone Home", () => {
-    expect(shouldStageHomeBall("overview", 390)).toBe(true)
-    expect(shouldStageHomeBall("overview", 1023)).toBe(true)
+  it("keeps the ball on the edge, including Home", () => {
+    expect(shouldStageHomeBall("overview", 390)).toBe(false)
+    expect(shouldStageHomeBall("overview", 1023)).toBe(false)
     expect(shouldStageHomeBall("overview", 1024)).toBe(false)
     expect(shouldStageHomeBall("tasks", 390)).toBe(false)
     expect(shouldStageHomeBall("chats", 390)).toBe(false)
+    expect(shouldStageHomeBall("notes", 390)).toBe(false)
+    expect(shouldStageHomeBall("habits", 390)).toBe(false)
   })
 
   it("centers the ball in the Home stage hole", () => {
@@ -637,6 +641,18 @@ describe("home ball stage", () => {
         { x: orb.x, y: orb.y, width: HOME_ORB_SIZE, height: HOME_ORB_SIZE },
       ),
     ).toBe(false)
+  })
+
+  it("does not reserve a Home center hole for the ball", () => {
+    const feed = readFileSync(resolve(process.cwd(), "components/workspace/home-feed.tsx"), "utf8")
+    expect(feed.includes("mk-home-ball-stage")).toBe(false)
+  })
+
+  it("does not treat the ball disk as a Home stage hole", () => {
+    const source = readFileSync(resolve(process.cwd(), "components/floating-toggle.tsx"), "utf8")
+    expect(source).toContain('querySelector("[data-mk-home-stage]")')
+    expect(source).toContain("data-mk-orb-stage={stage}")
+    expect(source.includes("data-mk-ball-stage")).toBe(false)
   })
 })
 

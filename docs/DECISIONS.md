@@ -344,3 +344,11 @@ D001–D005.
   `docs/FEATURE_TRUTH_MAP.md`.
 - **Reversal:** Only if we add sync, a real reminder scheduler, a live
   model default, or a verified overlay draw.
+
+### D022 — Home ball stays on the edge
+
+- The ball is an edge AssistiveTouch on Home, Tasks, Notes, and Habits.
+  Home does not reserve a center hole or a 120px staged ball. Chats
+  still hides it. Idle is still a ball, not a Plus. Tap and long-press
+  are unchanged.
+- **Reversal:** Only if the founder wants the Home-center stage back.

@@ -37,10 +37,10 @@ void main() {
     expect(orbVisibleOnTab(4), isTrue);
   });
 
-  test("stages a 120px ball only on phone Home", () {
+  test("does not stage a center ball on Home", () {
     expect(kHomeOrbSize, 120);
     expect(kHomeBallStageMin, 168);
-    expect(shouldStageHomeBall(0, 390), isTrue);
+    expect(shouldStageHomeBall(0, 390), isFalse);
     expect(shouldStageHomeBall(0, 1024), isFalse);
     expect(shouldStageHomeBall(1, 390), isFalse);
     expect(
