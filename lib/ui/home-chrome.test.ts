@@ -41,7 +41,7 @@ describe("home chrome", () => {
     expect(showWorkspaceExport("tasks")).toBe(true)
     expect(showWorkspaceExport("notes")).toBe(true)
     expect(showWorkspaceExport("habits")).toBe(true)
-    expect(showWorkspaceExport("chats")).toBe(true)
+    expect(showWorkspaceExport("chats")).toBe(false)
     expect(showComposerDock("overview")).toBe(false)
     expect(showComposerDock("chats")).toBe(true)
     expect(showComposerDock("tasks")).toBe(false)
@@ -50,7 +50,15 @@ describe("home chrome", () => {
     expect(showViewSupport("tasks")).toBe(false)
     expect(showViewSupport("notes")).toBe(false)
     expect(showViewSupport("habits")).toBe(false)
-    expect(showViewSupport("chats")).toBe(true)
+    expect(showViewSupport("chats")).toBe(false)
+  })
+
+  it("keeps the Chats inbox as sessions, not skills or workspace export", () => {
+    const chats = readFileSync(resolve(process.cwd(), "components/workspace/chats-view.tsx"), "utf8")
+    expect(chats).toContain("Machines")
+    expect(chats).toContain("New chat")
+    expect(chats).toContain("connectPairedMachine")
+    expect(chats.includes("<SkillsOnMachine")).toBe(false)
   })
 
   it("keeps the tool strip off Home so the feed can breathe", () => {
