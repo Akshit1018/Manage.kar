@@ -78,6 +78,32 @@ function run(command, args, cwd) {
   return result
 }
 
+function runFlutter(args, cwd) {
+  const command = flutterBin()
+  const result = spawnSync(command, args, {
+    cwd: cwd ?? root,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      PATH: `/home/ubuntu/flutter/bin:${process.env.PATH ?? ""}`,
+    },
+  })
+  if (result.error && result.error.code === "ENOENT") {
+    process.stderr.write("flutter not installed; Dart leftover sources were still checked\n")
+    return result
+  }
+  if (result.status !== 0) {
+    fail(`${command} ${args.join(" ")} exited ${result.status}`)
+    if (result.stdout) {
+      process.stderr.write(result.stdout)
+    }
+    if (result.stderr) {
+      process.stderr.write(result.stderr)
+    }
+  }
+  return result
+}
+
 function verifyFlutterPresence() {
   const chats = requireIncludes("apps/mobile/lib/src/screens/chats_screen.dart", [
     'return "reachable"',
@@ -105,16 +131,15 @@ function verifyFlutterPresence() {
   if (!read("apps/mobile/test/dialer_test.dart").includes("isNot(contains(\"online\"))")) {
     fail("dialer_test.dart does not reject the word online")
   }
-  run(flutterBin(), ["test", "test/dialer_test.dart", "test/widget_test.dart"], join(root, "apps/mobile"))
+  runFlutter(["test", "test/dialer_test.dart", "test/widget_test.dart"], join(root, "apps/mobile"))
 }
 
 function verifyProtocol() {
+  requireIncludes("lib/hermes/endpoint.ts", ["/api/ws", "9119"])
   requireIncludes("lib/hermes/protocol.ts", [
     "prompt.submit",
     "session.interrupt",
     "approval.respond",
-    "/api/ws",
-    "9119",
     "message.delta",
     "tool.start",
     "approval.request",
@@ -211,7 +236,7 @@ function verifyOverlay() {
   if (/return OverlayStatus\.granted/.test(overlay) && !overlay.includes("canDrawOverlays")) {
     fail("Dart overlay claims granted without an OS check")
   }
-  run(flutterBin(), ["test", "test/overlay_capability_test.dart"], join(root, "apps/mobile"))
+  runFlutter(["test", "test/overlay_capability_test.dart"], join(root, "apps/mobile"))
 }
 
 const markers = {
@@ -220,6 +245,7 @@ const markers = {
   pairing: "pairing handshake verification passed",
   approval: "approval verification passed",
   overlay: "overlay verification passed",
+  all: "remaining companion verification passed",
 }
 
 if (!mode || !markers[mode]) {
@@ -241,6 +267,13 @@ switch (mode) {
     verifyApproval()
     break
   case "overlay":
+    verifyOverlay()
+    break
+  case "all":
+    verifyFlutterPresence()
+    verifyProtocol()
+    verifyPairing()
+    verifyApproval()
     verifyOverlay()
     break
   default: {

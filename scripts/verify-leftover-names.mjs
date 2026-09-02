@@ -65,6 +65,7 @@ const tests = spawnSync(
     "lib/hermes/chat-identity.test.ts",
     "lib/ui/home-chrome.test.ts",
     "lib/core/truth.test.ts",
+    "lib/core/remaining.test.ts",
   ],
   { cwd: root, encoding: "utf8" },
 )
