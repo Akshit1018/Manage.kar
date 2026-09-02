@@ -1394,6 +1394,11 @@ html[data-skin="classic"].dark {
     margin-bottom: 1.5rem;
   }
 
+  .mk-workspace-header[data-mk-header="module"] {
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
   .mk-workspace-heading {
     font-size: clamp(2.35rem, 13vw, 4.25rem);
     font-weight: 700;

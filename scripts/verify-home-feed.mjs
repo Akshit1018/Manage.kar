@@ -89,6 +89,9 @@ function verifyUi() {
     'aria-label="More"',
     "showWorkspaceExport",
     "showComposerDock",
+    "showHeaderWordmark",
+    "workspaceHeaderMode",
+    "data-mk-header",
     "mk-home-briefing-actions",
     "<PairingSheet",
   ])
@@ -99,6 +102,7 @@ function verifyUi() {
     "aria-label=\"Goals\"",
     'currentView === "overview" ? greeting',
     "mk-workspace-heading",
+    "showGlobalCreateRow",
   ])
   if (dashboard.includes("pending tasks") && dashboard.includes("mk-featured-numeral")) {
     fail("dashboard still shows overview count tiles")
@@ -126,6 +130,8 @@ function verifyUi() {
     "showComposerDock",
     "showViewSupport",
     "workspaceSearchPlaceholder",
+    "showHeaderWordmark",
+    "workspaceHeaderMode",
   ])
   requireIncludes("app/globals.css", [
     ".mk-home-ball-stage",
@@ -139,6 +145,7 @@ function verifyUi() {
     ".mk-home-spotlight.mk-featured-surface",
     'html[data-skin="white"] .mk-home-briefing',
     'html[data-skin="black"] .mk-home-briefing',
+    '.mk-workspace-header[data-mk-header="module"]',
   ])
   requireIncludes("apps/mobile/lib/src/ui/home_feed.dart", [
     "homeGreeting",
@@ -181,7 +188,7 @@ function verifyTheme() {
   requireIncludes("apps/mobile/lib/src/theme/app_theme.dart", ['case "white":', 'case "black":'])
   requireIncludes("apps/mobile/lib/src/screens/settings_screen.dart", ['"white", "black"'])
   requireIncludes("apps/api/src/app.ts", ['z.enum(["hermes", "classic", "white", "black"])'])
-  requireIncludes("docs/DECISIONS.md", ["D014", "D015", "D016", "D017", "D018", "D019"])
+  requireIncludes("docs/DECISIONS.md", ["D014", "D015", "D016", "D017", "D018", "D019", "D020"])
   requireIncludes("lib/ui/orb-gesture.ts", ["shouldStageHomeBall", "HOME_ORB_SIZE", "HOME_BALL_STAGE_MIN_PX"])
   requireIncludes("components/floating-toggle.tsx", ['data-mk-ball=""', "mk-ball-core"])
   requireAbsent("components/floating-toggle.tsx", ["<Plus"])
