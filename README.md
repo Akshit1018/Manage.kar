@@ -54,4 +54,5 @@ pnpm build
 ## Docs
 
 Start with [`docs/PRODUCT_VISION.md`](docs/PRODUCT_VISION.md).
-The latest product-truth map is [`docs/forensic/FEATURE_TRUTH_MAP.md`](docs/forensic/FEATURE_TRUTH_MAP.md).
+The live product-truth map is [`docs/FEATURE_TRUTH_MAP.md`](docs/FEATURE_TRUTH_MAP.md).
+The dated forensic inspection is [`docs/forensic/FEATURE_TRUTH_MAP.md`](docs/forensic/FEATURE_TRUTH_MAP.md).

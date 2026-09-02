@@ -24,6 +24,12 @@ User
 | Settings.clipboardMonitor | ClipboardMonitor enabled |
 | Import / clear / any save | Full workspace via `managekar:workspace-changed` |
 
+## Two stores
+
+The graph above is the PWA document (`managekar.workspace.v1` in `localStorage`).
+Flutter + `apps/api` is a second store in PostgreSQL. They are two stores.
+Export is the only handoff. There is no sync.
+
 ## Rejected nodes (template, not this product)
 
 Candidate, Evidence, Role, Resume, Interview, Recruiter, Fit score.

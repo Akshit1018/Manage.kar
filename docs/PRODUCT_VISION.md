@@ -6,7 +6,11 @@ It is **not** a recruiting platform, candidate profile store, resume engine, or 
 
 ## Who it is for
 
-One person who wants a calm place to capture work and keep it after refresh — without an account, cloud vendor, or fake team dashboard.
+One person who wants a calm place to capture work and keep it after refresh — without a fake team dashboard or a pretend cloud vendor.
+
+The **Next.js PWA** stays local-first: one `localStorage` document, no account.
+The **Flutter** client is a separate product: email/password + PostgreSQL via
+`apps/api`. Those are two stores. They are not synced.
 
 ## Problem
 
