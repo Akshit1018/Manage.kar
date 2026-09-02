@@ -40,9 +40,9 @@ export function showWorkspaceSearch(view: WorkspaceView): boolean {
   switch (view) {
     case "chats":
     case "overview":
+    case "notes":
       return false
     case "tasks":
-    case "notes":
     case "habits":
       return true
     default: {
@@ -72,8 +72,8 @@ export function showComposerDock(view: WorkspaceView): boolean {
   switch (view) {
     case "overview":
     case "tasks":
-      return false
     case "notes":
+      return false
     case "chats":
     case "habits":
       return true
@@ -88,8 +88,8 @@ export function showViewSupport(view: WorkspaceView): boolean {
   switch (view) {
     case "overview":
     case "tasks":
-      return false
     case "notes":
+      return false
     case "chats":
     case "habits":
       return true

@@ -299,3 +299,11 @@ D001–D005.
   and Select stay. The edge ball stays.
 - **Reversal:** Only if the founder wants Note/Habit create or the chat
   composer back on Tasks.
+
+### D017 — Notes tab is note-only chrome
+
+- Notes hides the composer dock, the support kicker, and the generic
+  workspace search. Ask my notes is the search. Record, Add note, label
+  filters, and Export stay. The edge ball stays.
+- **Reversal:** Only if the founder wants a second search field or the
+  chat composer back on Notes.
