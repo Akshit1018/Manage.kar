@@ -7,7 +7,6 @@ import { ApprovalCard } from "@/components/approval-card"
 import { EmptyState } from "@/components/empty-state"
 import { HermesWordmark } from "@/components/hermes-wordmark"
 import { PairingSheet } from "@/components/pairing-sheet"
-import { SkillsOnMachine } from "@/components/skills-on-machine"
 import { cn } from "@/lib/utils"
 import {
   approvalForSession,
@@ -36,7 +35,6 @@ import {
 import { NEW_CHAT_TARGET, type ChatListItem, type DialerState, type OutboxMessage } from "@/lib/dialer/types"
 import { chatIdentityKind, chatIdentityLabel } from "@/lib/hermes/chat-identity"
 import { loadPairing, PAIRING_CHANGED_EVENT } from "@/lib/pairing/pairing"
-import type { PairingState } from "@/lib/pairing/types"
 import { chatRowAccessibleName } from "@/lib/ui/workspace-sections-layout"
 
 interface ChatsViewProps {
@@ -48,14 +46,12 @@ interface ChatsViewProps {
 
 export function ChatsView({ sessionId, searchQuery, onOpenSession, onBack }: ChatsViewProps) {
   const [dialer, setDialer] = useState<DialerState | null>(null)
-  const [pairing, setPairing] = useState<PairingState | null>(null)
   const [pairingOpen, setPairingOpen] = useState(false)
 
   useEffect(() => {
     const reload = () => {
       const next = loadPairing(window.localStorage)
       setDialer(loadDialer(window.localStorage))
-      setPairing(next)
       connectPairedMachine(next, sessionId || undefined)
     }
     reload()
@@ -116,10 +112,6 @@ export function ChatsView({ sessionId, searchQuery, onOpenSession, onBack }: Cha
         </div>
       </div>
       <PairingSheet open={pairingOpen} onClose={() => setPairingOpen(false)} />
-      <SkillsOnMachine
-        paired={(pairing?.machines.length ?? 0) > 0}
-        reported={pairing?.machines.flatMap((machine) => machine.skills ?? []) ?? []}
-      />
       {items.length === 0 ? (
         <EmptyState
           title={searchQuery ? "No matching chats" : "No chats yet"}

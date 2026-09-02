@@ -55,10 +55,10 @@ export function showWorkspaceSearch(view: WorkspaceView): boolean {
 export function showWorkspaceExport(view: WorkspaceView): boolean {
   switch (view) {
     case "overview":
+    case "chats":
       return false
     case "tasks":
     case "notes":
-    case "chats":
     case "habits":
       return true
     default: {
@@ -90,9 +90,8 @@ export function showViewSupport(view: WorkspaceView): boolean {
     case "tasks":
     case "notes":
     case "habits":
-      return false
     case "chats":
-      return true
+      return false
     default: {
       const _exhaustive: never = view
       return _exhaustive

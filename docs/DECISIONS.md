@@ -315,3 +315,11 @@ D001–D005.
   The edge ball stays.
 - **Reversal:** Only if the founder wants a search field or the chat
   composer back on Habits.
+
+### D019 — Chats tab is session-only chrome
+
+- Chats keeps Machines, New chat, the session list, the thread, and the
+  composer. It hides Export, the support kicker, and the skills card on
+  the inbox (skills stay on the Machines sheet). The ball stays hidden.
+- **Reversal:** Only if the founder wants workspace export or the skills
+  card back on the session list.
