@@ -71,7 +71,6 @@ export function HomeFeed({
 
   return (
     <div className="space-y-6">
-      <div className="mk-home-ball-stage" data-mk-ball-stage="" aria-hidden="true" />
       {agents.length > 0 ? (
         <section aria-label="Agents">
           <div className="mk-home-agents">

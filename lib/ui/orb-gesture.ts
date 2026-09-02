@@ -265,9 +265,9 @@ export function parseSavedOrbPosition(raw: string | null): { x: number; y: numbe
 }
 
 export function shouldStageHomeBall(view: WorkspaceView, width: number): boolean {
+  void width
   switch (view) {
     case "overview":
-      return width < DESKTOP_SIDEBAR_MIN_WIDTH
     case "tasks":
     case "notes":
     case "chats":

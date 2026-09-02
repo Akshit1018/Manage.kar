@@ -1522,16 +1522,6 @@ html[data-skin="classic"].dark {
     margin-top: 0.15rem;
   }
 
-  .mk-home-ball-stage {
-    min-height: 10.5rem;
-  }
-
-  @media (min-width: 1024px) {
-    .mk-home-ball-stage {
-      display: none;
-    }
-  }
-
   .mk-ball {
     display: inline-flex;
     align-items: center;

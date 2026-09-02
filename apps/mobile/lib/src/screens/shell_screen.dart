@@ -101,7 +101,7 @@ class _ShellScreenState extends State<ShellScreen> {
               pages[index],
               AssistOrb(
                 visible: orbVisibleOnTab(index),
-                stageHome: index == 0,
+                stageHome: shouldStageHomeBall(index, MediaQuery.sizeOf(context).width),
                 onRecord: () => captureVoiceFromOrb(context, widget.workspace),
                 onTask: () => openTaskEditor(context, widget.workspace),
                 onNote: () => openNoteEditor(context, widget.workspace),
