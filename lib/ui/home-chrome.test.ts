@@ -30,23 +30,27 @@ describe("home chrome", () => {
     expect(showWorkspaceSearch("chats")).toBe(false)
     expect(showWorkspaceSearch("overview")).toBe(false)
     expect(showWorkspaceSearch("notes")).toBe(false)
+    expect(showWorkspaceSearch("habits")).toBe(false)
     expect(showWorkspaceSearch("tasks")).toBe(true)
     expect(workspaceSearchPlaceholder("tasks")).toBe("Search tasks")
-    expect(workspaceSearchPlaceholder("notes")).toBe("Search notes")
+    expect(workspaceSearchPlaceholder("habits")).toBe("Search habits")
   })
 
-  it("hides Export and the composer dock on Home, and the composer on Tasks and Notes", () => {
+  it("hides Export and the composer dock on Home, and the composer on Tasks, Notes, and Habits", () => {
     expect(showWorkspaceExport("overview")).toBe(false)
     expect(showWorkspaceExport("tasks")).toBe(true)
     expect(showWorkspaceExport("notes")).toBe(true)
+    expect(showWorkspaceExport("habits")).toBe(true)
     expect(showWorkspaceExport("chats")).toBe(true)
     expect(showComposerDock("overview")).toBe(false)
     expect(showComposerDock("chats")).toBe(true)
     expect(showComposerDock("tasks")).toBe(false)
     expect(showComposerDock("notes")).toBe(false)
+    expect(showComposerDock("habits")).toBe(false)
     expect(showViewSupport("tasks")).toBe(false)
     expect(showViewSupport("notes")).toBe(false)
-    expect(showViewSupport("habits")).toBe(true)
+    expect(showViewSupport("habits")).toBe(false)
+    expect(showViewSupport("chats")).toBe(true)
   })
 
   it("keeps the tool strip off Home so the feed can breathe", () => {

@@ -181,7 +181,7 @@ function verifyTheme() {
   requireIncludes("apps/mobile/lib/src/theme/app_theme.dart", ['case "white":', 'case "black":'])
   requireIncludes("apps/mobile/lib/src/screens/settings_screen.dart", ['"white", "black"'])
   requireIncludes("apps/api/src/app.ts", ['z.enum(["hermes", "classic", "white", "black"])'])
-  requireIncludes("docs/DECISIONS.md", ["D014", "D015", "D016", "D017"])
+  requireIncludes("docs/DECISIONS.md", ["D014", "D015", "D016", "D017", "D018"])
   requireIncludes("lib/ui/orb-gesture.ts", ["shouldStageHomeBall", "HOME_ORB_SIZE", "HOME_BALL_STAGE_MIN_PX"])
   requireIncludes("components/floating-toggle.tsx", ['data-mk-ball=""', "mk-ball-core"])
   requireAbsent("components/floating-toggle.tsx", ["<Plus"])

@@ -41,9 +41,9 @@ export function showWorkspaceSearch(view: WorkspaceView): boolean {
     case "chats":
     case "overview":
     case "notes":
+    case "habits":
       return false
     case "tasks":
-    case "habits":
       return true
     default: {
       const _exhaustive: never = view
@@ -73,9 +73,9 @@ export function showComposerDock(view: WorkspaceView): boolean {
     case "overview":
     case "tasks":
     case "notes":
+    case "habits":
       return false
     case "chats":
-    case "habits":
       return true
     default: {
       const _exhaustive: never = view
@@ -89,9 +89,9 @@ export function showViewSupport(view: WorkspaceView): boolean {
     case "overview":
     case "tasks":
     case "notes":
+    case "habits":
       return false
     case "chats":
-    case "habits":
       return true
     default: {
       const _exhaustive: never = view
