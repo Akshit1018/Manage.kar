@@ -59,7 +59,13 @@ requireIncludes("docs/DECISIONS.md", ["Bot Chat", "not a marketplace name"])
 
 const tests = spawnSync(
   "./node_modules/.bin/vitest",
-  ["run", "lib/dialer/dialer.test.ts", "lib/hermes/chat-identity.test.ts", "lib/ui/home-chrome.test.ts"],
+  [
+    "run",
+    "lib/dialer/dialer.test.ts",
+    "lib/hermes/chat-identity.test.ts",
+    "lib/ui/home-chrome.test.ts",
+    "lib/core/truth.test.ts",
+  ],
   { cwd: root, encoding: "utf8" },
 )
 if (tests.status !== 0) {

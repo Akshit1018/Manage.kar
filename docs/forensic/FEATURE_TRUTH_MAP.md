@@ -1,5 +1,8 @@
 # Feature truth map
 
+> **Dated inspection at `34ef512`.** Not HEAD. Live map:
+> [`docs/FEATURE_TRUTH_MAP.md`](../FEATURE_TRUTH_MAP.md).
+
 Inspected **after** remediations (`34ef512`). Do not trust README, screenshots, or modal titles.
 
 **Classes:** REAL · PARTIAL · COSMETIC · MOCKED · BROKEN · HIDDEN · DEAD · DUPLICATE · MISLEADING · UNVERIFIED

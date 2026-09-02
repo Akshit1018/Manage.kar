@@ -332,3 +332,15 @@ D001–D005.
   / Note / Habit row is gone from the shell. More stays on Home only.
 - **Reversal:** Only if the founder wants the double wordmark or the
   shell create row back.
+
+### D021 — Core logic is two stores plus honest leftovers
+
+- The PWA store is one `localStorage` document (D002). Flutter +
+  `apps/api` is a second store in PostgreSQL. They are two stores. No
+  sync. Habit frequency and `customDays` are enforced
+  (`isHabitScheduledOn`). PWA reminders fire only while the tab is
+  open. Hermes lazy attach uses `model: dummy` unless the host has a
+  real model. The Android overlay is a stub. The live truth map is
+  `docs/FEATURE_TRUTH_MAP.md`.
+- **Reversal:** Only if we add sync, a real reminder scheduler, a live
+  model default, or a verified overlay draw.
