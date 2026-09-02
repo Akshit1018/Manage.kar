@@ -14,6 +14,7 @@ class AssistOrb extends StatefulWidget {
     required this.onNote,
     required this.onChats,
     this.visible = true,
+    this.stageHome = false,
     this.prefs,
   });
 
@@ -22,6 +23,7 @@ class AssistOrb extends StatefulWidget {
   final VoidCallback onNote;
   final VoidCallback onChats;
   final bool visible;
+  final bool stageHome;
   final SharedPreferences? prefs;
 
   @override
@@ -68,12 +70,12 @@ class _AssistOrbState extends State<AssistOrb> {
     prefs = store;
   }
 
-  Offset _resolve(Size viewport, EdgeInsets padding) {
+  Offset _resolve(Size viewport, EdgeInsets padding, {double size = kOrbSize}) {
     if (position != null) {
-      return clampOrbPosition(position!, viewport, padding: padding);
+      return clampOrbPosition(position!, viewport, padding: padding, size: size);
     }
     if (saved != null) {
-      return clampOrbPosition(saved!, viewport, padding: padding);
+      return clampOrbPosition(saved!, viewport, padding: padding, size: size);
     }
     return defaultOrbPosition(viewport, padding: padding);
   }
@@ -104,8 +106,13 @@ class _AssistOrbState extends State<AssistOrb> {
     final media = MediaQuery.of(context);
     final viewport = media.size;
     final padding = media.padding;
-    final orb = _resolve(viewport, padding);
-    final tray = showIcons && !dragging ? iconBarPosition(orb, viewport, padding: padding) : null;
+    final size = widget.stageHome ? kHomeOrbSize : kOrbSize;
+    final orb = widget.stageHome && !dragging
+        ? homeOrbPosition(viewport, padding: padding, size: size)
+        : _resolve(viewport, padding, size: size);
+    final tray = showIcons && !dragging
+        ? iconBarPosition(orb, viewport, padding: padding, size: size)
+        : null;
     final scheme = Theme.of(context).colorScheme;
     return Positioned.fill(
       child: Stack(
@@ -191,17 +198,19 @@ class _AssistOrbState extends State<AssistOrb> {
                   }
                   setState(() {
                     moved = true;
-                    position = clampOrbPosition(next, viewport, padding: padding);
+                    position = clampOrbPosition(next, viewport, padding: padding, size: size);
                   });
                 },
                 onPanEnd: (_) {
                   final live = position ?? orb;
-                  final snapped = snapOrbToEdge(live, viewport, padding: padding);
+                  final snapped = widget.stageHome
+                      ? homeOrbPosition(viewport, padding: padding, size: size)
+                      : snapOrbToEdge(live, viewport, padding: padding, size: size);
                   setState(() {
                     dragging = false;
-                    position = snapped;
+                    position = widget.stageHome ? null : snapped;
                   });
-                  if (moved) {
+                  if (moved && !widget.stageHome) {
                     _persist(snapped);
                   }
                 },
@@ -209,11 +218,20 @@ class _AssistOrbState extends State<AssistOrb> {
                   setState(() => dragging = false);
                 },
                 child: Container(
-                  width: kOrbSize,
-                  height: kOrbSize,
+                  width: size,
+                  height: size,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: scheme.primary,
+                    gradient: RadialGradient(
+                      center: const Alignment(-0.35, -0.45),
+                      radius: 0.95,
+                      colors: [
+                        Color.lerp(scheme.primary, Colors.white, 0.45) ?? scheme.primary,
+                        scheme.primary,
+                        Color.lerp(scheme.primary, Colors.black, 0.35) ?? scheme.primary,
+                      ],
+                      stops: const [0.0, 0.45, 1.0],
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: scheme.primary.withValues(alpha: 0.4),
@@ -222,7 +240,16 @@ class _AssistOrbState extends State<AssistOrb> {
                       ),
                     ],
                   ),
-                  child: Icon(showIcons ? Icons.close : Icons.add, color: scheme.onPrimary, size: 28),
+                  child: Center(
+                    child: Container(
+                      width: size * 0.28,
+                      height: size * 0.28,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white.withValues(alpha: 0.55),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),

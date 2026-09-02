@@ -1,9 +1,13 @@
+import { DESKTOP_SIDEBAR_MIN_WIDTH } from "@/lib/ui/home-chrome"
 import { keyboardOverlap } from "@/lib/ui/visual-viewport"
+import type { WorkspaceView } from "@/lib/navigation/workspace-url"
 
 export const LONG_PRESS_MS = 500
 export const ICON_BAR_MS = 3000
 export const DRAG_THRESHOLD_PX = 10
 export const ORB_SIZE = 56
+export const HOME_ORB_SIZE = 120
+export const HOME_BALL_STAGE_MIN_PX = 168
 export const ORB_INSET = 8
 export const ORB_BOTTOM_RESERVE = 76
 export const ORB_NUDGE_PX = 16
@@ -27,6 +31,15 @@ export type OrbBounds = {
   leftInset?: number
   rightInset?: number
   bottomReserve?: number
+}
+
+export type OrbStage = "home" | "edge"
+
+export type OrbStageRect = {
+  left: number
+  top: number
+  width: number
+  height: number
 }
 
 export function movementExceeded(dx: number, dy: number, threshold = DRAG_THRESHOLD_PX): boolean {
@@ -251,14 +264,76 @@ export function parseSavedOrbPosition(raw: string | null): { x: number; y: numbe
   return null
 }
 
+export function shouldStageHomeBall(view: WorkspaceView, width: number): boolean {
+  switch (view) {
+    case "overview":
+      return width < DESKTOP_SIDEBAR_MIN_WIDTH
+    case "tasks":
+    case "notes":
+    case "chats":
+    case "habits":
+      return false
+    default: {
+      const _exhaustive: never = view
+      return _exhaustive
+    }
+  }
+}
+
+export function orbSizeForStage(stage: OrbStage): number {
+  switch (stage) {
+    case "home":
+      return HOME_ORB_SIZE
+    case "edge":
+      return ORB_SIZE
+    default: {
+      const _exhaustive: never = stage
+      return _exhaustive
+    }
+  }
+}
+
+export function homeOrbPositionFromRect(rect: OrbStageRect, size = HOME_ORB_SIZE): { x: number; y: number } {
+  return {
+    x: Math.round(rect.left + (rect.width - size) / 2),
+    y: Math.round(rect.top + (rect.height - size) / 2),
+  }
+}
+
+export function homeOrbPosition(bounds: OrbBounds, size = HOME_ORB_SIZE): { x: number; y: number } {
+  const { width, height, leftInset, rightInset, topInset, bottomReserve } = resolveBounds(bounds)
+  const usableWidth = width - leftInset - rightInset
+  const usableHeight = height - topInset - bottomReserve
+  return clampOrbPosition(
+    leftInset + (usableWidth - size) / 2,
+    topInset + (usableHeight - size) / 2,
+    bounds,
+    size,
+  )
+}
+
 export function resolveOrbPlacement(input: {
   prev: { x: number; y: number } | null
   saved: { x: number; y: number } | null
   bounds: OrbBounds
   reason: "hydrate" | "viewport"
+  stage?: OrbStage
+  size?: number
+  stageRect?: OrbStageRect | null
 }): { next: { x: number; y: number }; persist: boolean } {
-  const source = input.prev ?? input.saved ?? defaultOrbPosition(input.bounds)
-  const next = clampOrbPosition(source.x, source.y, input.bounds)
+  const stage = input.stage ?? "edge"
+  const size = input.size ?? orbSizeForStage(stage)
+  if (stage === "home") {
+    const raw = input.stageRect
+      ? homeOrbPositionFromRect(input.stageRect, size)
+      : homeOrbPosition(input.bounds, size)
+    return { next: clampOrbPosition(raw.x, raw.y, input.bounds, size), persist: false }
+  }
+  const source =
+    input.reason === "hydrate"
+      ? (input.saved ?? defaultOrbPosition(input.bounds))
+      : (input.prev ?? input.saved ?? defaultOrbPosition(input.bounds))
+  const next = clampOrbPosition(source.x, source.y, input.bounds, size)
   const changed = next.x !== source.x || next.y !== source.y
   const persist =
     changed && (input.reason === "viewport" || (input.reason === "hydrate" && input.saved != null))
@@ -362,13 +437,26 @@ export function iconBarPosition(
   orb: { x: number; y: number },
   bounds: OrbBounds,
   barWidth = ICON_BAR_WIDTH,
+  size = ORB_SIZE,
 ): { x: number; y: number } {
   const { width, inset, leftInset, rightInset, topInset } = resolveBounds(bounds)
-  const opensRight = orb.x + ORB_SIZE / 2 < width / 2
-  const rawX = opensRight ? orb.x + ORB_SIZE + inset : orb.x - barWidth - inset
-  return {
+  const opensRight = orb.x + size / 2 < width / 2
+  const rawX = opensRight ? orb.x + size + inset : orb.x - barWidth - inset
+  const beside = {
     x: Math.max(leftInset, Math.min(width - barWidth - rightInset, rawX)),
     y: Math.max(topInset, orb.y - 60),
+  }
+  if (
+    !rectsOverlap(
+      { x: beside.x, y: beside.y, width: barWidth, height: 60 },
+      { x: orb.x, y: orb.y, width: size, height: size },
+    )
+  ) {
+    return beside
+  }
+  return {
+    x: Math.max(leftInset, Math.min(width - barWidth - rightInset, orb.x + size / 2 - barWidth / 2)),
+    y: Math.max(topInset, orb.y - 60 - inset),
   }
 }
 

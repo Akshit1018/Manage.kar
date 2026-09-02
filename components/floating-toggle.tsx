@@ -1,15 +1,17 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { CheckSquare, FileText, Mic, MessageCircle, Plus } from "lucide-react"
+import { CheckSquare, FileText, Mic, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { VoiceRecorder } from "@/components/voice-recorder"
 import { cn } from "@/lib/utils"
 import { dispatchComposerOpen } from "@/lib/dialer/dialer"
 import {
   ICON_BAR_MS,
+  ICON_BAR_WIDTH,
   LONG_PRESS_MS,
   applyOrbKeyboardIntent,
+  orbSizeForStage,
   attachOrbPointerFallback,
   clampOrbPosition,
   defaultOrbPosition,
@@ -28,6 +30,7 @@ import {
   resolveOrbPlacement,
   resolveSafeAreaInsets,
   snapOrbToEdge,
+  type OrbStage,
 } from "@/lib/ui/orb-gesture"
 
 const POSITION_KEY = "floating-toggle-position"
@@ -38,6 +41,7 @@ interface FloatingToggleProps {
   onVoiceNote?: (audioBlob: Blob, transcription: string, duration?: number) => void
   onCreateTaskFromVoice?: (text: string) => void
   suppressed?: boolean
+  stage?: OrbStage
 }
 
 function resolveRootChromePx() {
@@ -88,6 +92,18 @@ function readBounds() {
   })
 }
 
+function readStageRect() {
+  const stage = document.querySelector("[data-mk-ball-stage]")
+  if (!(stage instanceof HTMLElement)) {
+    return null
+  }
+  const rect = stage.getBoundingClientRect()
+  if (rect.width <= 0 || rect.height <= 0) {
+    return null
+  }
+  return { left: rect.left, top: rect.top, width: rect.width, height: rect.height }
+}
+
 function persistPosition(position: { x: number; y: number }) {
   localStorage.setItem(POSITION_KEY, JSON.stringify(position))
 }
@@ -105,6 +121,7 @@ export function FloatingToggle({
   onVoiceNote,
   onCreateTaskFromVoice,
   suppressed = false,
+  stage = "edge",
 }: FloatingToggleProps) {
   const [recorderOpen, setRecorderOpen] = useState(false)
   const [armed, setArmed] = useState(false)
@@ -146,13 +163,24 @@ export function FloatingToggle({
         saved,
         bounds,
         reason,
+        stage,
+        size: orbSizeForStage(stage),
+        stageRect: readStageRect(),
       })
       if (planned.persist) {
         persistPosition(planned.next)
       }
       latestPosRef.current = planned.next
       setPosition((prev) => {
-        const next = resolveOrbPlacement({ prev, saved, bounds, reason }).next
+        const next = resolveOrbPlacement({
+          prev,
+          saved,
+          bounds,
+          reason,
+          stage,
+          size: orbSizeForStage(stage),
+          stageRect: readStageRect(),
+        }).next
         latestPosRef.current = next
         return samePoint(prev, next) ? prev : next
       })
@@ -171,7 +199,7 @@ export function FloatingToggle({
       window.visualViewport?.removeEventListener("resize", onViewport)
       window.visualViewport?.removeEventListener("scroll", onViewport)
     }
-  }, [])
+  }, [stage])
 
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)")
@@ -276,7 +304,7 @@ export function FloatingToggle({
     clearLongPress()
     setShowIconBar(false)
     setArmed(false)
-    schedulePosition(clampOrbPosition(next.x, next.y, readBounds()))
+    schedulePosition(clampOrbPosition(next.x, next.y, readBounds(), orbSizeForStage(stage)))
   }
 
   const finishGesture = (cancelled: boolean) => {
@@ -308,10 +336,25 @@ export function FloatingToggle({
         setRecorderOpen(true)
         break
       case "snap": {
-        const snapped = snapOrbToEdge(live, readBounds())
-        latestPosRef.current = snapped
-        setPosition(snapped)
-        persistPosition(snapped)
+        const bounds = readBounds()
+        const size = orbSizeForStage(stage)
+        const parked =
+          stage === "home"
+            ? resolveOrbPlacement({
+                prev: live,
+                saved: parseSavedOrbPosition(localStorage.getItem(POSITION_KEY)),
+                bounds,
+                reason: "viewport",
+                stage,
+                size,
+                stageRect: readStageRect(),
+              })
+            : { next: snapOrbToEdge(live, bounds, size), persist: true }
+        latestPosRef.current = parked.next
+        setPosition(parked.next)
+        if (parked.persist) {
+          persistPosition(parked.next)
+        }
         break
       }
       case "idle":
@@ -356,9 +399,10 @@ export function FloatingToggle({
     action?.()
   }
 
+  const diskSize = orbSizeForStage(stage)
   const icons =
     position && showIconBar && !recorderOpen && !suppressed
-      ? iconBarPosition(position, readBounds())
+      ? iconBarPosition(position, readBounds(), ICON_BAR_WIDTH, diskSize)
       : null
 
   if (suppressed && !recorderOpen) {
@@ -525,12 +569,13 @@ export function FloatingToggle({
             hideIconBarSoon()
           }
         }}
+        data-mk-ball=""
+        data-mk-ball-stage={stage}
+        data-armed={armed || recorderOpen ? "true" : "false"}
         className={cn(
-          "mk-touch fixed z-[80] h-14 w-14 cursor-move rounded-full border-2 shadow-lg select-none",
-          "bg-primary/20 text-primary-foreground backdrop-blur-md border-primary/20",
-          "shadow-[0_0_20px_rgba(59,130,246,0.3)] [touch-action:none]",
-          isDragging || showIconBar ? "scale-105 bg-primary/80 border-primary/30" : "",
-          armed || recorderOpen ? "scale-110 animate-pulse bg-red-500/95 border-red-400/50 text-white" : "",
+          "mk-touch mk-ball fixed z-[80] cursor-move rounded-full overflow-hidden select-none [touch-action:none]",
+          isDragging || showIconBar ? "scale-105" : "",
+          armed || recorderOpen ? "scale-110 animate-pulse" : "",
           isDragging ? "cursor-grabbing" : "",
         )}
         style={
@@ -538,19 +583,23 @@ export function FloatingToggle({
             ? {
                 left: position.x,
                 top: position.y,
+                width: diskSize,
+                height: diskSize,
                 right: "auto",
                 bottom: "auto",
                 touchAction: "none",
-                transition: isDragging ? "none" : `left ${snapMs}ms ease, top ${snapMs}ms ease`,
+                transition: isDragging ? "none" : `left ${snapMs}ms ease, top ${snapMs}ms ease, width ${snapMs}ms ease, height ${snapMs}ms ease`,
               }
             : {
                 right: "1rem",
                 bottom: "var(--mk-bottom-chrome)",
+                width: diskSize,
+                height: diskSize,
                 touchAction: "none",
               }
         }
       >
-        {armed || recorderOpen ? <Mic className="h-6 w-6" /> : <Plus className="h-6 w-6" />}
+        {armed || recorderOpen ? <Mic className="h-6 w-6 text-white" /> : <span className="mk-ball-core" aria-hidden="true" />}
       </Button>
 
       <VoiceRecorder

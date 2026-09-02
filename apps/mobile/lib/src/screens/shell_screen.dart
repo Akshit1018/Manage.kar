@@ -101,6 +101,7 @@ class _ShellScreenState extends State<ShellScreen> {
               pages[index],
               AssistOrb(
                 visible: orbVisibleOnTab(index),
+                stageHome: index == 0,
                 onRecord: () => captureVoiceFromOrb(context, widget.workspace),
                 onTask: () => openTaskEditor(context, widget.workspace),
                 onNote: () => openNoteEditor(context, widget.workspace),
@@ -230,7 +231,7 @@ class _HomeTab extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: kHomeBallStageMin),
           if (agents.isNotEmpty)
             SizedBox(
               height: 96,

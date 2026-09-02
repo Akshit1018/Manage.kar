@@ -88,6 +88,7 @@ import {
   workspaceNavItems,
 } from "@/lib/ui/home-chrome"
 import { agentDayBriefing, homeAgents, homeRuntimeSignals, pickHomeSpotlight } from "@/lib/ui/home-feed"
+import { shouldStageHomeBall } from "@/lib/ui/orb-gesture"
 
 function clipTitle(content: string, limit: number) {
   return content.length > limit ? `${content.slice(0, limit).trim()}…` : content.trim()
@@ -973,6 +974,7 @@ export function Dashboard({ initialSearch }: DashboardProps) {
         onVoiceNote={handleVoiceNote}
         onCreateTaskFromVoice={handleVoiceTask}
         suppressed={composerExpanded || currentView === "chats"}
+        stage={shouldStageHomeBall(currentView, viewportWidth) ? "home" : "edge"}
       />
 
       {showComposerDock(currentView) ? (

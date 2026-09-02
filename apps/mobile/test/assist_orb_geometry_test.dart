@@ -37,6 +37,19 @@ void main() {
     expect(orbVisibleOnTab(4), isTrue);
   });
 
+  test("stages a 120px ball only on phone Home", () {
+    expect(kHomeOrbSize, 120);
+    expect(kHomeBallStageMin, 168);
+    expect(shouldStageHomeBall(0, 390), isTrue);
+    expect(shouldStageHomeBall(0, 1024), isFalse);
+    expect(shouldStageHomeBall(1, 390), isFalse);
+    expect(
+      homeOrbPositionFromRect(const Rect.fromLTWH(16, 240, 358, 168)),
+      const Offset(135, 264),
+    );
+    expect(homeOrbPosition(iphone390), const Offset(135, 328));
+  });
+
   test("saved positions reject corrupt payloads", () {
     expect(parseSavedOrbPosition('{"x":326,"y":712}'), const Offset(326, 712));
     expect(parseSavedOrbPosition(null), isNull);

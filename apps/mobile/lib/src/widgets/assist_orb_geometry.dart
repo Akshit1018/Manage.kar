@@ -4,6 +4,8 @@ import "dart:ui" show Offset, Rect, Size;
 import "package:flutter/painting.dart";
 
 const kOrbSize = 56.0;
+const kHomeOrbSize = 120.0;
+const kHomeBallStageMin = 168.0;
 const kOrbInset = 8.0;
 const kOrbBottomReserve = 76.0;
 const kOrbLongPressMs = 500;
@@ -15,6 +17,29 @@ const kIconBarHeight = 60.0;
 
 /// Chats is the fourth shell tab (0 Home, 1 Tasks, 2 Notes, 3 Chats, 4 Habits).
 bool orbVisibleOnTab(int index) => index != 3;
+
+bool shouldStageHomeBall(int tabIndex, double width) => tabIndex == 0 && width < 1024;
+
+Offset homeOrbPositionFromRect(Rect rect, {double size = kHomeOrbSize}) {
+  return Offset(rect.left + (rect.width - size) / 2, rect.top + (rect.height - size) / 2);
+}
+
+Offset homeOrbPosition(
+  Size viewport, {
+  EdgeInsets padding = EdgeInsets.zero,
+  double size = kHomeOrbSize,
+}) {
+  final left = padding.left + kOrbInset;
+  final top = padding.top + kOrbInset;
+  final usableWidth = viewport.width - left - padding.right - kOrbInset;
+  final usableHeight = viewport.height - top - padding.bottom - kOrbBottomReserve;
+  return clampOrbPosition(
+    Offset(left + (usableWidth - size) / 2, top + (usableHeight - size) / 2),
+    viewport,
+    padding: padding,
+    size: size,
+  );
+}
 
 Offset clampOrbPosition(
   Offset position,
@@ -60,14 +85,25 @@ Offset iconBarPosition(
   Size viewport, {
   EdgeInsets padding = EdgeInsets.zero,
   double barWidth = kIconBarWidth,
+  double size = kOrbSize,
 }) {
-  final opensRight = orb.dx + kOrbSize / 2 < viewport.width / 2;
-  final rawX = opensRight ? orb.dx + kOrbSize + kOrbInset : orb.dx - barWidth - kOrbInset;
+  final opensRight = orb.dx + size / 2 < viewport.width / 2;
+  final rawX = opensRight ? orb.dx + size + kOrbInset : orb.dx - barWidth - kOrbInset;
   final minX = padding.left + kOrbInset;
   final maxX = viewport.width - barWidth - padding.right - kOrbInset;
-  return Offset(
+  final beside = Offset(
     rawX.clamp(minX, maxX < minX ? minX : maxX),
     (orb.dy - 60).clamp(padding.top + kOrbInset, double.infinity),
+  );
+  if (!rectsOverlap(
+    Rect.fromLTWH(beside.dx, beside.dy, barWidth, kIconBarHeight),
+    Rect.fromLTWH(orb.dx, orb.dy, size, size),
+  )) {
+    return beside;
+  }
+  return Offset(
+    (orb.dx + size / 2 - barWidth / 2).clamp(minX, maxX < minX ? minX : maxX),
+    (orb.dy - 60 - kOrbInset).clamp(padding.top + kOrbInset, double.infinity),
   );
 }
 
