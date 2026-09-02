@@ -573,7 +573,7 @@ export function FloatingToggle({
         data-mk-ball-stage={stage}
         data-armed={armed || recorderOpen ? "true" : "false"}
         className={cn(
-          "mk-touch mk-ball fixed z-[80] cursor-move select-none [touch-action:none]",
+          "mk-touch mk-ball fixed z-[80] cursor-move rounded-full overflow-hidden select-none [touch-action:none]",
           isDragging || showIconBar ? "scale-105" : "",
           armed || recorderOpen ? "scale-110 animate-pulse" : "",
           isDragging ? "cursor-grabbing" : "",

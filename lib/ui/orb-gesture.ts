@@ -329,7 +329,10 @@ export function resolveOrbPlacement(input: {
       : homeOrbPosition(input.bounds, size)
     return { next: clampOrbPosition(raw.x, raw.y, input.bounds, size), persist: false }
   }
-  const source = input.prev ?? input.saved ?? defaultOrbPosition(input.bounds)
+  const source =
+    input.reason === "hydrate"
+      ? (input.saved ?? defaultOrbPosition(input.bounds))
+      : (input.prev ?? input.saved ?? defaultOrbPosition(input.bounds))
   const next = clampOrbPosition(source.x, source.y, input.bounds, size)
   const changed = next.x !== source.x || next.y !== source.y
   const persist =

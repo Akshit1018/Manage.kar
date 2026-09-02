@@ -581,6 +581,30 @@ describe("resolveOrbPlacement", () => {
     expect(result.next).toEqual({ x: 135, y: 264 })
     expect(result.persist).toBe(false)
   })
+
+  it("ignores a Home-center prev on edge hydrate and restores the saved park", () => {
+    const result = resolveOrbPlacement({
+      prev: { x: 135, y: 264 },
+      saved: { x: 326, y: 712 },
+      bounds: IPHONE_390,
+      reason: "hydrate",
+      stage: "edge",
+    })
+    expect(result.next).toEqual({ x: 326, y: 712 })
+    expect(result.persist).toBe(false)
+  })
+
+  it("falls back to the default edge park when Home staging ends with no saved point", () => {
+    const result = resolveOrbPlacement({
+      prev: { x: 135, y: 264 },
+      saved: null,
+      bounds: IPHONE_390,
+      reason: "hydrate",
+      stage: "edge",
+    })
+    expect(result.next).toEqual(defaultOrbPosition(IPHONE_390))
+    expect(result.persist).toBe(false)
+  })
 })
 
 describe("home ball stage", () => {
