@@ -29,19 +29,24 @@ describe("home chrome", () => {
   it("drops the permanent search field on chats and Home", () => {
     expect(showWorkspaceSearch("chats")).toBe(false)
     expect(showWorkspaceSearch("overview")).toBe(false)
+    expect(showWorkspaceSearch("notes")).toBe(false)
     expect(showWorkspaceSearch("tasks")).toBe(true)
     expect(workspaceSearchPlaceholder("tasks")).toBe("Search tasks")
+    expect(workspaceSearchPlaceholder("notes")).toBe("Search notes")
   })
 
-  it("hides Export and the composer dock on Home, and the composer on Tasks", () => {
+  it("hides Export and the composer dock on Home, and the composer on Tasks and Notes", () => {
     expect(showWorkspaceExport("overview")).toBe(false)
     expect(showWorkspaceExport("tasks")).toBe(true)
+    expect(showWorkspaceExport("notes")).toBe(true)
     expect(showWorkspaceExport("chats")).toBe(true)
     expect(showComposerDock("overview")).toBe(false)
     expect(showComposerDock("chats")).toBe(true)
     expect(showComposerDock("tasks")).toBe(false)
+    expect(showComposerDock("notes")).toBe(false)
     expect(showViewSupport("tasks")).toBe(false)
-    expect(showViewSupport("notes")).toBe(true)
+    expect(showViewSupport("notes")).toBe(false)
+    expect(showViewSupport("habits")).toBe(true)
   })
 
   it("keeps the tool strip off Home so the feed can breathe", () => {
