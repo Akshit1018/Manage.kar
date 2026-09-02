@@ -83,9 +83,11 @@ import {
   showDesktopSidebar,
   showGlobalCreateRow,
   showMobileTabBar,
+  showViewSupport,
   showWorkspaceExport,
   showWorkspaceSearch,
   workspaceNavItems,
+  workspaceSearchPlaceholder,
 } from "@/lib/ui/home-chrome"
 import { agentDayBriefing, homeAgents, homeRuntimeSignals, pickHomeSpotlight } from "@/lib/ui/home-feed"
 import { shouldStageHomeBall } from "@/lib/ui/orb-gesture"
@@ -823,7 +825,9 @@ export function Dashboard({ initialSearch }: DashboardProps) {
           ) : (
             <>
               <h1 className="sr-only">{workspaceViewTitle(currentView)}</h1>
-              <p className="mk-section-support">{workspaceViewSupport(currentView, greeting)}</p>
+              {showViewSupport(currentView) ? (
+                <p className="mk-section-support">{workspaceViewSupport(currentView, greeting)}</p>
+              ) : null}
             </>
           )}
         </div>
@@ -852,11 +856,11 @@ export function Dashboard({ initialSearch }: DashboardProps) {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             id="workspace-search"
-            placeholder="Search tasks, notes, habits, and chats..."
+            placeholder={workspaceSearchPlaceholder(currentView)}
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             className="rounded-xl bg-card/95 pl-10 sm:rounded-2xl"
-            aria-label="Search workspace"
+            aria-label={workspaceSearchPlaceholder(currentView)}
           />
         </div>
         ) : null}

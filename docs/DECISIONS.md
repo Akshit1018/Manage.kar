@@ -290,3 +290,12 @@ D001–D005.
   tiles. A Home-stage park is not written over the saved edge position.
 - **Reversal:** Only if the founder wants the ball only as an edge
   AssistiveTouch and retires the Home stage.
+
+### D016 — Tasks tab is task-only chrome
+
+- Tasks hides the global Add-task / Note / Habit row (the list already has
+  Add task), hides the composer dock, and hides the support kicker. Search
+  stays and is labeled **Search tasks**. Export stays. Filters, list/board,
+  and Select stay. The edge ball stays.
+- **Reversal:** Only if the founder wants Note/Habit create or the chat
+  composer back on Tasks.
