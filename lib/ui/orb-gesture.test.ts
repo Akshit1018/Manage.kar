@@ -647,6 +647,13 @@ describe("home ball stage", () => {
     const feed = readFileSync(resolve(process.cwd(), "components/workspace/home-feed.tsx"), "utf8")
     expect(feed.includes("mk-home-ball-stage")).toBe(false)
   })
+
+  it("does not treat the ball disk as a Home stage hole", () => {
+    const source = readFileSync(resolve(process.cwd(), "components/floating-toggle.tsx"), "utf8")
+    expect(source).toContain('querySelector("[data-mk-home-stage]")')
+    expect(source).toContain("data-mk-orb-stage={stage}")
+    expect(source.includes("data-mk-ball-stage")).toBe(false)
+  })
 })
 
 describe("attachOrbPointerFallback", () => {

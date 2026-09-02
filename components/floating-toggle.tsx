@@ -93,7 +93,7 @@ function readBounds() {
 }
 
 function readStageRect() {
-  const stage = document.querySelector("[data-mk-ball-stage]")
+  const stage = document.querySelector("[data-mk-home-stage]")
   if (!(stage instanceof HTMLElement)) {
     return null
   }
@@ -570,7 +570,7 @@ export function FloatingToggle({
           }
         }}
         data-mk-ball=""
-        data-mk-ball-stage={stage}
+        data-mk-orb-stage={stage}
         data-armed={armed || recorderOpen ? "true" : "false"}
         className={cn(
           "mk-touch mk-ball fixed z-[80] cursor-move rounded-full overflow-hidden select-none [touch-action:none]",
